@@ -433,6 +433,7 @@ Muxers/Demuxers:
   idroqdec.c                            Mike Melanson
   iff.c                                 Jaikrishnan Menon
   img2*.c                               Michael Niedermayer
+  imf*.c                                Marc-Antoine Arnaud, Pierre-Anthony Lemieux, Valentin Noël
   ipmovie.c                             Mike Melanson
   ircam*                                Paul B Mahol
   iss.c                                 Stefan Gehrer
