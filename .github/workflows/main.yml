@@ -10,13 +10,16 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get -y install nasm
+        sudo apt-get -y install indent nasm
 
     - name: Checkout repo
       uses: actions/checkout@v2
 
     - name: Configure
       run: ./configure --enable-libxml2
+
+    - name: Check code style
+      run: indent -i4 -kr -nut libavformat/imf*.c
 
     - name: Build
       run: make -j 8
