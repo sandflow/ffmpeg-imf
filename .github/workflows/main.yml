@@ -12,8 +12,18 @@ jobs:
         sudo apt-get update
         sudo apt-get -y install indent nasm
 
-    - name: Checkout repo
+    - name: Checkout
       uses: actions/checkout@v2
+
+    - name: Checkout Fate
+      uses: actions/checkout@v2
+      if: github.ref == 'refs/heads/develop'
+      with:
+        repository: sandflow/ffmpeg-imf-fate
+        path: ./fate-suite
+        token: ${{ secrets.GITHUBPAT }}
+        persist-credentials: true
+        ref: 6482e3fb12fe9fbfe4ceb8ecdb1774ac853408c5
 
     - name: Configure
       run: ./configure --enable-libxml2
@@ -26,3 +36,7 @@ jobs:
 
     - name: Check
       run: make check -j 8
+
+    - name: Run Fate
+      if: github.ref == 'refs/heads/develop'
+      run: FATE_SAMPLES=fate-suite/ make fate
