@@ -1,4 +1,3 @@
-
 /*
  * Copyright (c), Sandflow Consulting LLC
  * All rights reserved.
@@ -24,11 +23,14 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
+
 #ifndef AVCODEC_IMF_H
 #define AVCODEC_IMF_H
 
 #include "libavutil/rational.h"
 #include "libavcodec/codec_par.h"
+#include <libxml/parser.h>
+#include <libxml/tree.h>
 
 /**
  * IMF Composition Playlist
@@ -46,7 +48,7 @@ int parse_imf_cpl_from_xml_dom(xmlDocPtr* doc, IMFCPL** cpl);
 
 int parse_imf_cpl(AVIOContext* avio_context, IMFCPL** cpl);
 
-void delete_imf_cpl(IMFCPL* cpl);
+void imf_cpl_delete(IMFCPL* cpl);
 
 /**
  * IMF Composition Playlist Virtual Track
