@@ -26,19 +26,18 @@
 
 #include "imf.h"
 #include "libavutil/error.h"
+#include <libxml/xpath.h>
 
-IMFCPL* imf_cpl_new() {
-    IMFCPL* cpl;
 
+IMFCPL* imf_cpl_new(void) {
     return calloc(1, sizeof(IMFCPL));
 }
 
 
-int parse_imf_cpl_from_xml_dom(xmlDocPtr* doc, IMFCPL** cpl) {
+int parse_imf_cpl_from_xml_dom(xmlDocPtr doc, IMFCPL** cpl) {
     int ret = 0;
 
-    xmlDocPtr root_element = NULL;
-    xmlNs* ns = NULL;
+    xmlNodePtr root_element = NULL;
 
     xmlXPathContextPtr xpath_context = NULL;
 
@@ -81,4 +80,6 @@ cleanup:
     return ret;
 }
 
-void imf_cpl_delete(IMFCPL* cpl);
+void imf_cpl_delete(IMFCPL* cpl) {
+    free(cpl);
+}
