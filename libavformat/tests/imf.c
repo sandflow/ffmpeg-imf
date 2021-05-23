@@ -49,25 +49,22 @@ int main(int argc, char *argv[])
 
         printf("\n");
 
-        printf(
-            UUID_FMT_STR,
-            cpl->id_uuid[0],
-            cpl->id_uuid[1],
-            cpl->id_uuid[2],
-            cpl->id_uuid[3],
-            cpl->id_uuid[4],
-            cpl->id_uuid[5],
-            cpl->id_uuid[6],
-            cpl->id_uuid[7],
-            cpl->id_uuid[8],
-            cpl->id_uuid[9],
-            cpl->id_uuid[10],
-            cpl->id_uuid[11],
-            cpl->id_uuid[12],
-            cpl->id_uuid[13],
-            cpl->id_uuid[14],
-            cpl->id_uuid[15]
-        );
+        printf(UUID_FMT_STR,
+               cpl->id_uuid[0],
+               cpl->id_uuid[1],
+               cpl->id_uuid[2],
+               cpl->id_uuid[3],
+               cpl->id_uuid[4],
+               cpl->id_uuid[5],
+               cpl->id_uuid[6],
+               cpl->id_uuid[7],
+               cpl->id_uuid[8],
+               cpl->id_uuid[9],
+               cpl->id_uuid[10],
+               cpl->id_uuid[11],
+               cpl->id_uuid[12],
+               cpl->id_uuid[13], cpl->id_uuid[14], cpl->id_uuid[15]
+            );
 
         printf("\n");
     }

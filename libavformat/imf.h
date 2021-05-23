@@ -39,7 +39,7 @@
  * UUID string format
  */
 
-extern const char* UUID_FMT_STR;
+extern const char *UUID_FMT_STR;
 
 /**
  * IMF Virtual Track Kind

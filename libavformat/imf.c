@@ -29,8 +29,9 @@
 #include <libxml/xpath.h>
 
 
-const char* UUID_FMT_STR = "urn:uuid:%2hhx%2hhx%2hhx%2hhx-%2hhx%2hhx-%2hhx%2hhx-%2hhx%2hhx-%2hhx%2hhx%2hhx%2hhx%2hhx%2hhx";
- 
+const char *UUID_FMT_STR =
+    "urn:uuid:%2hhx%2hhx%2hhx%2hhx-%2hhx%2hhx-%2hhx%2hhx-%2hhx%2hhx-%2hhx%2hhx%2hhx%2hhx%2hhx%2hhx";
+
 
 IMFCPL *imf_cpl_new(void)
 {
@@ -56,8 +57,8 @@ int fill_content_title(xmlXPathContextPtr ctx, IMFCPL * cpl)
 
     cpl->content_title_utf8 =
         xmlNodeListGetString(ctx->doc,
-                             xpath_result->nodesetval->
-                             nodeTab[0]->xmlChildrenNode, 1);
+                             xpath_result->nodesetval->nodeTab[0]->
+                             xmlChildrenNode, 1);
 
   cleanup:
     if (xpath_result)
@@ -72,12 +73,11 @@ int fill_id(xmlXPathContextPtr ctx, IMFCPL * cpl)
 {
     int ret = 0;
     xmlXPathObjectPtr xpath_result = NULL;
-    xmlChar* urn_text = NULL;
+    xmlChar *urn_text = NULL;
     int scanf_ret;
 
     xpath_result =
-        xmlXPathEvalExpression("/cpl:CompositionPlaylist/cpl:Id",
-                               ctx);
+        xmlXPathEvalExpression("/cpl:CompositionPlaylist/cpl:Id", ctx);
 
     if (xmlXPathNodeSetGetLength(xpath_result->nodesetval) != 1) {
         ret = 1;
@@ -86,30 +86,28 @@ int fill_id(xmlXPathContextPtr ctx, IMFCPL * cpl)
 
     urn_text =
         xmlNodeListGetString(ctx->doc,
-                             xpath_result->nodesetval->
-                             nodeTab[0]->xmlChildrenNode, 1);
+                             xpath_result->nodesetval->nodeTab[0]->
+                             xmlChildrenNode, 1);
 
-    scanf_ret =  sscanf(
-        urn_text,
-        UUID_FMT_STR,
-        &cpl->id_uuid[0],
-        &cpl->id_uuid[1],
-        &cpl->id_uuid[2],
-        &cpl->id_uuid[3],
-        &cpl->id_uuid[4],
-        &cpl->id_uuid[5],
-        &cpl->id_uuid[6],
-        &cpl->id_uuid[7],
-        &cpl->id_uuid[8],
-        &cpl->id_uuid[9],
-        &cpl->id_uuid[10],
-        &cpl->id_uuid[11],
-        &cpl->id_uuid[12],
-        &cpl->id_uuid[13],
-        &cpl->id_uuid[14],
-        &cpl->id_uuid[15]
-    );
-    
+    scanf_ret = sscanf(urn_text,
+                       UUID_FMT_STR,
+                       &cpl->id_uuid[0],
+                       &cpl->id_uuid[1],
+                       &cpl->id_uuid[2],
+                       &cpl->id_uuid[3],
+                       &cpl->id_uuid[4],
+                       &cpl->id_uuid[5],
+                       &cpl->id_uuid[6],
+                       &cpl->id_uuid[7],
+                       &cpl->id_uuid[8],
+                       &cpl->id_uuid[9],
+                       &cpl->id_uuid[10],
+                       &cpl->id_uuid[11],
+                       &cpl->id_uuid[12],
+                       &cpl->id_uuid[13],
+                       &cpl->id_uuid[14], &cpl->id_uuid[15]
+        );
+
     if (scanf_ret != 16) {
         ret = 1;
         goto cleanup;
