@@ -33,6 +33,25 @@ IMFCPL* imf_cpl_new(void) {
     return calloc(1, sizeof(IMFCPL));
 }
 
+int fill_content_title(xmlXPathContextPtr ctx, IMFCPL* cpl) {
+    int ret = 0;
+
+    xmlXPathObjectPtr xpath_result = NULL;
+
+    xpath_result = xmlXPathEvalExpression("/cpl:CompositionPlaylist/cpl:ContentTitle", ctx);
+
+	if(xmlXPathNodeSetGetLength(xpath_result->nodesetval) != 1) {
+        ret = 1;
+        goto cleanup;
+    }
+
+    cpl->content_title_utf8 = xmlNodeListGetString(ctx->doc, xpath_result->nodesetval->nodeTab[0]->xmlChildrenNode, 1);
+
+cleanup:
+    if (xpath_result) xmlXPathFreeObject(xpath_result);
+
+    return ret;
+}
 
 int parse_imf_cpl_from_xml_dom(xmlDocPtr doc, IMFCPL** cpl) {
     int ret = 0;
@@ -40,8 +59,6 @@ int parse_imf_cpl_from_xml_dom(xmlDocPtr doc, IMFCPL** cpl) {
     xmlNodePtr root_element = NULL;
 
     xmlXPathContextPtr xpath_context = NULL;
-
-	xmlXPathObjectPtr xpath_result = NULL;
 
     *cpl = NULL;
 
@@ -63,19 +80,13 @@ int parse_imf_cpl_from_xml_dom(xmlDocPtr doc, IMFCPL** cpl) {
 
     xmlXPathRegisterNs(xpath_context, "cpl", root_element->ns->href);
 
-	xpath_result = xmlXPathEvalExpression("/cpl:CompositionPlaylist/cpl:ContentTitle", xpath_context);
-
-	if(xmlXPathNodeSetGetLength(xpath_result->nodesetval) != 1) {
+	if(fill_content_title(xpath_context, *cpl)) {
         ret = AVERROR_BUG;
 		goto cleanup;
     }
 
-    (*cpl)->content_title_utf8 = xmlNodeListGetString(doc, xpath_result->nodesetval->nodeTab[0]->xmlChildrenNode, 1);
-
 cleanup:
     if (*cpl && ret) imf_cpl_delete(*cpl);
-
-    if (xpath_result) xmlXPathFreeObject(xpath_result);
 
     return ret;
 }
@@ -83,7 +94,7 @@ cleanup:
 void imf_cpl_delete(IMFCPL* cpl) {
     if (cpl) {
         xmlFree(BAD_CAST cpl->content_title_utf8);
-        free(cpl);
     }
 
+    free(cpl);
 }

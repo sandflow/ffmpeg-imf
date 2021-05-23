@@ -85,6 +85,8 @@ typedef struct IMFCPL {
     IMFVirtualTrack *virtual_tracks;
 } IMFCPL;
 
+int fill_content_title(xmlXPathContextPtr ctx, IMFCPL* cpl);
+
 int parse_imf_cpl_from_xml_dom(xmlDocPtr doc, IMFCPL** cpl);
 
 int parse_imf_cpl(AVIOContext* avio_context, IMFCPL** cpl);
