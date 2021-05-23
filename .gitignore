@@ -37,3 +37,6 @@
 /src
 /mapfile
 /tools/python/__pycache__/
+/tools/enum_options
+/tools/venc_data_dump
+.vscode
