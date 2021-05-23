@@ -85,6 +85,7 @@ typedef struct IMFMarker {
 typedef struct IMFCPL {
     uint8_t id_uuid[16];
     const char *content_title_utf8;
+    AVRational edit_rate;
     uint32_t marker_count;
     IMFMarker *markers;
     uint32_t virtual_track_count;

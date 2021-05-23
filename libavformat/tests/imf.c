@@ -29,6 +29,7 @@
 const char *cpl_doc =
     "<CompositionPlaylist xmlns=\"http://examaple.com\">"
     "<Id>urn:uuid:8713c020-2489-45f5-a9f7-87be539e20b5</Id>"
+    "<EditRate>24000 1001</EditRate>"
     "<ContentTitle>Hello</ContentTitle>" "</CompositionPlaylist>";
 
 int main(int argc, char *argv[])
@@ -64,6 +65,13 @@ int main(int argc, char *argv[])
                cpl->id_uuid[11],
                cpl->id_uuid[12],
                cpl->id_uuid[13], cpl->id_uuid[14], cpl->id_uuid[15]
+            );
+
+        printf("\n");
+
+        printf("%i %i",
+               cpl->edit_rate.num,
+               cpl->edit_rate.den
             );
 
         printf("\n");

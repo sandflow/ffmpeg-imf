@@ -67,6 +67,45 @@ int fill_content_title(xmlXPathContextPtr ctx, IMFCPL * cpl)
     return ret;
 }
 
+int fill_edit_rate(xmlXPathContextPtr ctx, IMFCPL * cpl);
+
+int fill_edit_rate(xmlXPathContextPtr ctx, IMFCPL * cpl)
+{
+    int ret = 0;
+    xmlXPathObjectPtr edit_rate_element = NULL;
+    xmlChar *edit_rate_text = NULL;
+    int scanf_ret;
+
+    edit_rate_element =
+        xmlXPathEvalExpression("/cpl:CompositionPlaylist/cpl:EditRate", ctx);
+
+    if (xmlXPathNodeSetGetLength(edit_rate_element->nodesetval) != 1) {
+        ret = 1;
+        goto cleanup;
+    }
+
+    edit_rate_text =
+        xmlNodeListGetString(ctx->doc,
+                             edit_rate_element->nodesetval->nodeTab[0]->
+                             xmlChildrenNode, 1);
+
+    scanf_ret = sscanf(edit_rate_text, "%i %i", &cpl->edit_rate.num, &cpl->edit_rate.den);
+
+    if (scanf_ret != 2) {
+        ret = 1;
+        goto cleanup;
+    }
+
+  cleanup:
+    if (edit_rate_element)
+        xmlXPathFreeObject(edit_rate_element);
+
+    if (edit_rate_text)
+        xmlFree(edit_rate_text);
+
+    return ret;
+}
+
 int fill_id(xmlXPathContextPtr ctx, IMFCPL * cpl);
 
 int fill_id(xmlXPathContextPtr ctx, IMFCPL * cpl)
@@ -123,6 +162,61 @@ int fill_id(xmlXPathContextPtr ctx, IMFCPL * cpl)
     return ret;
 }
 
+int process_sequence_list(IMFCPL * cpl, xmlNodePtr sequenceList_element);
+
+int process_sequence_list(IMFCPL * cpl, xmlNodePtr sequenceList_element) {
+
+    xmlNodePtr cur = NULL;
+
+    cur = xmlFirstElementChild(sequenceList_element);
+
+	while (cur != NULL) {
+
+        /* TODO: compare namespaces */
+
+        if (xmlStrcmp(cur->name, "MarkerSequence") == 0) {
+            
+
+        } else if (xmlStrcmp(cur->name, "MainImageSequence") == 0) {
+
+        }
+				 
+	    cur = xmlNextElementSibling(cur);
+	}
+
+    return 0;
+}
+
+int fill_virtual_tracks(xmlXPathContextPtr ctx, IMFCPL * cpl);
+
+int fill_virtual_tracks(xmlXPathContextPtr ctx, IMFCPL * cpl)
+{
+    int ret = 0;
+
+    xmlXPathObjectPtr segment_list = NULL;
+
+    segment_list =
+        xmlXPathEvalExpression("/cpl:CompositionPlaylist/cpl:SegmentList/cpl:Segment/cpl:SequenceList",
+                               ctx);
+
+    if (xmlXPathNodeSetGetLength(segment_list->nodesetval) > 0) {
+
+        for(int i = 0; i < segment_list->nodesetval->nodeNr; i++) {
+
+            ret = process_sequence_list(cpl, segment_list->nodesetval->nodeTab[i]);
+            
+            if (ret)
+                break;
+
+        }
+    }
+
+    xmlXPathFreeObject(segment_list);
+
+    return ret;
+}
+
+
 int parse_imf_cpl_from_xml_dom(xmlDocPtr doc, IMFCPL ** cpl)
 {
     int ret = 0;
@@ -157,6 +251,11 @@ int parse_imf_cpl_from_xml_dom(xmlDocPtr doc, IMFCPL ** cpl)
     }
 
     if (fill_id(xpath_context, *cpl)) {
+        ret = AVERROR_BUG;
+        goto cleanup;
+    }
+
+    if (fill_edit_rate(xpath_context, *cpl)) {
         ret = AVERROR_BUG;
         goto cleanup;
     }
