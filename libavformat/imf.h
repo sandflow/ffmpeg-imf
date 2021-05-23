@@ -39,8 +39,8 @@
  * IMF Virtual Track Kind
  */
 typedef enum IMFVirtualTrackKind {
-    MainImage2D     = 1,
-    MainAudio       = 2
+    MainImage2D = 1,
+    MainAudio = 2
 } IMFVirtualTrackKind;
 
 /**
@@ -85,14 +85,14 @@ typedef struct IMFCPL {
     IMFVirtualTrack *virtual_tracks;
 } IMFCPL;
 
-int fill_content_title(xmlXPathContextPtr ctx, IMFCPL* cpl);
+int fill_content_title(xmlXPathContextPtr ctx, IMFCPL * cpl);
 
-int parse_imf_cpl_from_xml_dom(xmlDocPtr doc, IMFCPL** cpl);
+int parse_imf_cpl_from_xml_dom(xmlDocPtr doc, IMFCPL ** cpl);
 
-int parse_imf_cpl(AVIOContext* avio_context, IMFCPL** cpl);
+int parse_imf_cpl(AVIOContext * avio_context, IMFCPL ** cpl);
 
-IMFCPL* imf_cpl_new(void);
+IMFCPL *imf_cpl_new(void);
 
-void imf_cpl_delete(IMFCPL* cpl);
+void imf_cpl_delete(IMFCPL * cpl);
 
 #endif
