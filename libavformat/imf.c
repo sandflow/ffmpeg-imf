@@ -70,7 +70,7 @@ int parse_imf_cpl_from_xml_dom(xmlDocPtr doc, IMFCPL** cpl) {
 		goto cleanup;
     }
 
-    
+    (*cpl)->content_title_utf8 = xmlNodeListGetString(doc, xpath_result->nodesetval->nodeTab[0]->xmlChildrenNode, 1);
 
 cleanup:
     if (*cpl && ret) imf_cpl_delete(*cpl);
@@ -81,5 +81,9 @@ cleanup:
 }
 
 void imf_cpl_delete(IMFCPL* cpl) {
-    free(cpl);
+    if (cpl) {
+        xmlFree(BAD_CAST cpl->content_title_utf8);
+        free(cpl);
+    }
+
 }

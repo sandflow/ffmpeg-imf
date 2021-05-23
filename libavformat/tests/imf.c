@@ -26,9 +26,9 @@
 
 #include "libavformat/imf.h"
 
-char* cpl_doc =
-    "<CompositionPlaylist xmlns=\"a\">"
-    "<ContentTitleText>Hello</ContentTitleText>"
+const char* cpl_doc =
+    "<CompositionPlaylist xmlns=\"http://examaple.com\">"
+    "<ContentTitle>Hello</ContentTitle>"
     "</CompositionPlaylist>";
 
 int main(int argc, char *argv[]) {
@@ -42,6 +42,10 @@ int main(int argc, char *argv[]) {
     doc = xmlReadMemory(cpl_doc, strlen(cpl_doc), NULL, NULL, 0);
 
     ret = parse_imf_cpl_from_xml_dom(doc, &cpl);
+
+    if (! ret) {
+        printf("%s", cpl->content_title_utf8);
+    }
 
     return ret;
 }
