@@ -29,10 +29,15 @@
 #include <libxml/xpath.h>
 
 
+const char* UUID_FMT_STR = "urn:uuid:%2hhx%2hhx%2hhx%2hhx-%2hhx%2hhx-%2hhx%2hhx-%2hhx%2hhx-%2hhx%2hhx%2hhx%2hhx%2hhx%2hhx";
+ 
+
 IMFCPL *imf_cpl_new(void)
 {
     return calloc(1, sizeof(IMFCPL));
 }
+
+int fill_content_title(xmlXPathContextPtr ctx, IMFCPL * cpl);
 
 int fill_content_title(xmlXPathContextPtr ctx, IMFCPL * cpl)
 {
@@ -57,6 +62,65 @@ int fill_content_title(xmlXPathContextPtr ctx, IMFCPL * cpl)
   cleanup:
     if (xpath_result)
         xmlXPathFreeObject(xpath_result);
+
+    return ret;
+}
+
+int fill_id(xmlXPathContextPtr ctx, IMFCPL * cpl);
+
+int fill_id(xmlXPathContextPtr ctx, IMFCPL * cpl)
+{
+    int ret = 0;
+    xmlXPathObjectPtr xpath_result = NULL;
+    xmlChar* urn_text = NULL;
+    int scanf_ret;
+
+    xpath_result =
+        xmlXPathEvalExpression("/cpl:CompositionPlaylist/cpl:Id",
+                               ctx);
+
+    if (xmlXPathNodeSetGetLength(xpath_result->nodesetval) != 1) {
+        ret = 1;
+        goto cleanup;
+    }
+
+    urn_text =
+        xmlNodeListGetString(ctx->doc,
+                             xpath_result->nodesetval->
+                             nodeTab[0]->xmlChildrenNode, 1);
+
+    scanf_ret =  sscanf(
+        urn_text,
+        UUID_FMT_STR,
+        &cpl->id_uuid[0],
+        &cpl->id_uuid[1],
+        &cpl->id_uuid[2],
+        &cpl->id_uuid[3],
+        &cpl->id_uuid[4],
+        &cpl->id_uuid[5],
+        &cpl->id_uuid[6],
+        &cpl->id_uuid[7],
+        &cpl->id_uuid[8],
+        &cpl->id_uuid[9],
+        &cpl->id_uuid[10],
+        &cpl->id_uuid[11],
+        &cpl->id_uuid[12],
+        &cpl->id_uuid[13],
+        &cpl->id_uuid[14],
+        &cpl->id_uuid[15]
+    );
+    
+    if (scanf_ret != 16) {
+        ret = 1;
+        goto cleanup;
+    }
+
+  cleanup:
+    if (xpath_result)
+        xmlXPathFreeObject(xpath_result);
+
+    if (urn_text)
+        xmlFree(urn_text);
 
     return ret;
 }
@@ -90,6 +154,11 @@ int parse_imf_cpl_from_xml_dom(xmlDocPtr doc, IMFCPL ** cpl)
     xmlXPathRegisterNs(xpath_context, "cpl", root_element->ns->href);
 
     if (fill_content_title(xpath_context, *cpl)) {
+        ret = AVERROR_BUG;
+        goto cleanup;
+    }
+
+    if (fill_id(xpath_context, *cpl)) {
         ret = AVERROR_BUG;
         goto cleanup;
     }

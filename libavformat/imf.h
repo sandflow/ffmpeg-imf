@@ -36,6 +36,12 @@
 
 
 /**
+ * UUID string format
+ */
+
+extern const char* UUID_FMT_STR;
+
+/**
  * IMF Virtual Track Kind
  */
 typedef enum IMFVirtualTrackKind {
@@ -84,8 +90,6 @@ typedef struct IMFCPL {
     uint32_t virtual_track_count;
     IMFVirtualTrack *virtual_tracks;
 } IMFCPL;
-
-int fill_content_title(xmlXPathContextPtr ctx, IMFCPL * cpl);
 
 int parse_imf_cpl_from_xml_dom(xmlDocPtr doc, IMFCPL ** cpl);
 
