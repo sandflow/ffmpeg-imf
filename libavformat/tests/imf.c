@@ -141,10 +141,7 @@ static void print_uuid(unsigned char uuid[16])
            uuid[7],
            uuid[8],
            uuid[9],
-           uuid[10],
-           uuid[11],
-           uuid[12],
-           uuid[13], uuid[14], uuid[15]
+           uuid[10], uuid[11], uuid[12], uuid[13], uuid[14], uuid[15]
         );
 }
 
@@ -196,36 +193,34 @@ int main(int argc, char *argv[])
              j < cpl->main_markers_track->resources[i].marker_count; j++) {
             printf("  Marker %lu\n", j);
             printf("    Label %s\n",
-                   cpl->main_markers_track->resources[i].markers[j].
-                   label_utf8);
+                   cpl->main_markers_track->resources[i].
+                   markers[j].label_utf8);
             printf("    Offset %lu\n",
-                   cpl->main_markers_track->resources[i].markers[j].
-                   offset);
+                   cpl->main_markers_track->resources[i].
+                   markers[j].offset);
         }
     }
 
     printf("Main image resource count: %lu\n",
            cpl->main_image_2d_track->resource_count);
 
-    for (unsigned long i = 0; i <  cpl->main_image_2d_track->resource_count;
+    for (unsigned long i = 0; i < cpl->main_image_2d_track->resource_count;
          i++) {
         printf("Track file resource %lu\n", i);
 
         printf("  ");
 
-        print_uuid(cpl->main_image_2d_track->resources[i].track_file_uuid); 
+        print_uuid(cpl->main_image_2d_track->resources[i].track_file_uuid);
 
-        printf("\n");       
+        printf("\n");
     }
 
-    printf("Main audio track count: %lu\n",
-           cpl->main_audio_track_count);
+    printf("Main audio track count: %lu\n", cpl->main_audio_track_count);
 
     for (unsigned long i = 0; i < cpl->main_audio_track_count; i++) {
-         printf("  Main audio virtual track %lu\n",
-           i);
+        printf("  Main audio virtual track %lu\n", i);
         printf("  Main audio resource count: %lu\n",
-           cpl->main_audio_tracks[i].resource_count);
+               cpl->main_audio_tracks[i].resource_count);
 
         for (unsigned long j = 0;
              j < cpl->main_audio_tracks[i].resource_count; j++) {
@@ -233,9 +228,10 @@ int main(int argc, char *argv[])
 
             printf("    ");
 
-            print_uuid(cpl->main_audio_tracks[i].resources[j].track_file_uuid); 
+            print_uuid(cpl->main_audio_tracks[i].resources[j].
+                       track_file_uuid);
 
-            printf("\n");    
+            printf("\n");
         }
     }
 

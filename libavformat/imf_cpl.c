@@ -164,7 +164,8 @@ static void imf_marker_virtual_track_init(IMFMarkerVirtualTrack * track)
     track->resources = NULL;
 }
 
-static void imf_trackfile_virtual_track_init(IMFTrackFileVirtualTrack * track)
+static void imf_trackfile_virtual_track_init(IMFTrackFileVirtualTrack *
+                                             track)
 {
     imf_base_virtual_track_init((IMFBaseVirtualTrack *) track);
     track->resource_count = 0;
@@ -237,7 +238,7 @@ static int fill_edit_rate(xmlNodePtr cpl_element, IMFCPL * cpl)
     return ret;
 }
 
-static  int fill_id(xmlNodePtr cpl_element, IMFCPL * cpl)
+static int fill_id(xmlNodePtr cpl_element, IMFCPL * cpl)
 {
     xmlNodePtr element = NULL;
 
@@ -300,7 +301,7 @@ static int fill_marker(xmlNodePtr marker_elem, IMFMarker * marker)
 }
 
 static int fill_base_resource(xmlNodePtr resource_elem,
-                         IMFBaseResource * resource, IMFCPL * cpl)
+                              IMFBaseResource * resource, IMFCPL * cpl)
 {
     xmlNodePtr element = NULL;
     int ret = 0;
@@ -340,8 +341,7 @@ static int fill_base_resource(xmlNodePtr resource_elem,
 
     /* read IntrinsicDuration */
 
-    element =
-        getChildElementByName(resource_elem, "IntrinsicDuration");
+    element = getChildElementByName(resource_elem, "IntrinsicDuration");
 
     if (element) {
 
@@ -360,8 +360,7 @@ static int fill_base_resource(xmlNodePtr resource_elem,
 
     /* read SourceDuration */
 
-    element =
-        getChildElementByName(resource_elem, "SourceDuration");
+    element = getChildElementByName(resource_elem, "SourceDuration");
 
     if (element) {
 
@@ -389,14 +388,18 @@ static int fill_base_resource(xmlNodePtr resource_elem,
 }
 
 static int fill_trackfile_resource(xmlNodePtr tf_resource_elem,
-                         IMFTrackFileResource * tf_resource, IMFCPL * cpl)
+                                   IMFTrackFileResource * tf_resource,
+                                   IMFCPL * cpl)
 {
     xmlNodePtr element = NULL;
     int ret = 0;
 
-    ret = fill_base_resource(tf_resource_elem, (IMFBaseResource*) tf_resource, cpl);
+    ret =
+        fill_base_resource(tf_resource_elem,
+                           (IMFBaseResource *) tf_resource, cpl);
 
-    if (ret) return ret;
+    if (ret)
+        return ret;
 
     /* read TrackFileId */
 
@@ -416,14 +419,18 @@ static int fill_trackfile_resource(xmlNodePtr tf_resource_elem,
 
 
 static int fill_marker_resource(xmlNodePtr marker_resource_elem,
-                         IMFMarkerResource * marker_resource, IMFCPL * cpl)
+                                IMFMarkerResource * marker_resource,
+                                IMFCPL * cpl)
 {
     xmlNodePtr element = NULL;
     int ret = 0;
 
-    ret = fill_base_resource(marker_resource_elem, (IMFBaseResource*) marker_resource, cpl);
+    ret =
+        fill_base_resource(marker_resource_elem,
+                           (IMFBaseResource *) marker_resource, cpl);
 
-    if (ret) return ret;
+    if (ret)
+        return ret;
 
     /* read markers */
 
@@ -434,20 +441,19 @@ static int fill_marker_resource(xmlNodePtr marker_resource_elem,
         if (xmlStrcmp(element->name, "Marker") == 0) {
 
             marker_resource->markers = realloc(marker_resource->markers,
-                                               (++marker_resource->
-                                                marker_count) *
-                                               sizeof(IMFMarker)
+                                               (++marker_resource->marker_count)
+                                               * sizeof(IMFMarker)
                 );
 
             if (marker_resource->markers == NULL)
                 return 1;
 
-            imf_marker_init(&marker_resource->
-                            markers[marker_resource->marker_count - 1]);
+            imf_marker_init(&marker_resource->markers
+                            [marker_resource->marker_count - 1]);
 
             fill_marker(element,
-                        &marker_resource->markers[marker_resource->
-                                                  marker_count - 1]);
+                        &marker_resource->
+                        markers[marker_resource->marker_count - 1]);
         }
 
         element = xmlNextElementSibling(element);
@@ -457,7 +463,8 @@ static int fill_marker_resource(xmlNodePtr marker_resource_elem,
     return 0;
 }
 
-static int push_marker_sequence(xmlNodePtr marker_sequence_elem, IMFCPL * cpl)
+static int push_marker_sequence(xmlNodePtr marker_sequence_elem,
+                                IMFCPL * cpl)
 {
     int ret;
     uint8_t uuid[16];
@@ -517,15 +524,15 @@ static int push_marker_sequence(xmlNodePtr marker_sequence_elem, IMFCPL * cpl)
 
         assert(cpl->main_markers_track->resources);
 
-        imf_marker_resource_init(&cpl->main_markers_track->
-                                 resources[cpl->main_markers_track->
-                                           resource_count - 1]);
+        imf_marker_resource_init(&cpl->
+                                 main_markers_track->resources[cpl->
+                                                               main_markers_track->resource_count
+                                                               - 1]);
 
         fill_marker_resource(resource_elem,
-                             &cpl->main_markers_track->resources[cpl->
-                                                                 main_markers_track->
-                                                                 resource_count
-                                                                 - 1],
+                             &cpl->main_markers_track->
+                             resources
+                             [cpl->main_markers_track->resource_count - 1],
                              cpl);
 
         resource_elem = xmlNextElementSibling(resource_elem);
@@ -536,7 +543,8 @@ static int push_marker_sequence(xmlNodePtr marker_sequence_elem, IMFCPL * cpl)
 
 static int has_stereo_resources(xmlNodePtr element)
 {
-    if (xmlStrcmp(element->name, "Left") == 0 || xmlStrcmp(element->name, "Right") == 0)
+    if (xmlStrcmp(element->name, "Left") == 0
+        || xmlStrcmp(element->name, "Right") == 0)
         return 1;
 
     element = xmlFirstElementChild(element);
@@ -552,7 +560,8 @@ static int has_stereo_resources(xmlNodePtr element)
     return 0;
 }
 
-static int push_main_audio_sequence(xmlNodePtr audio_sequence_elem, IMFCPL * cpl)
+static int push_main_audio_sequence(xmlNodePtr audio_sequence_elem,
+                                    IMFCPL * cpl)
 {
     int ret;
     uint8_t uuid[16];
@@ -576,19 +585,19 @@ static int push_main_audio_sequence(xmlNodePtr audio_sequence_elem, IMFCPL * cpl
     if (ret)
         return ret;
 
-    for(int i; i < cpl->main_audio_track_count; i++) {
+    for (int i; i < cpl->main_audio_track_count; i++) {
         if (memcmp(cpl->main_audio_tracks[i].base.id_uuid, uuid,
-             sizeof(uuid)) == 0) {
-                 vt = &cpl->main_audio_tracks[i];
-                 break;
-             }
+                   sizeof(uuid)) == 0) {
+            vt = &cpl->main_audio_tracks[i];
+            break;
+        }
     }
 
     if (vt == NULL) {
 
         cpl->main_audio_tracks = realloc(cpl->main_audio_tracks,
-
-        sizeof(IMFTrackFileVirtualTrack) * (++cpl->main_audio_track_count));
+                                         sizeof(IMFTrackFileVirtualTrack) *
+                                         (++cpl->main_audio_track_count));
 
         vt = &cpl->main_audio_tracks[cpl->main_audio_track_count - 1];
 
@@ -612,16 +621,17 @@ static int push_main_audio_sequence(xmlNodePtr audio_sequence_elem, IMFCPL * cpl
 
         vt->resources =
             realloc(vt->resources,
-                    (++vt->resource_count) *
-                    sizeof(IMFTrackFileResource)
+                    (++vt->resource_count) * sizeof(IMFTrackFileResource)
             );
 
-        imf_trackfile_resource_init(&vt->resources[cpl->main_image_2d_track->
-                                           resource_count - 1]);
+        imf_trackfile_resource_init(&vt->
+                                    resources[cpl->
+                                              main_image_2d_track->resource_count
+                                              - 1]);
 
         fill_trackfile_resource(resource_elem,
-                             &vt->resources[cpl->main_image_2d_track->resource_count - 1],
-                             cpl);
+                                &vt->resources[cpl->main_image_2d_track->
+                                               resource_count - 1], cpl);
 
         resource_elem = xmlNextElementSibling(resource_elem);
     }
@@ -629,7 +639,8 @@ static int push_main_audio_sequence(xmlNodePtr audio_sequence_elem, IMFCPL * cpl
     return 0;
 }
 
-static int push_main_image_2d_sequence(xmlNodePtr image_sequence_elem, IMFCPL * cpl)
+static int push_main_image_2d_sequence(xmlNodePtr image_sequence_elem,
+                                       IMFCPL * cpl)
 {
     int ret;
     uint8_t uuid[16];
@@ -656,7 +667,8 @@ static int push_main_image_2d_sequence(xmlNodePtr image_sequence_elem, IMFCPL * 
 
     if (cpl->main_image_2d_track == NULL) {
 
-        cpl->main_image_2d_track = malloc(sizeof(IMFTrackFileVirtualTrack));
+        cpl->main_image_2d_track =
+            malloc(sizeof(IMFTrackFileVirtualTrack));
         imf_trackfile_virtual_track_init(cpl->main_image_2d_track);
         memcpy(cpl->main_image_2d_track->base.id_uuid, uuid, sizeof(uuid));
 
@@ -689,12 +701,17 @@ static int push_main_image_2d_sequence(xmlNodePtr image_sequence_elem, IMFCPL * 
                     sizeof(IMFTrackFileResource)
             );
 
-        imf_trackfile_resource_init(&cpl->main_image_2d_track->resources[cpl->main_image_2d_track->
-                                           resource_count - 1]);
+        imf_trackfile_resource_init(&cpl->main_image_2d_track->
+                                    resources[cpl->
+                                              main_image_2d_track->resource_count
+                                              - 1]);
 
         fill_trackfile_resource(resource_elem,
-                             &cpl->main_image_2d_track->resources[cpl->main_image_2d_track->resource_count - 1],
-                             cpl);
+                                &cpl->main_image_2d_track->resources[cpl->
+                                                                     main_image_2d_track->
+                                                                     resource_count
+                                                                     - 1],
+                                cpl);
 
         resource_elem = xmlNextElementSibling(resource_elem);
     }
@@ -735,11 +752,13 @@ static int fill_virtual_tracks(xmlNodePtr cpl_element, IMFCPL * cpl)
 
                 push_marker_sequence(sequence_elem, cpl);
 
-            } else if (xmlStrcmp(sequence_elem->name, "MainImageSequence") == 0) {
+            } else if (xmlStrcmp(sequence_elem->name, "MainImageSequence")
+                       == 0) {
 
                 push_main_image_2d_sequence(sequence_elem, cpl);
 
-            } else if (xmlStrcmp(sequence_elem->name, "MainAudioSequence") == 0) {
+            } else if (xmlStrcmp(sequence_elem->name, "MainAudioSequence")
+                       == 0) {
 
                 push_main_audio_sequence(sequence_elem, cpl);
 
