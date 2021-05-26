@@ -35,12 +35,71 @@ const char *UUID_FMT_STR =
 
 IMFCPL *imf_cpl_new(void)
 {
-    return calloc(1, sizeof(IMFCPL));
+    IMFCPL *cpl;
+
+    cpl = malloc(sizeof(IMFCPL));
+
+    if (cpl == NULL)
+        return NULL;
+
+    memset(cpl->id_uuid, 0, sizeof(cpl->id_uuid));
+    cpl->content_title_utf8 = NULL;
+    cpl->edit_rate = av_make_q(0, 0);
+    cpl->main_markers_track = NULL;
+    cpl->main_image_2d_track = NULL;
+    cpl->main_audio_track_count = 0;
+    cpl->main_audio_tracks = NULL;
+
+    return cpl;
 }
 
-xmlNodePtr getChildElementByName(xmlNodePtr parent, const char* name_utf8);
+void imf_base_virtual_track_init(IMFBaseVirtualTrack * track);
 
-xmlNodePtr getChildElementByName(xmlNodePtr parent, const char* name_utf8)
+void imf_base_virtual_track_init(IMFBaseVirtualTrack * track)
+{
+    memset(track->id_uuid, 0, sizeof(track->id_uuid));
+}
+
+void imf_marker_virtual_track_init(IMFMarkerVirtualTrack * track);
+
+void imf_marker_virtual_track_init(IMFMarkerVirtualTrack * track)
+{
+    imf_base_virtual_track_init((IMFBaseVirtualTrack *) track);
+    track->resource_count = 0;
+    track->resources = NULL;
+}
+
+void imf_base_resource_init(IMFBaseResource * r);
+
+void imf_base_resource_init(IMFBaseResource * r)
+{
+    r->duration = 0;
+    r->edit_rate = av_make_q(0, 0);
+    r->entry_point = 0;
+    r->repeat_count = 1;
+}
+
+void imf_marker_resource_init(IMFMarkerResource * r);
+
+void imf_marker_resource_init(IMFMarkerResource * r)
+{
+    imf_base_resource_init((IMFBaseResource *) r);
+    r->marker_count = 0;
+    r->markers = NULL;
+}
+
+void imf_marker_init(IMFMarker * m);
+
+void imf_marker_init(IMFMarker * m)
+{
+    m->label_utf8 = NULL;
+    m->offset = 0;
+    m->scope_utf8 = NULL;
+}
+
+xmlNodePtr getChildElementByName(xmlNodePtr parent, const char *name_utf8);
+
+xmlNodePtr getChildElementByName(xmlNodePtr parent, const char *name_utf8)
 {
     xmlNodePtr cur;
 
@@ -49,10 +108,10 @@ xmlNodePtr getChildElementByName(xmlNodePtr parent, const char* name_utf8)
     while (cur != NULL) {
 
         if (xmlStrcmp(cur->name, name_utf8) == 0) {
-            
+
             return cur;
         }
-                
+
         cur = xmlNextElementSibling(cur);
     }
 
@@ -84,10 +143,7 @@ int readUUID(xmlNodePtr element, uint8_t uuid[16])
                        &uuid[9],
                        &uuid[10],
                        &uuid[11],
-                       &uuid[12],
-                       &uuid[13],
-                       &uuid[14],
-                       &uuid[15]);
+                       &uuid[12], &uuid[13], &uuid[14], &uuid[15]);
 
     if (scanf_ret != 16)
         ret = 1;
@@ -98,9 +154,9 @@ int readUUID(xmlNodePtr element, uint8_t uuid[16])
     return ret;
 }
 
-int readRational(xmlNodePtr element, AVRational *rational);
+int readRational(xmlNodePtr element, AVRational * rational);
 
-int readRational(xmlNodePtr element, AVRational *rational)
+int readRational(xmlNodePtr element, AVRational * rational)
 {
     xmlChar *element_text = NULL;
     int scanf_ret;
@@ -109,7 +165,8 @@ int readRational(xmlNodePtr element, AVRational *rational)
     element_text =
         xmlNodeListGetString(element->doc, element->xmlChildrenNode, 1);
 
-    scanf_ret = sscanf(element_text, "%i %i", &rational->num, &rational->den);
+    scanf_ret =
+        sscanf(element_text, "%i %i", &rational->num, &rational->den);
 
     if (scanf_ret != 2) {
         ret = 1;
@@ -152,11 +209,12 @@ int fill_content_title(xmlNodePtr cpl_element, IMFCPL * cpl)
 
     element = getChildElementByName(cpl_element, "ContentTitle");
 
-    if (! element)
+    if (element == NULL)
         return 1;
 
     cpl->content_title_utf8 =
-        xmlNodeListGetString(cpl_element->doc, element->xmlChildrenNode, 1);
+        xmlNodeListGetString(cpl_element->doc, element->xmlChildrenNode,
+                             1);
 
     return 0;
 }
@@ -169,10 +227,9 @@ int fill_edit_rate(xmlNodePtr cpl_element, IMFCPL * cpl)
     xmlNodePtr element = NULL;
     xmlChar *edit_rate_text = NULL;
 
-    element =
-        getChildElementByName(cpl_element, "EditRate");
+    element = getChildElementByName(cpl_element, "EditRate");
 
-    if (! element) {
+    if (element == NULL) {
         ret = 1;
         goto cleanup;
     }
@@ -194,7 +251,7 @@ int fill_id(xmlNodePtr cpl_element, IMFCPL * cpl)
 
     element = getChildElementByName(cpl_element, "Id");
 
-    if (! element)
+    if (element == NULL)
         return 1;
 
     return readUUID(element, cpl->id_uuid);
@@ -215,7 +272,8 @@ int fill_marker(xmlNodePtr marker_elem, IMFMarker * marker)
 
         ret = readULong(element, &marker->offset);
 
-        if (ret) return ret;
+        if (ret)
+            return ret;
 
     } else {
 
@@ -229,14 +287,18 @@ int fill_marker(xmlNodePtr marker_elem, IMFMarker * marker)
     if (element) {
 
         marker->label_utf8 =
-            xmlNodeListGetString(element->doc, element->xmlChildrenNode, 1);
+            xmlNodeListGetString(element->doc, element->xmlChildrenNode,
+                                 1);
 
-        if (! marker->label_utf8) return 1;
+        if (marker->label_utf8 == NULL)
+            return 1;
 
         marker->scope_utf8 = xmlGetNoNsProp(element, "scope");
 
-        if (! marker->scope_utf8) {
-            marker->scope_utf8 = xmlCharStrdup("http://www.smpte-ra.org/schemas/2067-3/2013#standard-markers");
+        if (marker->scope_utf8 == NULL) {
+            marker->scope_utf8 =
+                xmlCharStrdup
+                ("http://www.smpte-ra.org/schemas/2067-3/2013#standard-markers");
         }
 
     } else {
@@ -244,12 +306,15 @@ int fill_marker(xmlNodePtr marker_elem, IMFMarker * marker)
         return 1;
     }
 
-    return ret;    
+    return ret;
 }
 
-int fill_marker_resource(xmlNodePtr marker_resource_elem, IMFMarkerResource * marker_resource, IMFCPL * cpl);
+int fill_marker_resource(xmlNodePtr marker_resource_elem,
+                         IMFMarkerResource * marker_resource,
+                         IMFCPL * cpl);
 
-int fill_marker_resource(xmlNodePtr marker_resource_elem, IMFMarkerResource * marker_resource, IMFCPL * cpl)
+int fill_marker_resource(xmlNodePtr marker_resource_elem,
+                         IMFMarkerResource * marker_resource, IMFCPL * cpl)
 {
     xmlNodePtr element = NULL;
     int ret = 0;
@@ -258,7 +323,7 @@ int fill_marker_resource(xmlNodePtr marker_resource_elem, IMFMarkerResource * ma
 
     element = getChildElementByName(marker_resource_elem, "EditRate");
 
-    if (! element) {
+    if (element == NULL) {
 
         marker_resource->base.edit_rate = cpl->edit_rate;
 
@@ -266,18 +331,20 @@ int fill_marker_resource(xmlNodePtr marker_resource_elem, IMFMarkerResource * ma
 
         ret = readRational(element, &marker_resource->base.edit_rate);
 
-        if (ret) return ret;
+        if (ret)
+            return ret;
     }
 
     /* read EntryPoint */
 
     element = getChildElementByName(marker_resource_elem, "EntryPoint");
 
-    if (element) {
+    if (element != NULL) {
 
         ret = readULong(element, &marker_resource->base.entry_point);
 
-        if (ret) return ret;
+        if (ret)
+            return ret;
 
     } else {
 
@@ -287,15 +354,19 @@ int fill_marker_resource(xmlNodePtr marker_resource_elem, IMFMarkerResource * ma
 
     /* read IntrinsicDuration */
 
-    element = getChildElementByName(marker_resource_elem, "IntrinsicDuration");
+    element =
+        getChildElementByName(marker_resource_elem, "IntrinsicDuration");
 
     if (element) {
 
         ret = readULong(element, &marker_resource->base.duration);
-        
-        if (ret) return ret;
 
-        marker_resource->base.duration = marker_resource->base.duration - marker_resource->base.entry_point;
+        if (ret)
+            return ret;
+
+        marker_resource->base.duration =
+            marker_resource->base.duration -
+            marker_resource->base.entry_point;
 
     } else {
 
@@ -305,13 +376,15 @@ int fill_marker_resource(xmlNodePtr marker_resource_elem, IMFMarkerResource * ma
 
     /* read SourceDuration */
 
-    element = getChildElementByName(marker_resource_elem, "SourceDuration");
+    element =
+        getChildElementByName(marker_resource_elem, "SourceDuration");
 
     if (element) {
 
         ret = readULong(element, &marker_resource->base.duration);
-        
-        if (ret) return ret;
+
+        if (ret)
+            return ret;
 
     }
 
@@ -322,8 +395,9 @@ int fill_marker_resource(xmlNodePtr marker_resource_elem, IMFMarkerResource * ma
     if (element) {
 
         ret = readULong(element, &marker_resource->base.repeat_count);
-        
-        if (ret) return ret;
+
+        if (ret)
+            return ret;
 
     }
 
@@ -331,21 +405,29 @@ int fill_marker_resource(xmlNodePtr marker_resource_elem, IMFMarkerResource * ma
 
     element = xmlFirstElementChild(marker_resource_elem);
 
-    while (element != NULL)
-    {
+    while (element != NULL) {
 
-        if (xmlStrcmp(element->name, "Marker") != 0) continue;
+        if (xmlStrcmp(element->name, "Marker") == 0) {
 
-        marker_resource->markers = realloc(
-            marker_resource->markers,
-            (++marker_resource->marker_count) * sizeof(IMFMarker)
-        );
+            marker_resource->markers = realloc(marker_resource->markers,
+                                               (++marker_resource->
+                                                marker_count) *
+                                               sizeof(IMFMarker)
+                );
 
-        assert(marker_resource->markers);
+            if (marker_resource->markers == NULL)
+                return 1;
 
-        fill_marker(element, &marker_resource->markers[marker_resource->marker_count - 1]);
+            imf_marker_init(&marker_resource->
+                            markers[marker_resource->marker_count - 1]);
+
+            fill_marker(element,
+                        &marker_resource->markers[marker_resource->
+                                                  marker_count - 1]);
+        }
 
         element = xmlNextElementSibling(element);
+
     }
 
     return 0;
@@ -353,7 +435,8 @@ int fill_marker_resource(xmlNodePtr marker_resource_elem, IMFMarkerResource * ma
 
 int push_marker_sequence(xmlNodePtr marker_sequence_elem, IMFCPL * cpl);
 
-int push_marker_sequence(xmlNodePtr marker_sequence_elem, IMFCPL * cpl) {
+int push_marker_sequence(xmlNodePtr marker_sequence_elem, IMFCPL * cpl)
+{
     int ret;
     uint8_t uuid[16];
     xmlNodePtr resource_list_elem = NULL;
@@ -363,7 +446,7 @@ int push_marker_sequence(xmlNodePtr marker_sequence_elem, IMFCPL * cpl) {
     track_id_elem = getChildElementByName(marker_sequence_elem, "TrackId");
 
     if (track_id_elem == NULL) {
-        
+
         /* malformed sequence */
 
         return 1;
@@ -371,15 +454,20 @@ int push_marker_sequence(xmlNodePtr marker_sequence_elem, IMFCPL * cpl) {
 
     ret = readUUID(track_id_elem, uuid);
 
-    if (ret) return ret;
+    if (ret)
+        return ret;
 
     if (cpl->main_markers_track == NULL) {
 
-        cpl->main_markers_track = calloc(1, sizeof(IMFMarkerVirtualTrack));
+        cpl->main_markers_track = malloc(sizeof(IMFMarkerVirtualTrack));
         assert(cpl->main_markers_track);
+        imf_marker_virtual_track_init(cpl->main_markers_track);
         memcpy(cpl->main_markers_track->base.id_uuid, uuid, sizeof(uuid));
 
-    } else if (memcmp(cpl->main_markers_track->base.id_uuid, uuid, sizeof(uuid)) != 0) {
+    } else
+        if (memcmp
+            (cpl->main_markers_track->base.id_uuid, uuid,
+             sizeof(uuid)) != 0) {
 
         /* multiple marker tracks */
 
@@ -389,30 +477,35 @@ int push_marker_sequence(xmlNodePtr marker_sequence_elem, IMFCPL * cpl) {
 
     /* process resources */
 
-    resource_list_elem = getChildElementByName(marker_sequence_elem, "ResourceList");
+    resource_list_elem =
+        getChildElementByName(marker_sequence_elem, "ResourceList");
 
-    if (resource_list_elem == NULL) return 0;
+    if (resource_list_elem == NULL)
+        return 0;
 
     resource_elem = xmlFirstElementChild(resource_list_elem);
 
-    while (resource_elem != NULL)
-    {
+    while (resource_elem != NULL) {
 
-        cpl->main_markers_track->resources = realloc(
-            cpl->main_markers_track->resources,
-            (cpl->main_markers_track->resource_count + 1) * sizeof(IMFMarkerResource)
-        );
+        cpl->main_markers_track->resources =
+            realloc(cpl->main_markers_track->resources,
+                    (++cpl->main_markers_track->resource_count) *
+                    sizeof(IMFMarkerResource)
+            );
 
         assert(cpl->main_markers_track->resources);
 
-        cpl->main_markers_track->resource_count++;
+        imf_marker_resource_init(&cpl->main_markers_track->
+                                 resources[cpl->main_markers_track->
+                                           resource_count - 1]);
 
-        fill_marker_resource(
-            resource_elem,
-            &cpl->main_markers_track->resources[cpl->main_markers_track->resource_count - 1],
-            cpl
-            );
-                
+        fill_marker_resource(resource_elem,
+                             &cpl->main_markers_track->resources[cpl->
+                                                                 main_markers_track->
+                                                                 resource_count
+                                                                 - 1],
+                             cpl);
+
         resource_elem = xmlNextElementSibling(resource_elem);
     }
 
@@ -431,30 +524,31 @@ int fill_virtual_tracks(xmlNodePtr cpl_element, IMFCPL * cpl)
 
     segment_list_elem = getChildElementByName(cpl_element, "SegmentList");
 
-    if (! segment_list_elem) return 1;
+    if (segment_list_elem == NULL)
+        return 1;
 
     segment_elem = xmlFirstElementChild(segment_list_elem);
 
-    while (segment_elem != NULL)
-    {
+    while (segment_elem != NULL) {
 
-        sequence_list_elem = getChildElementByName(segment_elem, "SequenceList");
+        sequence_list_elem =
+            getChildElementByName(segment_elem, "SequenceList");
 
-        if (! segment_list_elem) continue;
+        if (segment_list_elem == NULL)
+            continue;
 
         sequence_elem = xmlFirstElementChild(sequence_list_elem);
 
-        while (sequence_elem != NULL)
-        {
+        while (sequence_elem != NULL) {
 
             /* TODO: compare namespaces */
 
             if (xmlStrcmp(sequence_elem->name, "MarkerSequence") == 0) {
-                
+
                 push_marker_sequence(sequence_elem, cpl);
 
             }
-                    
+
             sequence_elem = xmlNextElementSibling(sequence_elem);
         }
 
@@ -495,6 +589,11 @@ int parse_imf_cpl_from_xml_dom(xmlDocPtr doc, IMFCPL ** cpl)
     }
 
     if (fill_edit_rate(cpl_element, *cpl)) {
+        ret = AVERROR_BUG;
+        goto cleanup;
+    }
+
+    if (fill_virtual_tracks(cpl_element, *cpl)) {
         ret = AVERROR_BUG;
         goto cleanup;
     }

@@ -27,9 +27,27 @@
 #include "libavformat/imf.h"
 
 const char *cpl_doc =
-    "<CompositionPlaylist xmlns=\"http://examaple.com\">"
+    "<CompositionPlaylist xmlns=\"http://example.com\">"
     "<Id>urn:uuid:8713c020-2489-45f5-a9f7-87be539e20b5</Id>"
     "<EditRate>24000 1001</EditRate>"
+    "<SegmentList>"
+    "<Segment>"
+    "<SequenceList>"
+    "<MarkerSequence>"
+    "<TrackId>urn:uuid:461f5424-8f6e-48a9-a385-5eda46fda381</TrackId>"
+    "<ResourceList>"
+    "<Resource>"
+    "<IntrinsicDuration>24</IntrinsicDuration>"
+    "<Marker>"
+    "<Label>LFOA</Label>"
+    "<Offset>5</Offset>"
+    "</Marker>"
+    "</Resource>"
+    "</ResourceList>"
+    "</MarkerSequence>"
+    "</SequenceList>"
+    "</Segment>"
+    "</SegmentList>"
     "<ContentTitle>Hello</ContentTitle>" "</CompositionPlaylist>";
 
 int main(int argc, char *argv[])
@@ -43,39 +61,68 @@ int main(int argc, char *argv[])
 
     doc = xmlReadMemory(cpl_doc, strlen(cpl_doc), NULL, NULL, 0);
 
-    ret = parse_imf_cpl_from_xml_dom(doc, &cpl);
+    if (!doc) {
+        printf("XML parsing failed.");
 
-    if (!ret) {
-        printf("%s", cpl->content_title_utf8);
-
-        printf("\n");
-
-        printf(UUID_FMT_STR,
-               cpl->id_uuid[0],
-               cpl->id_uuid[1],
-               cpl->id_uuid[2],
-               cpl->id_uuid[3],
-               cpl->id_uuid[4],
-               cpl->id_uuid[5],
-               cpl->id_uuid[6],
-               cpl->id_uuid[7],
-               cpl->id_uuid[8],
-               cpl->id_uuid[9],
-               cpl->id_uuid[10],
-               cpl->id_uuid[11],
-               cpl->id_uuid[12],
-               cpl->id_uuid[13], cpl->id_uuid[14], cpl->id_uuid[15]
-            );
-
-        printf("\n");
-
-        printf("%i %i",
-               cpl->edit_rate.num,
-               cpl->edit_rate.den
-            );
-
-        printf("\n");
+        return 1;
     }
 
-    return ret;
+    ret = parse_imf_cpl_from_xml_dom(doc, &cpl);
+
+    if (ret) {
+        printf("CPL parsing failed.");
+
+        return 1;
+    }
+
+    printf("%s", cpl->content_title_utf8);
+
+    printf("\n");
+
+    printf(UUID_FMT_STR,
+           cpl->id_uuid[0],
+           cpl->id_uuid[1],
+           cpl->id_uuid[2],
+           cpl->id_uuid[3],
+           cpl->id_uuid[4],
+           cpl->id_uuid[5],
+           cpl->id_uuid[6],
+           cpl->id_uuid[7],
+           cpl->id_uuid[8],
+           cpl->id_uuid[9],
+           cpl->id_uuid[10],
+           cpl->id_uuid[11],
+           cpl->id_uuid[12],
+           cpl->id_uuid[13], cpl->id_uuid[14], cpl->id_uuid[15]
+        );
+
+    printf("\n");
+
+    printf("%i %i", cpl->edit_rate.num, cpl->edit_rate.den);
+
+    printf("\n");
+
+    assert(cpl->main_markers_track);
+
+    printf("Marker resource count: %lu\n",
+           cpl->main_markers_track->resource_count);
+
+    for (unsigned long i = 0; i < cpl->main_markers_track->resource_count;
+         i++) {
+        printf("Marker resource %lu\n", i);
+
+        for (unsigned long j = 0;
+             j < cpl->main_markers_track->resources[i].marker_count; j++) {
+            printf("  Marker %lu\n", j);
+            printf("    Label %s\n",
+                   cpl->main_markers_track->resources[i].markers[j].
+                   label_utf8);
+            printf("    Offset %lu\n",
+                   cpl->main_markers_track->resources[i].markers[j].
+                   offset);
+        }
+    }
+
+
+    return 0;
 }

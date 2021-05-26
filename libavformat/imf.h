@@ -114,7 +114,7 @@ typedef struct IMFCPL {
     xmlChar *content_title_utf8;
     AVRational edit_rate;
     IMFMarkerVirtualTrack *main_markers_track;
-    IMFTrackFileVirtualTrack main_image_2d_track;
+    IMFTrackFileVirtualTrack *main_image_2d_track;
     unsigned long main_audio_track_count;
     IMFTrackFileVirtualTrack *main_audio_tracks;
 } IMFCPL;
