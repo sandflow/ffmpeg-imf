@@ -534,7 +534,7 @@ static int push_marker_sequence(xmlNodePtr marker_sequence_elem, IMFCPL * cpl)
     return 0;
 }
 
-static int is_stereo_track(xmlNodePtr element)
+static int has_stereo_resources(xmlNodePtr element)
 {
     if (xmlStrcmp(element->name, "Left") == 0 || xmlStrcmp(element->name, "Right") == 0)
         return 1;
@@ -543,7 +543,7 @@ static int is_stereo_track(xmlNodePtr element)
 
     while (element != NULL) {
 
-        if (is_stereo_track(element))
+        if (has_stereo_resources(element))
             return 1;
 
         element = xmlNextElementSibling(element);
@@ -552,7 +552,84 @@ static int is_stereo_track(xmlNodePtr element)
     return 0;
 }
 
-static int push_main_image_sequence(xmlNodePtr image_sequence_elem, IMFCPL * cpl)
+static int push_main_audio_sequence(xmlNodePtr audio_sequence_elem, IMFCPL * cpl)
+{
+    int ret;
+    uint8_t uuid[16];
+    xmlNodePtr resource_list_elem = NULL;
+    xmlNodePtr resource_elem = NULL;
+    xmlNodePtr track_id_elem = NULL;
+    IMFTrackFileVirtualTrack *vt = NULL;
+
+
+    track_id_elem = getChildElementByName(audio_sequence_elem, "TrackId");
+
+    if (track_id_elem == NULL) {
+
+        /* malformed sequence */
+
+        return 1;
+    }
+
+    ret = xmlReadUUID(track_id_elem, uuid);
+
+    if (ret)
+        return ret;
+
+    for(int i; i < cpl->main_audio_track_count; i++) {
+        if (memcmp(cpl->main_audio_tracks[i].base.id_uuid, uuid,
+             sizeof(uuid)) == 0) {
+                 vt = &cpl->main_audio_tracks[i];
+                 break;
+             }
+    }
+
+    if (vt == NULL) {
+
+        cpl->main_audio_tracks = realloc(cpl->main_audio_tracks,
+
+        sizeof(IMFTrackFileVirtualTrack) * (++cpl->main_audio_track_count));
+
+        vt = &cpl->main_audio_tracks[cpl->main_audio_track_count - 1];
+
+        imf_trackfile_virtual_track_init(vt);
+
+        memcpy(vt->base.id_uuid, uuid, sizeof(uuid));
+
+    }
+
+    /* process resources */
+
+    resource_list_elem =
+        getChildElementByName(audio_sequence_elem, "ResourceList");
+
+    if (resource_list_elem == NULL)
+        return 0;
+
+    resource_elem = xmlFirstElementChild(resource_list_elem);
+
+    while (resource_elem != NULL) {
+
+        vt->resources =
+            realloc(vt->resources,
+                    (++vt->resource_count) *
+                    sizeof(IMFTrackFileResource)
+            );
+
+        imf_trackfile_resource_init(&vt->resources[cpl->main_image_2d_track->
+                                           resource_count - 1]);
+
+        fill_trackfile_resource(resource_elem,
+                             &vt->resources[cpl->main_image_2d_track->resource_count - 1],
+                             cpl);
+
+        resource_elem = xmlNextElementSibling(resource_elem);
+    }
+
+    return 0;
+}
+
+static int push_main_image_2d_sequence(xmlNodePtr image_sequence_elem, IMFCPL * cpl)
 {
     int ret;
     uint8_t uuid[16];
@@ -560,7 +637,7 @@ static int push_main_image_sequence(xmlNodePtr image_sequence_elem, IMFCPL * cpl
     xmlNodePtr resource_elem = NULL;
     xmlNodePtr track_id_elem = NULL;
 
-    if (is_stereo_track(image_sequence_elem))
+    if (has_stereo_resources(image_sequence_elem))
         return 1;
 
     track_id_elem = getChildElementByName(image_sequence_elem, "TrackId");
@@ -660,7 +737,11 @@ static int fill_virtual_tracks(xmlNodePtr cpl_element, IMFCPL * cpl)
 
             } else if (xmlStrcmp(sequence_elem->name, "MainImageSequence") == 0) {
 
-                push_main_image_sequence(sequence_elem, cpl);
+                push_main_image_2d_sequence(sequence_elem, cpl);
+
+            } else if (xmlStrcmp(sequence_elem->name, "MainAudioSequence") == 0) {
+
+                push_main_audio_sequence(sequence_elem, cpl);
 
             }
 

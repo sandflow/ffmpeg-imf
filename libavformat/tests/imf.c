@@ -55,6 +55,24 @@ const char *cpl_doc =
     "</Resource>"
     "</ResourceList>"
     "</MainImageSequence>"
+    "<MainAudioSequence>"
+    "<TrackId>urn:uuid:68e3fae5-d94b-44d2-92a6-b94877fbcdb5</TrackId>"
+    "<ResourceList>"
+    "<Resource>"
+    "<IntrinsicDuration>24</IntrinsicDuration>"
+    "<TrackFileId>urn:uuid:381dadd2-061e-46cc-a63a-e3d58ce7f488</TrackFileId>"
+    "</Resource>"
+    "</ResourceList>"
+    "</MainAudioSequence>"
+    "<MainAudioSequence>"
+    "<TrackId>urn:uuid:6978c106-95bc-424b-a17c-628206a5892d</TrackId>"
+    "<ResourceList>"
+    "<Resource>"
+    "<IntrinsicDuration>24</IntrinsicDuration>"
+    "<TrackFileId>urn:uuid:381dadd2-061e-46cc-a63a-e3d58ce7f488</TrackFileId>"
+    "</Resource>"
+    "</ResourceList>"
+    "</MainAudioSequence>"
     "</SequenceList>"
     "</Segment>"
     "<Segment>"
@@ -84,6 +102,24 @@ const char *cpl_doc =
     "</Resource>"
     "</ResourceList>"
     "</MainImageSequence>"
+    "<MainAudioSequence>"
+    "<TrackId>urn:uuid:68e3fae5-d94b-44d2-92a6-b94877fbcdb5</TrackId>"
+    "<ResourceList>"
+    "<Resource>"
+    "<IntrinsicDuration>36</IntrinsicDuration>"
+    "<TrackFileId>urn:uuid:2484d613-bb7d-4bcc-8b0f-2e65938f0535</TrackFileId>"
+    "</Resource>"
+    "</ResourceList>"
+    "</MainAudioSequence>"
+    "<MainAudioSequence>"
+    "<TrackId>urn:uuid:6978c106-95bc-424b-a17c-628206a5892d</TrackId>"
+    "<ResourceList>"
+    "<Resource>"
+    "<IntrinsicDuration>36</IntrinsicDuration>"
+    "<TrackFileId>urn:uuid:2484d613-bb7d-4bcc-8b0f-2e65938f0535</TrackFileId>"
+    "</Resource>"
+    "</ResourceList>"
+    "</MainAudioSequence>"
     "</SequenceList>"
     "</Segment>"
     "</SegmentList>"
@@ -180,6 +216,27 @@ int main(int argc, char *argv[])
         print_uuid(cpl->main_image_2d_track->resources[i].track_file_uuid); 
 
         printf("\n");       
+    }
+
+    printf("Main audio track count: %lu\n",
+           cpl->main_audio_track_count);
+
+    for (unsigned long i = 0; i < cpl->main_audio_track_count; i++) {
+         printf("  Main audio virtual track %lu\n",
+           i);
+        printf("  Main audio resource count: %lu\n",
+           cpl->main_audio_tracks[i].resource_count);
+
+        for (unsigned long j = 0;
+             j < cpl->main_audio_tracks[i].resource_count; j++) {
+            printf("  Track file resource %lu\n", j);
+
+            printf("    ");
+
+            print_uuid(cpl->main_audio_tracks[i].resources[j].track_file_uuid); 
+
+            printf("\n");    
+        }
     }
 
     return 0;
