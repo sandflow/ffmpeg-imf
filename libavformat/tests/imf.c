@@ -193,11 +193,11 @@ int main(int argc, char *argv[])
              j < cpl->main_markers_track->resources[i].marker_count; j++) {
             printf("  Marker %lu\n", j);
             printf("    Label %s\n",
-                   cpl->main_markers_track->resources[i].
-                   markers[j].label_utf8);
+                   cpl->main_markers_track->resources[i].markers[j].
+                   label_utf8);
             printf("    Offset %lu\n",
-                   cpl->main_markers_track->resources[i].
-                   markers[j].offset);
+                   cpl->main_markers_track->resources[i].markers[j].
+                   offset);
         }
     }
 
@@ -228,12 +228,14 @@ int main(int argc, char *argv[])
 
             printf("    ");
 
-            print_uuid(cpl->main_audio_tracks[i].resources[j].
-                       track_file_uuid);
+            print_uuid(cpl->main_audio_tracks[i].
+                       resources[j].track_file_uuid);
 
             printf("\n");
         }
     }
+
+    imf_cpl_delete(cpl);
 
     return 0;
 }
