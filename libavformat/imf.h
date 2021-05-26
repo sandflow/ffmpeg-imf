@@ -74,6 +74,7 @@ typedef struct IMFMarker {
  */
 typedef struct IMFMarkerResource {
     IMFBaseResource base;
+    int marker_count;
     IMFMarker *markers;
 } IMFMarkerResource;
 
@@ -90,6 +91,7 @@ typedef struct IMFBaseVirtualTrack {
  */
 typedef struct IMFTrackFileVirtualTrack {
     IMFBaseVirtualTrack base;
+    int resource_count;
     IMFTrackFileResource *resources;
 } IMFTrackFileVirtualTrack;
 
@@ -99,6 +101,7 @@ typedef struct IMFTrackFileVirtualTrack {
  */
 typedef struct IMFMarkerVirtualTrack {
     IMFBaseVirtualTrack base;
+    int resource_count;
     IMFMarkerResource *resources;
 } IMFMarkerVirtualTrack;
 

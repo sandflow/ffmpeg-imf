@@ -98,6 +98,29 @@ int readUUID(xmlNodePtr element, uint8_t uuid[16])
     return ret;
 }
 
+int readRational(xmlNodePtr element, AVRational *rational);
+
+int readRational(xmlNodePtr element, AVRational *rational)
+{
+    xmlChar *element_text = NULL;
+    int scanf_ret;
+    int ret = 0;
+
+    element_text =
+        xmlNodeListGetString(element->doc, element->xmlChildrenNode, 1);
+
+    scanf_ret = sscanf(element_text, "%i %i", &rational->num, &rational->den);
+
+    if (scanf_ret != 2) {
+        ret = 1;
+    }
+
+    if (element_text)
+        xmlFree(element_text);
+
+    return ret;
+}
+
 int fill_content_title(xmlNodePtr cpl_element, IMFCPL * cpl);
 
 int fill_content_title(xmlNodePtr cpl_element, IMFCPL * cpl)
@@ -122,7 +145,6 @@ int fill_edit_rate(xmlNodePtr cpl_element, IMFCPL * cpl)
     int ret = 0;
     xmlNodePtr element = NULL;
     xmlChar *edit_rate_text = NULL;
-    int scanf_ret;
 
     element =
         getChildElementByName(cpl_element, "EditRate");
@@ -132,15 +154,7 @@ int fill_edit_rate(xmlNodePtr cpl_element, IMFCPL * cpl)
         goto cleanup;
     }
 
-    edit_rate_text =
-        xmlNodeListGetString(element->doc, element->xmlChildrenNode, 1);
-
-    scanf_ret = sscanf(edit_rate_text, "%i %i", &cpl->edit_rate.num, &cpl->edit_rate.den);
-
-    if (scanf_ret != 2) {
-        ret = 1;
-        goto cleanup;
-    }
+    ret = readRational(element, &cpl->edit_rate);
 
   cleanup:
     if (edit_rate_text)
@@ -163,23 +177,86 @@ int fill_id(xmlNodePtr cpl_element, IMFCPL * cpl)
     return readUUID(element, cpl->id_uuid);
 }
 
+int fill_marker_resource(xmlNodePtr marker_resource_elem, IMFMarkerResource * marker_resource, IMFCPL * cpl);
+
+int fill_marker_resource(xmlNodePtr marker_resource_elem, IMFMarkerResource * marker_resource, IMFCPL * cpl)
+{
+    xmlNodePtr element = NULL;
+
+    element = getChildElementByName(marker_resource_elem, "EditRate");
+
+    if (! element) {
+        marker_resource->base.edit_rate = cpl->edit_rate;
+    } else {
+
+    }
+
+    return 0;
+}
+
 int push_marker_sequence(xmlNodePtr marker_sequence_elem, IMFCPL * cpl);
 
 int push_marker_sequence(xmlNodePtr marker_sequence_elem, IMFCPL * cpl) {
     int ret;
     uint8_t uuid[16];
+    xmlNodePtr resource_list_elem = NULL;
+    xmlNodePtr resource_elem = NULL;
+    xmlNodePtr track_id_elem = NULL;
 
-    ret = readUUID(marker_sequence_elem, uuid);
+    track_id_elem = getChildElementByName(marker_sequence_elem, "TrackId");
+
+    if (track_id_elem == NULL) {
+        
+        /* malformed sequence */
+
+        return 1;
+    }
+
+    ret = readUUID(track_id_elem, uuid);
 
     if (ret) return ret;
 
     if (cpl->main_markers_track == NULL) {
-        cpl->main_markers_track = malloc(sizeof(IMFMarkerVirtualTrack));
-        assert(cpl->main_markers_track);
 
+        cpl->main_markers_track = calloc(1, sizeof(IMFMarkerVirtualTrack));
+        assert(cpl->main_markers_track);
         memcpy(cpl->main_markers_track->base.id_uuid, uuid, sizeof(uuid));
-    } else {
-        
+
+    } else if (memcmp(cpl->main_markers_track->base.id_uuid, uuid, sizeof(uuid)) != 0) {
+
+        /* multiple marker tracks */
+
+        return 1;
+
+    }
+
+    /* process resources */
+
+    resource_list_elem = getChildElementByName(marker_sequence_elem, "ResourceList");
+
+    if (resource_list_elem == NULL) return 0;
+
+    resource_elem = xmlFirstElementChild(resource_list_elem);
+
+    while (resource_elem != NULL)
+    {
+
+        cpl->main_markers_track->resources = realloc(
+            cpl->main_markers_track->resources,
+            (cpl->main_markers_track->resource_count + 1) * sizeof(IMFMarkerResource)
+        );
+
+        assert(cpl->main_markers_track->resources);
+
+        cpl->main_markers_track->resource_count++;
+
+        fill_marker_resource(
+            resource_elem,
+            &cpl->main_markers_track->resources[cpl->main_markers_track->resource_count - 1],
+            cpl
+            );
+                
+        resource_elem = xmlNextElementSibling(resource_elem);
     }
 
     return 0;
