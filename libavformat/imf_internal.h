@@ -31,15 +31,11 @@
 #include "libavformat/avio.h"
 #include <libxml/tree.h>
 
-/**
- * UUID string format
- */
+int xmlReadULong(xmlNodePtr element, unsigned long *number);
 
-int readULong(xmlNodePtr element, unsigned long *number);
+int xmlReadRational(xmlNodePtr element, AVRational * rational);
 
-int readRational(xmlNodePtr element, AVRational * rational);
-
-int readUUID(xmlNodePtr element, uint8_t uuid[16]);
+int xmlReadUUID(xmlNodePtr element, uint8_t uuid[16]);
 
 xmlNodePtr getChildElementByName(xmlNodePtr parent, const char *name_utf8);
 

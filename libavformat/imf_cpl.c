@@ -72,7 +72,7 @@ xmlNodePtr getChildElementByName(xmlNodePtr parent, const char *name_utf8)
 }
 
 
-int readUUID(xmlNodePtr element, uint8_t uuid[16])
+int xmlReadUUID(xmlNodePtr element, uint8_t uuid[16])
 {
     xmlChar *element_text = NULL;
     int scanf_ret;
@@ -107,7 +107,7 @@ int readUUID(xmlNodePtr element, uint8_t uuid[16])
 }
 
 
-int readRational(xmlNodePtr element, AVRational * rational)
+int xmlReadRational(xmlNodePtr element, AVRational * rational)
 {
     xmlChar *element_text = NULL;
     int scanf_ret;
@@ -131,7 +131,7 @@ int readRational(xmlNodePtr element, AVRational * rational)
 
 
 
-int readULong(xmlNodePtr element, unsigned long *number)
+int xmlReadULong(xmlNodePtr element, unsigned long *number)
 {
     xmlChar *element_text = NULL;
     int scanf_ret;
@@ -228,7 +228,7 @@ static int fill_edit_rate(xmlNodePtr cpl_element, IMFCPL * cpl)
         goto cleanup;
     }
 
-    ret = readRational(element, &cpl->edit_rate);
+    ret = xmlReadRational(element, &cpl->edit_rate);
 
   cleanup:
     if (edit_rate_text)
@@ -246,7 +246,7 @@ static  int fill_id(xmlNodePtr cpl_element, IMFCPL * cpl)
     if (element == NULL)
         return 1;
 
-    return readUUID(element, cpl->id_uuid);
+    return xmlReadUUID(element, cpl->id_uuid);
 }
 
 static int fill_marker(xmlNodePtr marker_elem, IMFMarker * marker)
@@ -260,7 +260,7 @@ static int fill_marker(xmlNodePtr marker_elem, IMFMarker * marker)
 
     if (element) {
 
-        ret = readULong(element, &marker->offset);
+        ret = xmlReadULong(element, &marker->offset);
 
         if (ret)
             return ret;
@@ -315,7 +315,7 @@ static int fill_base_resource(xmlNodePtr resource_elem,
 
     } else {
 
-        ret = readRational(element, &resource->edit_rate);
+        ret = xmlReadRational(element, &resource->edit_rate);
 
         if (ret)
             return ret;
@@ -327,7 +327,7 @@ static int fill_base_resource(xmlNodePtr resource_elem,
 
     if (element != NULL) {
 
-        ret = readULong(element, &resource->entry_point);
+        ret = xmlReadULong(element, &resource->entry_point);
 
         if (ret)
             return ret;
@@ -345,7 +345,7 @@ static int fill_base_resource(xmlNodePtr resource_elem,
 
     if (element) {
 
-        ret = readULong(element, &resource->duration);
+        ret = xmlReadULong(element, &resource->duration);
 
         if (ret)
             return ret;
@@ -365,7 +365,7 @@ static int fill_base_resource(xmlNodePtr resource_elem,
 
     if (element) {
 
-        ret = readULong(element, &resource->duration);
+        ret = xmlReadULong(element, &resource->duration);
 
         if (ret)
             return ret;
@@ -378,7 +378,7 @@ static int fill_base_resource(xmlNodePtr resource_elem,
 
     if (element) {
 
-        ret = readULong(element, &resource->repeat_count);
+        ret = xmlReadULong(element, &resource->repeat_count);
 
         if (ret)
             return ret;
@@ -404,7 +404,7 @@ static int fill_trackfile_resource(xmlNodePtr tf_resource_elem,
 
     if (element) {
 
-        ret = readUUID(element, tf_resource->track_file_uuid);
+        ret = xmlReadUUID(element, tf_resource->track_file_uuid);
 
         if (ret)
             return ret;
@@ -474,7 +474,7 @@ static int push_marker_sequence(xmlNodePtr marker_sequence_elem, IMFCPL * cpl)
         return 1;
     }
 
-    ret = readUUID(track_id_elem, uuid);
+    ret = xmlReadUUID(track_id_elem, uuid);
 
     if (ret)
         return ret;
@@ -572,7 +572,7 @@ static int push_main_image_sequence(xmlNodePtr image_sequence_elem, IMFCPL * cpl
         return 1;
     }
 
-    ret = readUUID(track_id_elem, uuid);
+    ret = xmlReadUUID(track_id_elem, uuid);
 
     if (ret)
         return ret;
