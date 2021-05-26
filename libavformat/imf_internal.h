@@ -31,6 +31,12 @@
 #include "libavformat/avio.h"
 #include <libxml/tree.h>
 
+/**
+ * UUID string format
+ */
+
+extern const char *UUID_FMT_STR;
+
 int readULong(xmlNodePtr element, unsigned long *number);
 
 int readRational(xmlNodePtr element, AVRational * rational);

@@ -52,51 +52,6 @@ IMFCPL *imf_cpl_new(void)
     return cpl;
 }
 
-void imf_base_virtual_track_init(IMFBaseVirtualTrack * track);
-
-void imf_base_virtual_track_init(IMFBaseVirtualTrack * track)
-{
-    memset(track->id_uuid, 0, sizeof(track->id_uuid));
-}
-
-void imf_marker_virtual_track_init(IMFMarkerVirtualTrack * track);
-
-void imf_marker_virtual_track_init(IMFMarkerVirtualTrack * track)
-{
-    imf_base_virtual_track_init((IMFBaseVirtualTrack *) track);
-    track->resource_count = 0;
-    track->resources = NULL;
-}
-
-void imf_base_resource_init(IMFBaseResource * r);
-
-void imf_base_resource_init(IMFBaseResource * r)
-{
-    r->duration = 0;
-    r->edit_rate = av_make_q(0, 0);
-    r->entry_point = 0;
-    r->repeat_count = 1;
-}
-
-void imf_marker_resource_init(IMFMarkerResource * r);
-
-void imf_marker_resource_init(IMFMarkerResource * r)
-{
-    imf_base_resource_init((IMFBaseResource *) r);
-    r->marker_count = 0;
-    r->markers = NULL;
-}
-
-void imf_marker_init(IMFMarker * m);
-
-void imf_marker_init(IMFMarker * m)
-{
-    m->label_utf8 = NULL;
-    m->offset = 0;
-    m->scope_utf8 = NULL;
-}
-
-
 xmlNodePtr getChildElementByName(xmlNodePtr parent, const char *name_utf8)
 {
     xmlNodePtr cur;
@@ -197,9 +152,41 @@ int readULong(xmlNodePtr element, unsigned long *number)
     return ret;
 }
 
-int fill_content_title(xmlNodePtr cpl_element, IMFCPL * cpl);
+static void imf_base_virtual_track_init(IMFBaseVirtualTrack * track)
+{
+    memset(track->id_uuid, 0, sizeof(track->id_uuid));
+}
 
-int fill_content_title(xmlNodePtr cpl_element, IMFCPL * cpl)
+static void imf_marker_virtual_track_init(IMFMarkerVirtualTrack * track)
+{
+    imf_base_virtual_track_init((IMFBaseVirtualTrack *) track);
+    track->resource_count = 0;
+    track->resources = NULL;
+}
+
+static void imf_base_resource_init(IMFBaseResource * r)
+{
+    r->duration = 0;
+    r->edit_rate = av_make_q(0, 0);
+    r->entry_point = 0;
+    r->repeat_count = 1;
+}
+
+static void imf_marker_resource_init(IMFMarkerResource * r)
+{
+    imf_base_resource_init((IMFBaseResource *) r);
+    r->marker_count = 0;
+    r->markers = NULL;
+}
+
+static void imf_marker_init(IMFMarker * m)
+{
+    m->label_utf8 = NULL;
+    m->offset = 0;
+    m->scope_utf8 = NULL;
+}
+
+static int fill_content_title(xmlNodePtr cpl_element, IMFCPL * cpl)
 {
     xmlNodePtr element = NULL;
 
@@ -215,9 +202,7 @@ int fill_content_title(xmlNodePtr cpl_element, IMFCPL * cpl)
     return 0;
 }
 
-int fill_edit_rate(xmlNodePtr cpl_element, IMFCPL * cpl);
-
-int fill_edit_rate(xmlNodePtr cpl_element, IMFCPL * cpl)
+static int fill_edit_rate(xmlNodePtr cpl_element, IMFCPL * cpl)
 {
     int ret = 0;
     xmlNodePtr element = NULL;
@@ -239,9 +224,7 @@ int fill_edit_rate(xmlNodePtr cpl_element, IMFCPL * cpl)
     return ret;
 }
 
-int fill_id(xmlNodePtr cpl_element, IMFCPL * cpl);
-
-int fill_id(xmlNodePtr cpl_element, IMFCPL * cpl)
+static  int fill_id(xmlNodePtr cpl_element, IMFCPL * cpl)
 {
     xmlNodePtr element = NULL;
 
@@ -253,9 +236,7 @@ int fill_id(xmlNodePtr cpl_element, IMFCPL * cpl)
     return readUUID(element, cpl->id_uuid);
 }
 
-int fill_marker(xmlNodePtr marker_elem, IMFMarker * marker);
-
-int fill_marker(xmlNodePtr marker_elem, IMFMarker * marker)
+static int fill_marker(xmlNodePtr marker_elem, IMFMarker * marker)
 {
     xmlNodePtr element = NULL;
     int ret = 0;
@@ -305,11 +286,7 @@ int fill_marker(xmlNodePtr marker_elem, IMFMarker * marker)
     return ret;
 }
 
-int fill_marker_resource(xmlNodePtr marker_resource_elem,
-                         IMFMarkerResource * marker_resource,
-                         IMFCPL * cpl);
-
-int fill_marker_resource(xmlNodePtr marker_resource_elem,
+static int fill_marker_resource(xmlNodePtr marker_resource_elem,
                          IMFMarkerResource * marker_resource, IMFCPL * cpl)
 {
     xmlNodePtr element = NULL;
@@ -429,9 +406,7 @@ int fill_marker_resource(xmlNodePtr marker_resource_elem,
     return 0;
 }
 
-int push_marker_sequence(xmlNodePtr marker_sequence_elem, IMFCPL * cpl);
-
-int push_marker_sequence(xmlNodePtr marker_sequence_elem, IMFCPL * cpl)
+static int push_marker_sequence(xmlNodePtr marker_sequence_elem, IMFCPL * cpl)
 {
     int ret;
     uint8_t uuid[16];
@@ -508,9 +483,8 @@ int push_marker_sequence(xmlNodePtr marker_sequence_elem, IMFCPL * cpl)
     return 0;
 }
 
-int fill_virtual_tracks(xmlNodePtr cpl_element, IMFCPL * cpl);
 
-int fill_virtual_tracks(xmlNodePtr cpl_element, IMFCPL * cpl)
+static int fill_virtual_tracks(xmlNodePtr cpl_element, IMFCPL * cpl)
 {
     int ret = 0;
     xmlNodePtr segment_list_elem = NULL;

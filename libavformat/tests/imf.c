@@ -25,6 +25,7 @@
  */
 
 #include "libavformat/imf.h"
+#include "libavformat/imf_internal.h"
 
 const char *cpl_doc =
     "<CompositionPlaylist xmlns=\"http://example.com\">"

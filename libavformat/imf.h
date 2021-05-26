@@ -33,12 +33,6 @@
 
 
 /**
- * UUID string format
- */
-
-extern const char *UUID_FMT_STR;
-
-/**
  * IMF Composition Playlist Base Resource
  */
 typedef struct IMFBaseResource {
