@@ -25,13 +25,12 @@
  */
 
 #include "imf.h"
+#include "imf_internal.h"
+#include <libxml/parser.h>
 #include "libavutil/error.h"
-#include <libxml/xpath.h>
-
 
 const char *UUID_FMT_STR =
     "urn:uuid:%2hhx%2hhx%2hhx%2hhx-%2hhx%2hhx-%2hhx%2hhx-%2hhx%2hhx-%2hhx%2hhx%2hhx%2hhx%2hhx%2hhx";
-
 
 IMFCPL *imf_cpl_new(void)
 {
@@ -97,7 +96,6 @@ void imf_marker_init(IMFMarker * m)
     m->scope_utf8 = NULL;
 }
 
-xmlNodePtr getChildElementByName(xmlNodePtr parent, const char *name_utf8);
 
 xmlNodePtr getChildElementByName(xmlNodePtr parent, const char *name_utf8)
 {
@@ -118,7 +116,6 @@ xmlNodePtr getChildElementByName(xmlNodePtr parent, const char *name_utf8)
     return NULL;
 }
 
-int readUUID(xmlNodePtr element, uint8_t uuid[16]);
 
 int readUUID(xmlNodePtr element, uint8_t uuid[16])
 {
@@ -154,7 +151,6 @@ int readUUID(xmlNodePtr element, uint8_t uuid[16])
     return ret;
 }
 
-int readRational(xmlNodePtr element, AVRational * rational);
 
 int readRational(xmlNodePtr element, AVRational * rational)
 {
@@ -178,7 +174,7 @@ int readRational(xmlNodePtr element, AVRational * rational)
     return ret;
 }
 
-int readULong(xmlNodePtr element, unsigned long *number);
+
 
 int readULong(xmlNodePtr element, unsigned long *number)
 {
@@ -612,4 +608,5 @@ void imf_cpl_delete(IMFCPL * cpl)
     }
 
     free(cpl);
+    cpl = NULL;
 }

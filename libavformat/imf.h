@@ -28,11 +28,8 @@
 #define AVCODEC_IMF_H
 
 #include "libavutil/rational.h"
-#include "libavcodec/codec_par.h"
 #include "libavformat/avio.h"
-#include <libxml/parser.h>
 #include <libxml/tree.h>
-#include <libxml/xpathInternals.h>
 
 
 /**
