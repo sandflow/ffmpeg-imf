@@ -121,6 +121,29 @@ int readRational(xmlNodePtr element, AVRational *rational)
     return ret;
 }
 
+int readULong(xmlNodePtr element, unsigned long *number);
+
+int readULong(xmlNodePtr element, unsigned long *number)
+{
+    xmlChar *element_text = NULL;
+    int scanf_ret;
+    int ret = 0;
+
+    element_text =
+        xmlNodeListGetString(element->doc, element->xmlChildrenNode, 1);
+
+    scanf_ret = sscanf(element_text, "%lu", number);
+
+    if (scanf_ret != 1) {
+        ret = 1;
+    }
+
+    if (element_text)
+        xmlFree(element_text);
+
+    return ret;
+}
+
 int fill_content_title(xmlNodePtr cpl_element, IMFCPL * cpl);
 
 int fill_content_title(xmlNodePtr cpl_element, IMFCPL * cpl)
@@ -177,18 +200,152 @@ int fill_id(xmlNodePtr cpl_element, IMFCPL * cpl)
     return readUUID(element, cpl->id_uuid);
 }
 
+int fill_marker(xmlNodePtr marker_elem, IMFMarker * marker);
+
+int fill_marker(xmlNodePtr marker_elem, IMFMarker * marker)
+{
+    xmlNodePtr element = NULL;
+    int ret = 0;
+
+    /* read Offset */
+
+    element = getChildElementByName(marker_elem, "Offset");
+
+    if (element) {
+
+        ret = readULong(element, &marker->offset);
+
+        if (ret) return ret;
+
+    } else {
+
+        return 1;
+    }
+
+    /* read Label and Scope */
+
+    element = getChildElementByName(marker_elem, "Label");
+
+    if (element) {
+
+        marker->label_utf8 =
+            xmlNodeListGetString(element->doc, element->xmlChildrenNode, 1);
+
+        if (! marker->label_utf8) return 1;
+
+        marker->scope_utf8 = xmlGetNoNsProp(element, "scope");
+
+        if (! marker->scope_utf8) {
+            marker->scope_utf8 = xmlCharStrdup("http://www.smpte-ra.org/schemas/2067-3/2013#standard-markers");
+        }
+
+    } else {
+
+        return 1;
+    }
+
+    return ret;    
+}
+
 int fill_marker_resource(xmlNodePtr marker_resource_elem, IMFMarkerResource * marker_resource, IMFCPL * cpl);
 
 int fill_marker_resource(xmlNodePtr marker_resource_elem, IMFMarkerResource * marker_resource, IMFCPL * cpl)
 {
     xmlNodePtr element = NULL;
+    int ret = 0;
+
+    /* read EditRate */
 
     element = getChildElementByName(marker_resource_elem, "EditRate");
 
     if (! element) {
+
         marker_resource->base.edit_rate = cpl->edit_rate;
+
     } else {
 
+        ret = readRational(element, &marker_resource->base.edit_rate);
+
+        if (ret) return ret;
+    }
+
+    /* read EntryPoint */
+
+    element = getChildElementByName(marker_resource_elem, "EntryPoint");
+
+    if (element) {
+
+        ret = readULong(element, &marker_resource->base.entry_point);
+
+        if (ret) return ret;
+
+    } else {
+
+        marker_resource->base.entry_point = 0;
+
+    }
+
+    /* read IntrinsicDuration */
+
+    element = getChildElementByName(marker_resource_elem, "IntrinsicDuration");
+
+    if (element) {
+
+        ret = readULong(element, &marker_resource->base.duration);
+        
+        if (ret) return ret;
+
+        marker_resource->base.duration = marker_resource->base.duration - marker_resource->base.entry_point;
+
+    } else {
+
+        return 1;
+
+    }
+
+    /* read SourceDuration */
+
+    element = getChildElementByName(marker_resource_elem, "SourceDuration");
+
+    if (element) {
+
+        ret = readULong(element, &marker_resource->base.duration);
+        
+        if (ret) return ret;
+
+    }
+
+    /* read RepeatCount */
+
+    element = getChildElementByName(marker_resource_elem, "RepeatCount");
+
+    if (element) {
+
+        ret = readULong(element, &marker_resource->base.repeat_count);
+        
+        if (ret) return ret;
+
+    }
+
+    /* read markers */
+
+    element = xmlFirstElementChild(marker_resource_elem);
+
+    while (element != NULL)
+    {
+
+        if (xmlStrcmp(element->name, "Marker") != 0) continue;
+
+        marker_resource->markers = realloc(
+            marker_resource->markers,
+            (++marker_resource->marker_count) * sizeof(IMFMarker)
+        );
+
+        assert(marker_resource->markers);
+
+        fill_marker(element, &marker_resource->markers[marker_resource->marker_count - 1]);
+
+        element = xmlNextElementSibling(element);
     }
 
     return 0;

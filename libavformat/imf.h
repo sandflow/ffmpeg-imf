@@ -46,9 +46,9 @@ extern const char *UUID_FMT_STR;
  */
 typedef struct IMFBaseResource {
     AVRational edit_rate;
-    uint64_t entry_point;
-    uint64_t duration;
-    uint32_t repeat_count;
+    unsigned long entry_point;
+    unsigned long duration;
+    unsigned long repeat_count;
 } IMFBaseResource;
 
 /**
@@ -56,16 +56,16 @@ typedef struct IMFBaseResource {
  */
 typedef struct IMFTrackFileResource {
     IMFBaseResource base;
-    uint8_t track_file_uuid[16];
+    unsigned char track_file_uuid[16];
 } IMFTrackFileResource;
 
 /**
  * IMF Marker
  */
 typedef struct IMFMarker {
-    const char *label_utf8;
-    const char *scope;
-    uint32_t offset;
+    xmlChar *label_utf8;
+    xmlChar *scope_utf8;
+    unsigned long offset;
 } IMFMarker;
 
 
@@ -74,7 +74,7 @@ typedef struct IMFMarker {
  */
 typedef struct IMFMarkerResource {
     IMFBaseResource base;
-    int marker_count;
+    unsigned long marker_count;
     IMFMarker *markers;
 } IMFMarkerResource;
 
@@ -82,7 +82,7 @@ typedef struct IMFMarkerResource {
  * IMF Composition Playlist Virtual Track
  */
 typedef struct IMFBaseVirtualTrack {
-    uint8_t id_uuid[16];
+    unsigned char id_uuid[16];
 } IMFBaseVirtualTrack;
 
 
@@ -91,7 +91,7 @@ typedef struct IMFBaseVirtualTrack {
  */
 typedef struct IMFTrackFileVirtualTrack {
     IMFBaseVirtualTrack base;
-    int resource_count;
+    unsigned long resource_count;
     IMFTrackFileResource *resources;
 } IMFTrackFileVirtualTrack;
 
@@ -101,7 +101,7 @@ typedef struct IMFTrackFileVirtualTrack {
  */
 typedef struct IMFMarkerVirtualTrack {
     IMFBaseVirtualTrack base;
-    int resource_count;
+    unsigned long resource_count;
     IMFMarkerResource *resources;
 } IMFMarkerVirtualTrack;
 
@@ -111,11 +111,11 @@ typedef struct IMFMarkerVirtualTrack {
  */
 typedef struct IMFCPL {
     uint8_t id_uuid[16];
-    const char *content_title_utf8;
+    xmlChar *content_title_utf8;
     AVRational edit_rate;
     IMFMarkerVirtualTrack *main_markers_track;
     IMFTrackFileVirtualTrack main_image_2d_track;
-    uint32_t main_audio_track_count;
+    unsigned long main_audio_track_count;
     IMFTrackFileVirtualTrack *main_audio_tracks;
 } IMFCPL;
 
