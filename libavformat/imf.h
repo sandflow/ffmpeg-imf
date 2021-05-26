@@ -42,42 +42,66 @@
 extern const char *UUID_FMT_STR;
 
 /**
- * IMF Virtual Track Kind
+ * IMF Composition Playlist Base Resource
  */
-typedef enum IMFVirtualTrackKind {
-    MainImage2D = 1,
-    MainAudio = 2
-} IMFVirtualTrackKind;
-
-/**
- * IMF Composition Playlist Resource
- */
-typedef struct IMFTrackFileResource {
+typedef struct IMFBaseResource {
     AVRational edit_rate;
     uint64_t entry_point;
     uint64_t duration;
     uint32_t repeat_count;
-    uint8_t track_file_uuid[16];
-} IMFTrackFileResource;
+} IMFBaseResource;
 
 /**
- * IMF Composition Playlist Virtual Track
+ * IMF Composition Playlist Track File Resource
  */
-typedef struct IMFVirtualTrack {
-    uint8_t id_uuid[16];
-    IMFVirtualTrackKind kind;
-    IMFTrackFileResource *resources;
-} IMFVirtualTrack;
+typedef struct IMFTrackFileResource {
+    IMFBaseResource base;
+    uint8_t track_file_uuid[16];
+} IMFTrackFileResource;
 
 /**
  * IMF Marker
  */
 typedef struct IMFMarker {
-    AVRational edit_rate;
     const char *label_utf8;
     const char *scope;
-    uint64_t offset;
+    uint32_t offset;
 } IMFMarker;
+
+
+/**
+ * IMF Composition Playlist Marker Resource
+ */
+typedef struct IMFMarkerResource {
+    IMFBaseResource base;
+    IMFMarker *markers;
+} IMFMarkerResource;
+
+/**
+ * IMF Composition Playlist Virtual Track
+ */
+typedef struct IMFBaseVirtualTrack {
+    uint8_t id_uuid[16];
+} IMFBaseVirtualTrack;
+
+
+/**
+ * IMF Composition Playlist Virtual Track that consists of Track File Resources
+ */
+typedef struct IMFTrackFileVirtualTrack {
+    IMFBaseVirtualTrack base;
+    IMFTrackFileResource *resources;
+} IMFTrackFileVirtualTrack;
+
+
+/**
+ * IMF Composition Playlist Virtual Track that consists of Marker Resources
+ */
+typedef struct IMFMarkerVirtualTrack {
+    IMFBaseVirtualTrack base;
+    IMFMarkerResource *resources;
+} IMFMarkerVirtualTrack;
+
 
 /**
  * IMF Composition Playlist
@@ -86,10 +110,10 @@ typedef struct IMFCPL {
     uint8_t id_uuid[16];
     const char *content_title_utf8;
     AVRational edit_rate;
-    uint32_t marker_count;
-    IMFMarker *markers;
-    uint32_t virtual_track_count;
-    IMFVirtualTrack *virtual_tracks;
+    IMFMarkerVirtualTrack *main_markers_track;
+    IMFTrackFileVirtualTrack main_image_2d_track;
+    uint32_t main_audio_track_count;
+    IMFTrackFileVirtualTrack *main_audio_tracks;
 } IMFCPL;
 
 int parse_imf_cpl_from_xml_dom(xmlDocPtr doc, IMFCPL ** cpl);

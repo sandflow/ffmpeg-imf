@@ -38,56 +38,102 @@ IMFCPL *imf_cpl_new(void)
     return calloc(1, sizeof(IMFCPL));
 }
 
-int fill_content_title(xmlXPathContextPtr ctx, IMFCPL * cpl);
+xmlNodePtr getChildElementByName(xmlNodePtr parent, const char* name_utf8);
 
-int fill_content_title(xmlXPathContextPtr ctx, IMFCPL * cpl)
+xmlNodePtr getChildElementByName(xmlNodePtr parent, const char* name_utf8)
 {
-    int ret = 0;
+    xmlNodePtr cur;
 
-    xmlXPathObjectPtr xpath_result = NULL;
+    cur = xmlFirstElementChild(parent);
 
-    xpath_result =
-        xmlXPathEvalExpression("/cpl:CompositionPlaylist/cpl:ContentTitle",
-                               ctx);
+    while (cur != NULL) {
 
-    if (xmlXPathNodeSetGetLength(xpath_result->nodesetval) != 1) {
-        ret = 1;
-        goto cleanup;
+        if (xmlStrcmp(cur->name, name_utf8) == 0) {
+            
+            return cur;
+        }
+                
+        cur = xmlNextElementSibling(cur);
     }
 
-    cpl->content_title_utf8 =
-        xmlNodeListGetString(ctx->doc,
-                             xpath_result->nodesetval->nodeTab[0]->
-                             xmlChildrenNode, 1);
+    return NULL;
+}
 
-  cleanup:
-    if (xpath_result)
-        xmlXPathFreeObject(xpath_result);
+int readUUID(xmlNodePtr element, uint8_t uuid[16]);
+
+int readUUID(xmlNodePtr element, uint8_t uuid[16])
+{
+    xmlChar *element_text = NULL;
+    int scanf_ret;
+    int ret = 0;
+
+    element_text =
+        xmlNodeListGetString(element->doc, element->xmlChildrenNode, 1);
+
+    scanf_ret = sscanf(element_text,
+                       UUID_FMT_STR,
+                       &uuid[0],
+                       &uuid[1],
+                       &uuid[2],
+                       &uuid[3],
+                       &uuid[4],
+                       &uuid[5],
+                       &uuid[6],
+                       &uuid[7],
+                       &uuid[8],
+                       &uuid[9],
+                       &uuid[10],
+                       &uuid[11],
+                       &uuid[12],
+                       &uuid[13],
+                       &uuid[14],
+                       &uuid[15]);
+
+    if (scanf_ret != 16)
+        ret = 1;
+
+    if (element_text)
+        xmlFree(element_text);
 
     return ret;
 }
 
-int fill_edit_rate(xmlXPathContextPtr ctx, IMFCPL * cpl);
+int fill_content_title(xmlNodePtr cpl_element, IMFCPL * cpl);
 
-int fill_edit_rate(xmlXPathContextPtr ctx, IMFCPL * cpl)
+int fill_content_title(xmlNodePtr cpl_element, IMFCPL * cpl)
+{
+    xmlNodePtr element = NULL;
+
+    element = getChildElementByName(cpl_element, "ContentTitle");
+
+    if (! element)
+        return 1;
+
+    cpl->content_title_utf8 =
+        xmlNodeListGetString(cpl_element->doc, element->xmlChildrenNode, 1);
+
+    return 0;
+}
+
+int fill_edit_rate(xmlNodePtr cpl_element, IMFCPL * cpl);
+
+int fill_edit_rate(xmlNodePtr cpl_element, IMFCPL * cpl)
 {
     int ret = 0;
-    xmlXPathObjectPtr edit_rate_element = NULL;
+    xmlNodePtr element = NULL;
     xmlChar *edit_rate_text = NULL;
     int scanf_ret;
 
-    edit_rate_element =
-        xmlXPathEvalExpression("/cpl:CompositionPlaylist/cpl:EditRate", ctx);
+    element =
+        getChildElementByName(cpl_element, "EditRate");
 
-    if (xmlXPathNodeSetGetLength(edit_rate_element->nodesetval) != 1) {
+    if (! element) {
         ret = 1;
         goto cleanup;
     }
 
     edit_rate_text =
-        xmlNodeListGetString(ctx->doc,
-                             edit_rate_element->nodesetval->nodeTab[0]->
-                             xmlChildrenNode, 1);
+        xmlNodeListGetString(element->doc, element->xmlChildrenNode, 1);
 
     scanf_ret = sscanf(edit_rate_text, "%i %i", &cpl->edit_rate.num, &cpl->edit_rate.den);
 
@@ -97,121 +143,89 @@ int fill_edit_rate(xmlXPathContextPtr ctx, IMFCPL * cpl)
     }
 
   cleanup:
-    if (edit_rate_element)
-        xmlXPathFreeObject(edit_rate_element);
-
     if (edit_rate_text)
         xmlFree(edit_rate_text);
 
     return ret;
 }
 
-int fill_id(xmlXPathContextPtr ctx, IMFCPL * cpl);
+int fill_id(xmlNodePtr cpl_element, IMFCPL * cpl);
 
-int fill_id(xmlXPathContextPtr ctx, IMFCPL * cpl)
+int fill_id(xmlNodePtr cpl_element, IMFCPL * cpl)
 {
-    int ret = 0;
-    xmlXPathObjectPtr xpath_result = NULL;
-    xmlChar *urn_text = NULL;
-    int scanf_ret;
+    xmlNodePtr element = NULL;
 
-    xpath_result =
-        xmlXPathEvalExpression("/cpl:CompositionPlaylist/cpl:Id", ctx);
+    element = getChildElementByName(cpl_element, "Id");
 
-    if (xmlXPathNodeSetGetLength(xpath_result->nodesetval) != 1) {
-        ret = 1;
-        goto cleanup;
-    }
+    if (! element)
+        return 1;
 
-    urn_text =
-        xmlNodeListGetString(ctx->doc,
-                             xpath_result->nodesetval->nodeTab[0]->
-                             xmlChildrenNode, 1);
-
-    scanf_ret = sscanf(urn_text,
-                       UUID_FMT_STR,
-                       &cpl->id_uuid[0],
-                       &cpl->id_uuid[1],
-                       &cpl->id_uuid[2],
-                       &cpl->id_uuid[3],
-                       &cpl->id_uuid[4],
-                       &cpl->id_uuid[5],
-                       &cpl->id_uuid[6],
-                       &cpl->id_uuid[7],
-                       &cpl->id_uuid[8],
-                       &cpl->id_uuid[9],
-                       &cpl->id_uuid[10],
-                       &cpl->id_uuid[11],
-                       &cpl->id_uuid[12],
-                       &cpl->id_uuid[13],
-                       &cpl->id_uuid[14], &cpl->id_uuid[15]
-        );
-
-    if (scanf_ret != 16) {
-        ret = 1;
-        goto cleanup;
-    }
-
-  cleanup:
-    if (xpath_result)
-        xmlXPathFreeObject(xpath_result);
-
-    if (urn_text)
-        xmlFree(urn_text);
-
-    return ret;
+    return readUUID(element, cpl->id_uuid);
 }
 
-int process_sequence_list(IMFCPL * cpl, xmlNodePtr sequenceList_element);
+int push_marker_sequence(xmlNodePtr marker_sequence_elem, IMFCPL * cpl);
 
-int process_sequence_list(IMFCPL * cpl, xmlNodePtr sequenceList_element) {
+int push_marker_sequence(xmlNodePtr marker_sequence_elem, IMFCPL * cpl) {
+    int ret;
+    uint8_t uuid[16];
 
-    xmlNodePtr cur = NULL;
+    ret = readUUID(marker_sequence_elem, uuid);
 
-    cur = xmlFirstElementChild(sequenceList_element);
+    if (ret) return ret;
 
-	while (cur != NULL) {
+    if (cpl->main_markers_track == NULL) {
+        cpl->main_markers_track = malloc(sizeof(IMFMarkerVirtualTrack));
+        assert(cpl->main_markers_track);
 
-        /* TODO: compare namespaces */
-
-        if (xmlStrcmp(cur->name, "MarkerSequence") == 0) {
-            
-
-        } else if (xmlStrcmp(cur->name, "MainImageSequence") == 0) {
-
-        }
-				 
-	    cur = xmlNextElementSibling(cur);
-	}
+        memcpy(cpl->main_markers_track->base.id_uuid, uuid, sizeof(uuid));
+    } else {
+        
+    }
 
     return 0;
 }
 
-int fill_virtual_tracks(xmlXPathContextPtr ctx, IMFCPL * cpl);
+int fill_virtual_tracks(xmlNodePtr cpl_element, IMFCPL * cpl);
 
-int fill_virtual_tracks(xmlXPathContextPtr ctx, IMFCPL * cpl)
+int fill_virtual_tracks(xmlNodePtr cpl_element, IMFCPL * cpl)
 {
     int ret = 0;
+    xmlNodePtr segment_list_elem = NULL;
+    xmlNodePtr segment_elem = NULL;
+    xmlNodePtr sequence_list_elem = NULL;
+    xmlNodePtr sequence_elem = NULL;
 
-    xmlXPathObjectPtr segment_list = NULL;
+    segment_list_elem = getChildElementByName(cpl_element, "SegmentList");
 
-    segment_list =
-        xmlXPathEvalExpression("/cpl:CompositionPlaylist/cpl:SegmentList/cpl:Segment/cpl:SequenceList",
-                               ctx);
+    if (! segment_list_elem) return 1;
 
-    if (xmlXPathNodeSetGetLength(segment_list->nodesetval) > 0) {
+    segment_elem = xmlFirstElementChild(segment_list_elem);
 
-        for(int i = 0; i < segment_list->nodesetval->nodeNr; i++) {
+    while (segment_elem != NULL)
+    {
 
-            ret = process_sequence_list(cpl, segment_list->nodesetval->nodeTab[i]);
-            
-            if (ret)
-                break;
+        sequence_list_elem = getChildElementByName(segment_elem, "SequenceList");
 
+        if (! segment_list_elem) continue;
+
+        sequence_elem = xmlFirstElementChild(sequence_list_elem);
+
+        while (sequence_elem != NULL)
+        {
+
+            /* TODO: compare namespaces */
+
+            if (xmlStrcmp(sequence_elem->name, "MarkerSequence") == 0) {
+                
+                push_marker_sequence(sequence_elem, cpl);
+
+            }
+                    
+            sequence_elem = xmlNextElementSibling(sequence_elem);
         }
-    }
 
-    xmlXPathFreeObject(segment_list);
+        segment_elem = xmlNextElementSibling(segment_elem);
+    }
 
     return ret;
 }
@@ -220,12 +234,7 @@ int fill_virtual_tracks(xmlXPathContextPtr ctx, IMFCPL * cpl)
 int parse_imf_cpl_from_xml_dom(xmlDocPtr doc, IMFCPL ** cpl)
 {
     int ret = 0;
-
-    xmlNodePtr root_element = NULL;
-
-    xmlXPathContextPtr xpath_context = NULL;
-
-    *cpl = NULL;
+    xmlNodePtr cpl_element = NULL;
 
     *cpl = imf_cpl_new();
 
@@ -234,28 +243,24 @@ int parse_imf_cpl_from_xml_dom(xmlDocPtr doc, IMFCPL ** cpl)
         goto cleanup;
     }
 
-    xpath_context = xmlXPathNewContext(doc);
+    cpl_element = xmlDocGetRootElement(doc);
 
-    root_element = xmlDocGetRootElement(doc);
-
-    if (root_element->ns == NULL) {
+    if (cpl_element->ns == NULL) {
         ret = AVERROR_BUG;
         goto cleanup;
     }
 
-    xmlXPathRegisterNs(xpath_context, "cpl", root_element->ns->href);
-
-    if (fill_content_title(xpath_context, *cpl)) {
+    if (fill_content_title(cpl_element, *cpl)) {
         ret = AVERROR_BUG;
         goto cleanup;
     }
 
-    if (fill_id(xpath_context, *cpl)) {
+    if (fill_id(cpl_element, *cpl)) {
         ret = AVERROR_BUG;
         goto cleanup;
     }
 
-    if (fill_edit_rate(xpath_context, *cpl)) {
+    if (fill_edit_rate(cpl_element, *cpl)) {
         ret = AVERROR_BUG;
         goto cleanup;
     }
