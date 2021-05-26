@@ -28,6 +28,7 @@
 #include "imf_internal.h"
 #include <libxml/parser.h>
 #include "libavutil/error.h"
+#include "libavutil/bprint.h"
 
 static const char *UUID_SCANF_FMT =
     "urn:uuid:%2hhx%2hhx%2hhx%2hhx-%2hhx%2hhx-%2hhx%2hhx-%2hhx%2hhx-%2hhx%2hhx%2hhx%2hhx%2hhx%2hhx";
@@ -879,4 +880,40 @@ void imf_cpl_delete(IMFCPL * cpl)
 
     free(cpl);
     cpl = NULL;
+}
+
+int parse_imf_cpl(AVIOContext * in, IMFCPL ** cpl)
+{
+
+    AVBPrint buf;
+    xmlDoc *doc = NULL;
+    int ret = 0;
+    int64_t filesize = 0;
+
+
+    filesize = avio_size(in);
+    filesize = filesize > 0 ? filesize : 8192;
+
+    av_bprint_init(&buf, filesize + 1, AV_BPRINT_SIZE_UNLIMITED);
+
+    if ((ret = avio_read_to_bprint(in, &buf, UINT_MAX - 1)) < 0 ||
+        !avio_feof(in) ||
+        (filesize = buf.len) == 0) {
+        if (ret == 0)
+            ret = AVERROR_INVALIDDATA;
+    } else {
+        LIBXML_TEST_VERSION
+
+        doc = xmlReadMemory(buf.str, filesize, NULL, NULL, 0);
+
+        if (doc == NULL)
+            return AVERROR_INVALIDDATA;
+
+        ret = parse_imf_cpl_from_xml_dom(doc, cpl);
+
+        xmlFreeDoc(doc);
+        xmlCleanupParser();
+    }
+
+    return ret;
 }

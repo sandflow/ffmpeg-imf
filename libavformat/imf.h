@@ -112,7 +112,7 @@ typedef struct IMFCPL {
 
 int parse_imf_cpl_from_xml_dom(xmlDocPtr doc, IMFCPL ** cpl);
 
-int parse_imf_cpl(AVIOContext * avio_context, IMFCPL ** cpl);
+int parse_imf_cpl(AVIOContext * in, IMFCPL ** cpl);
 
 IMFCPL *imf_cpl_new(void);
 
