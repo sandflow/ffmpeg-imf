@@ -46,10 +46,42 @@ const char *cpl_doc =
     "</Resource>"
     "</ResourceList>"
     "</MarkerSequence>"
+    "<MainImageSequence>"
+    "<TrackId>urn:uuid:e8ef9653-565c-479c-8039-82d4547973c5</TrackId>"
+    "<ResourceList>"
+    "<Resource>"
+    "<IntrinsicDuration>24</IntrinsicDuration>"
+    "<TrackFileId>urn:uuid:6f768ca4-c89e-4dac-9056-a29425d40ba1</TrackFileId>"
+    "</Resource>"
+    "</ResourceList>"
+    "</MainImageSequence>"
     "</SequenceList>"
     "</Segment>"
     "</SegmentList>"
     "<ContentTitle>Hello</ContentTitle>" "</CompositionPlaylist>";
+
+static const char *UUID_PRINTF_FMT =
+    "urn:uuid:%02hhx%02hhx%02hhx%02hhx-%02hhx%02hhx-%02hhx%02hhx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx";
+
+static void print_uuid(unsigned char uuid[16])
+{
+    printf(UUID_PRINTF_FMT,
+           uuid[0],
+           uuid[1],
+           uuid[2],
+           uuid[3],
+           uuid[4],
+           uuid[5],
+           uuid[6],
+           uuid[7],
+           uuid[8],
+           uuid[9],
+           uuid[10],
+           uuid[11],
+           uuid[12],
+           uuid[13], uuid[14], uuid[15]
+        );
+}
 
 int main(int argc, char *argv[])
 {
@@ -80,30 +112,13 @@ int main(int argc, char *argv[])
 
     printf("\n");
 
-    printf(UUID_FMT_STR,
-           cpl->id_uuid[0],
-           cpl->id_uuid[1],
-           cpl->id_uuid[2],
-           cpl->id_uuid[3],
-           cpl->id_uuid[4],
-           cpl->id_uuid[5],
-           cpl->id_uuid[6],
-           cpl->id_uuid[7],
-           cpl->id_uuid[8],
-           cpl->id_uuid[9],
-           cpl->id_uuid[10],
-           cpl->id_uuid[11],
-           cpl->id_uuid[12],
-           cpl->id_uuid[13], cpl->id_uuid[14], cpl->id_uuid[15]
-        );
+    print_uuid(cpl->id_uuid);
 
     printf("\n");
 
     printf("%i %i", cpl->edit_rate.num, cpl->edit_rate.den);
 
     printf("\n");
-
-    assert(cpl->main_markers_track);
 
     printf("Marker resource count: %lu\n",
            cpl->main_markers_track->resource_count);
@@ -124,6 +139,19 @@ int main(int argc, char *argv[])
         }
     }
 
+    printf("Main image resource count: %lu\n",
+           cpl->main_image_2d_track->resource_count);
+
+    for (unsigned long i = 0; i <  cpl->main_image_2d_track->resource_count;
+         i++) {
+        printf("Track file resource %lu\n", i);
+
+        printf("  ");
+
+        print_uuid(cpl->main_image_2d_track->resources[i].track_file_uuid); 
+
+        printf("\n");       
+    }
 
     return 0;
 }

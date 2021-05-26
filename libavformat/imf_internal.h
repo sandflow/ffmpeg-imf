@@ -35,8 +35,6 @@
  * UUID string format
  */
 
-extern const char *UUID_FMT_STR;
-
 int readULong(xmlNodePtr element, unsigned long *number);
 
 int readRational(xmlNodePtr element, AVRational * rational);
