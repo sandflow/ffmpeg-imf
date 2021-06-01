@@ -1,6 +1,5 @@
 /*
- * Copyright (c), Sandflow Consulting LLC
- * All rights reserved.
+ * Copyright (c) Sandflow Consulting LLC
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -24,16 +23,22 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+/**
+ * @file
+ * @ingroup lavu_imf
+ * IMF unittest
+ */
+
 #ifndef AVCODEC_IMF_INTERNAL_H
 #define AVCODEC_IMF_INTERNAL_H
 
-#include "libavutil/rational.h"
 #include "libavformat/avio.h"
+#include "libavutil/rational.h"
 #include <libxml/tree.h>
 
 int xmlReadULong(xmlNodePtr element, unsigned long *number);
 
-int xmlReadRational(xmlNodePtr element, AVRational * rational);
+int xmlReadRational(xmlNodePtr element, AVRational *rational);
 
 int xmlReadUUID(xmlNodePtr element, uint8_t uuid[16]);
 

@@ -1,12 +1,3 @@
-# Ignore all
-*
-
-# Unignore all with extensions
-!*.*
-
-# Unignore all dirs
-!*/
-
 *~
 *.a
 *.o
@@ -50,3 +41,4 @@
 /tools/enum_options
 /tools/venc_data_dump
 .vscode
+/dist
