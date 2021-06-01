@@ -123,119 +123,86 @@ const char *cpl_doc =
     "</SequenceList>"
     "</Segment>"
     "</SegmentList>"
-    "<ContentTitle>Hello</ContentTitle>" "</CompositionPlaylist>";
+    "<ContentTitle>Hello</ContentTitle>"
+    "</CompositionPlaylist>";
 
-static const char *UUID_PRINTF_FMT =
-    "urn:uuid:%02hhx%02hhx%02hhx%02hhx-%02hhx%02hhx-%02hhx%02hhx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx";
+static const char *UUID_PRINTF_FMT = "urn:uuid:%02hhx%02hhx%02hhx%02hhx-%02hhx%02hhx-%02hhx%02hhx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx";
 
-static void print_uuid(unsigned char uuid[16])
-{
+static void print_uuid(unsigned char uuid[16]) {
     printf(UUID_PRINTF_FMT,
-           uuid[0],
-           uuid[1],
-           uuid[2],
-           uuid[3],
-           uuid[4],
-           uuid[5],
-           uuid[6],
-           uuid[7],
-           uuid[8],
-           uuid[9],
-           uuid[10], uuid[11], uuid[12], uuid[13], uuid[14], uuid[15]
-        );
+        uuid[0],
+        uuid[1],
+        uuid[2],
+        uuid[3],
+        uuid[4],
+        uuid[5],
+        uuid[6],
+        uuid[7],
+        uuid[8],
+        uuid[9],
+        uuid[10],
+        uuid[11],
+        uuid[12],
+        uuid[13],
+        uuid[14],
+        uuid[15]);
 }
 
-int main(int argc, char *argv[])
-{
-
+int main(int argc, char *argv[]) {
     xmlDocPtr doc;
-
     IMFCPL *cpl;
-
     int ret;
 
     doc = xmlReadMemory(cpl_doc, strlen(cpl_doc), NULL, NULL, 0);
-
-    if (!doc) {
+    if (doc == NULL) {
         printf("XML parsing failed.");
-
         return 1;
     }
 
     ret = parse_imf_cpl_from_xml_dom(doc, &cpl);
-
     if (ret) {
         printf("CPL parsing failed.");
-
         return 1;
     }
 
     printf("%s", cpl->content_title_utf8);
-
     printf("\n");
-
     print_uuid(cpl->id_uuid);
-
     printf("\n");
-
     printf("%i %i", cpl->edit_rate.num, cpl->edit_rate.den);
-
     printf("\n");
 
-    printf("Marker resource count: %lu\n",
-           cpl->main_markers_track->resource_count);
-
-    for (unsigned long i = 0; i < cpl->main_markers_track->resource_count;
-         i++) {
+    printf("Marker resource count: %lu\n", cpl->main_markers_track->resource_count);
+    for (unsigned long i = 0; i < cpl->main_markers_track->resource_count; i++) {
         printf("Marker resource %lu\n", i);
-
-        for (unsigned long j = 0;
-             j < cpl->main_markers_track->resources[i].marker_count; j++) {
+        for (unsigned long j = 0; j < cpl->main_markers_track->resources[i].marker_count; j++) {
             printf("  Marker %lu\n", j);
-            printf("    Label %s\n",
-                   cpl->main_markers_track->resources[i].markers[j].
-                   label_utf8);
-            printf("    Offset %lu\n",
-                   cpl->main_markers_track->resources[i].markers[j].
-                   offset);
+            printf("    Label %s\n", cpl->main_markers_track->resources[i].markers[j].label_utf8);
+            printf("    Offset %lu\n", cpl->main_markers_track->resources[i].markers[j].offset);
         }
     }
 
-    printf("Main image resource count: %lu\n",
-           cpl->main_image_2d_track->resource_count);
-
-    for (unsigned long i = 0; i < cpl->main_image_2d_track->resource_count;
-         i++) {
+    printf("Main image resource count: %lu\n", cpl->main_image_2d_track->resource_count);
+    for (unsigned long i = 0; i < cpl->main_image_2d_track->resource_count; i++) {
         printf("Track file resource %lu\n", i);
-
         printf("  ");
-
         print_uuid(cpl->main_image_2d_track->resources[i].track_file_uuid);
-
         printf("\n");
     }
 
     printf("Main audio track count: %lu\n", cpl->main_audio_track_count);
-
     for (unsigned long i = 0; i < cpl->main_audio_track_count; i++) {
         printf("  Main audio virtual track %lu\n", i);
-        printf("  Main audio resource count: %lu\n",
-               cpl->main_audio_tracks[i].resource_count);
-
-        for (unsigned long j = 0;
-             j < cpl->main_audio_tracks[i].resource_count; j++) {
+        printf("  Main audio resource count: %lu\n", cpl->main_audio_tracks[i].resource_count);
+        for (unsigned long j = 0; j < cpl->main_audio_tracks[i].resource_count; j++) {
             printf("  Track file resource %lu\n", j);
-
             printf("    ");
-
-            print_uuid(cpl->main_audio_tracks[i].
-                       resources[j].track_file_uuid);
-
+            print_uuid(cpl->main_audio_tracks[i].resources[j].track_file_uuid);
             printf("\n");
         }
     }
 
-    imf_cpl_delete(cpl);
+    imf_cpl_free(cpl);
 
     return 0;
 }

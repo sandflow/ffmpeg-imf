@@ -27,16 +27,15 @@
 #ifndef AVCODEC_IMF_H
 #define AVCODEC_IMF_H
 
-#include "libavutil/rational.h"
 #include "libavformat/avio.h"
+#include "libavutil/rational.h"
 #include <libxml/tree.h>
-
 
 /**
  * IMF Composition Playlist Base Resource
  */
 typedef struct IMFBaseResource {
-    AVRational edit_rate;
+    AVRational    edit_rate;
     unsigned long entry_point;
     unsigned long duration;
     unsigned long repeat_count;
@@ -47,26 +46,25 @@ typedef struct IMFBaseResource {
  */
 typedef struct IMFTrackFileResource {
     IMFBaseResource base;
-    unsigned char track_file_uuid[16];
+    unsigned char   track_file_uuid[16];
 } IMFTrackFileResource;
 
 /**
  * IMF Marker
  */
 typedef struct IMFMarker {
-    xmlChar *label_utf8;
-    xmlChar *scope_utf8;
+    xmlChar *     label_utf8;
+    xmlChar *     scope_utf8;
     unsigned long offset;
 } IMFMarker;
-
 
 /**
  * IMF Composition Playlist Marker Resource
  */
 typedef struct IMFMarkerResource {
     IMFBaseResource base;
-    unsigned long marker_count;
-    IMFMarker *markers;
+    unsigned long   marker_count;
+    IMFMarker *     markers;
 } IMFMarkerResource;
 
 /**
@@ -76,46 +74,43 @@ typedef struct IMFBaseVirtualTrack {
     unsigned char id_uuid[16];
 } IMFBaseVirtualTrack;
 
-
 /**
  * IMF Composition Playlist Virtual Track that consists of Track File Resources
  */
 typedef struct IMFTrackFileVirtualTrack {
-    IMFBaseVirtualTrack base;
-    unsigned long resource_count;
+    IMFBaseVirtualTrack   base;
+    unsigned long         resource_count;
     IMFTrackFileResource *resources;
 } IMFTrackFileVirtualTrack;
-
 
 /**
  * IMF Composition Playlist Virtual Track that consists of Marker Resources
  */
 typedef struct IMFMarkerVirtualTrack {
     IMFBaseVirtualTrack base;
-    unsigned long resource_count;
-    IMFMarkerResource *resources;
+    unsigned long       resource_count;
+    IMFMarkerResource * resources;
 } IMFMarkerVirtualTrack;
-
 
 /**
  * IMF Composition Playlist
  */
 typedef struct IMFCPL {
-    uint8_t id_uuid[16];
-    xmlChar *content_title_utf8;
-    AVRational edit_rate;
-    IMFMarkerVirtualTrack *main_markers_track;
+    uint8_t                   id_uuid[16];
+    xmlChar *                 content_title_utf8;
+    AVRational                edit_rate;
+    IMFMarkerVirtualTrack *   main_markers_track;
     IMFTrackFileVirtualTrack *main_image_2d_track;
-    unsigned long main_audio_track_count;
+    unsigned long             main_audio_track_count;
     IMFTrackFileVirtualTrack *main_audio_tracks;
 } IMFCPL;
 
-int parse_imf_cpl_from_xml_dom(xmlDocPtr doc, IMFCPL ** cpl);
+int parse_imf_cpl_from_xml_dom(xmlDocPtr doc, IMFCPL **cpl);
 
-int parse_imf_cpl(AVIOContext * in, IMFCPL ** cpl);
+int parse_imf_cpl(AVIOContext *in, IMFCPL **cpl);
 
-IMFCPL *imf_cpl_new(void);
+IMFCPL *imf_cpl_alloc(void);
 
-void imf_cpl_delete(IMFCPL * cpl);
+void imf_cpl_free(IMFCPL *cpl);
 
 #endif
