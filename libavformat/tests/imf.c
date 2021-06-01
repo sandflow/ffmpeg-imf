@@ -170,12 +170,10 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    printf("%s", cpl->content_title_utf8);
-    printf("\n");
+    printf("%s\n", cpl->content_title_utf8);
     print_uuid(cpl->id_uuid);
     printf("\n");
-    printf("%i %i", cpl->edit_rate.num, cpl->edit_rate.den);
-    printf("\n");
+    printf("%i %i\n", cpl->edit_rate.num, cpl->edit_rate.den);
 
     printf("Marker resource count: %lu\n", cpl->main_markers_track->resource_count);
     for (unsigned long i = 0; i < cpl->main_markers_track->resource_count; i++) {

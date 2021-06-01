@@ -37,12 +37,7 @@
 
 static const char *UUID_SCANF_FMT = "urn:uuid:%2hhx%2hhx%2hhx%2hhx-%2hhx%2hhx-%2hhx%2hhx-%2hhx%2hhx-%2hhx%2hhx%2hhx%2hhx%2hhx%2hhx";
 
-IMFCPL *imf_cpl_alloc(void) {
-    IMFCPL *cpl;
-
-    cpl = malloc(sizeof(IMFCPL));
-    if (!cpl)
-        return NULL;
+static void imf_cpl_init(IMFCPL *cpl) {
     memset(cpl->id_uuid, 0, sizeof(cpl->id_uuid));
     cpl->content_title_utf8 = NULL;
     cpl->edit_rate = av_make_q(0, 0);
@@ -50,6 +45,15 @@ IMFCPL *imf_cpl_alloc(void) {
     cpl->main_image_2d_track = NULL;
     cpl->main_audio_track_count = 0;
     cpl->main_audio_tracks = NULL;
+}
+
+IMFCPL *imf_cpl_alloc(void) {
+    IMFCPL *cpl;
+
+    cpl = malloc(sizeof(IMFCPL));
+    if (!cpl)
+        return NULL;
+    imf_cpl_init(cpl);
     return cpl;
 }
 
@@ -213,19 +217,17 @@ static int fill_marker(xmlNodePtr marker_elem, IMFMarker *marker) {
     if (!element)
         return 1;
     marker->label_utf8 = xmlNodeListGetString(element->doc, element->xmlChildrenNode, 1);
-    if (! marker->label_utf8)
+    if (!marker->label_utf8)
         return 1;
     marker->scope_utf8 = xmlGetNoNsProp(element, "scope");
-    if (! marker->scope_utf8) {
+    if (!marker->scope_utf8) {
         marker->scope_utf8 = xmlCharStrdup("http://www.smpte-ra.org/schemas/2067-3/2013#standard-markers");
     }
 
     return ret;
 }
 
-static int fill_base_resource(xmlNodePtr resource_elem,
-    IMFBaseResource *                    resource,
-    IMFCPL *                             cpl) {
+static int fill_base_resource(xmlNodePtr resource_elem, IMFBaseResource *resource, IMFCPL *cpl) {
     xmlNodePtr element = NULL;
     int        ret = 0;
 
@@ -276,9 +278,7 @@ static int fill_base_resource(xmlNodePtr resource_elem,
     return 0;
 }
 
-static int fill_trackfile_resource(xmlNodePtr tf_resource_elem,
-    IMFTrackFileResource *                    tf_resource,
-    IMFCPL *                                  cpl) {
+static int fill_trackfile_resource(xmlNodePtr tf_resource_elem, IMFTrackFileResource *tf_resource, IMFCPL *cpl) {
     xmlNodePtr element = NULL;
     int        ret = 0;
 
@@ -310,7 +310,7 @@ static int fill_marker_resource(xmlNodePtr marker_resource_elem, IMFMarkerResour
     while (element) {
         if (xmlStrcmp(element->name, "Marker") == 0) {
             marker_resource->markers = realloc(marker_resource->markers, (++marker_resource->marker_count) * sizeof(IMFMarker));
-            if (! marker_resource->markers)
+            if (!marker_resource->markers)
                 return 1;
             imf_marker_init(&marker_resource->markers[marker_resource->marker_count - 1]);
             fill_marker(element, &marker_resource->markers[marker_resource->marker_count - 1]);
@@ -337,7 +337,7 @@ static int push_marker_sequence(xmlNodePtr marker_sequence_elem, IMFCPL *cpl) {
         return ret;
 
     /* create main marker virtual track if it does not exist */
-    if (! cpl->main_markers_track) {
+    if (!cpl->main_markers_track) {
         cpl->main_markers_track = malloc(sizeof(IMFMarkerVirtualTrack));
         imf_marker_virtual_track_init(cpl->main_markers_track);
         memcpy(cpl->main_markers_track->base.id_uuid, uuid, sizeof(uuid));
@@ -439,7 +439,7 @@ static int push_main_image_2d_sequence(xmlNodePtr image_sequence_elem, IMFCPL *c
         return ret;
 
     /* create main image virtual track if one does not exist */
-    if (! cpl->main_image_2d_track) {
+    if (!cpl->main_image_2d_track) {
         cpl->main_image_2d_track = malloc(sizeof(IMFTrackFileVirtualTrack));
         imf_trackfile_virtual_track_init(cpl->main_image_2d_track);
         memcpy(cpl->main_image_2d_track->base.id_uuid, uuid, sizeof(uuid));
@@ -501,7 +501,7 @@ int parse_imf_cpl_from_xml_dom(xmlDocPtr doc, IMFCPL **cpl) {
     xmlNodePtr cpl_element = NULL;
 
     *cpl = imf_cpl_alloc();
-    if (! *cpl) {
+    if (!*cpl) {
         ret = AVERROR_BUG;
         goto cleanup;
     }
