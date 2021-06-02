@@ -155,8 +155,8 @@ static void print_uuid(unsigned char uuid[16]) {
 
 int main(int argc, char *argv[]) {
     xmlDocPtr doc;
-    IMFCPL *  cpl;
-    int       ret;
+    IMFCPL *cpl;
+    int ret;
 
     doc = xmlReadMemory(cpl_doc, strlen(cpl_doc), NULL, NULL, 0);
     if (doc == NULL) {

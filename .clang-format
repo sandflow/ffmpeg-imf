@@ -2,9 +2,9 @@
 Language: Cpp
 AlignAfterOpenBracket: false
 AlignConsecutiveAssignments: false
-AlignConsecutiveDeclarations: true
+AlignConsecutiveDeclarations: false
 AlignOperands: false
-AlignTrailingComments: true
+AlignTrailingComments: false
 AllowAllParametersOfDeclarationOnNextLine: true
 AllowShortBlocksOnASingleLine: false
 AllowShortCaseLabelsOnASingleLine: false

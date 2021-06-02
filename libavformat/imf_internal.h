@@ -36,12 +36,12 @@
 #include "libavutil/rational.h"
 #include <libxml/tree.h>
 
-int xmlReadULong(xmlNodePtr element, unsigned long *number);
+int xml_read_ulong(xmlNodePtr element, unsigned long *number);
 
-int xmlReadRational(xmlNodePtr element, AVRational *rational);
+int xml_read_rational(xmlNodePtr element, AVRational *rational);
 
-int xmlReadUUID(xmlNodePtr element, uint8_t uuid[16]);
+int xml_read_UUID(xmlNodePtr element, uint8_t uuid[16]);
 
-xmlNodePtr getChildElementByName(xmlNodePtr parent, const char *name_utf8);
+xmlNodePtr get_child_element_by_name(xmlNodePtr parent, const char *name_utf8);
 
 #endif
