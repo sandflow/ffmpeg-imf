@@ -31,6 +31,7 @@
 
 #include "libavformat/imf.h"
 #include "libavformat/imf_internal.h"
+#include "libavformat/mxf.h"
 
 const char *cpl_doc =
     "<CompositionPlaylist xmlns=\"http://example.com\">"
@@ -134,23 +135,7 @@ const char *cpl_doc =
 static const char *UUID_PRINTF_FMT = "urn:uuid:%02hhx%02hhx%02hhx%02hhx-%02hhx%02hhx-%02hhx%02hhx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx";
 
 static void print_uuid(unsigned char uuid[16]) {
-    printf(UUID_PRINTF_FMT,
-        uuid[0],
-        uuid[1],
-        uuid[2],
-        uuid[3],
-        uuid[4],
-        uuid[5],
-        uuid[6],
-        uuid[7],
-        uuid[8],
-        uuid[9],
-        uuid[10],
-        uuid[11],
-        uuid[12],
-        uuid[13],
-        uuid[14],
-        uuid[15]);
+    printf(UUID_PRINTF_FMT, UID_ARG(uuid));
 }
 
 int main(int argc, char *argv[]) {
