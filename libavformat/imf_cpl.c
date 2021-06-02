@@ -82,12 +82,10 @@ int xml_read_UUID(xmlNodePtr element, uint8_t uuid[16]) {
 
 int xml_read_rational(xmlNodePtr element, AVRational *rational) {
     xmlChar *element_text = NULL;
-    int scanf_ret;
     int ret = 0;
 
     element_text = xmlNodeListGetString(element->doc, element->xmlChildrenNode, 1);
-    scanf_ret = sscanf(element_text, "%i %i", &rational->num, &rational->den);
-    if (scanf_ret != 2)
+    if (sscanf(element_text, "%i %i", &rational->num, &rational->den) != 2)
         ret = 1;
     xmlFree(element_text);
 
@@ -96,12 +94,10 @@ int xml_read_rational(xmlNodePtr element, AVRational *rational) {
 
 int xml_read_ulong(xmlNodePtr element, unsigned long *number) {
     xmlChar *element_text = NULL;
-    int scanf_ret;
     int ret = 0;
 
     element_text = xmlNodeListGetString(element->doc, element->xmlChildrenNode, 1);
-    scanf_ret = sscanf(element_text, "%lu", number);
-    if (scanf_ret != 1)
+    if (sscanf(element_text, "%lu", number) != 1)
         ret = 1;
     xmlFree(element_text);
 
@@ -151,8 +147,7 @@ static void imf_trackfile_resource_init(IMFTrackFileResource *rsrc) {
 static int fill_content_title(xmlNodePtr cpl_element, IMFCPL *cpl) {
     xmlNodePtr element = NULL;
 
-    element = xml_get_child_element_by_name(cpl_element, "ContentTitle");
-    if (!element)
+    if (!(element = xml_get_child_element_by_name(cpl_element, "ContentTitle")))
         return 1;
     cpl->content_title_utf8 = xmlNodeListGetString(cpl_element->doc, element->xmlChildrenNode, 1);
 
@@ -160,23 +155,20 @@ static int fill_content_title(xmlNodePtr cpl_element, IMFCPL *cpl) {
 }
 
 static int fill_edit_rate(xmlNodePtr cpl_element, IMFCPL *cpl) {
-    int ret = 0;
     xmlNodePtr element = NULL;
 
-    element = xml_get_child_element_by_name(cpl_element, "EditRate");
-    if (!element) {
-        ret = 1;
-    }
-    ret = xml_read_rational(element, &cpl->edit_rate);
-    return ret;
+    if (!(element = xml_get_child_element_by_name(cpl_element, "EditRate")))
+        return 1;
+
+    return xml_read_rational(element, &cpl->edit_rate);
 }
 
 static int fill_id(xmlNodePtr cpl_element, IMFCPL *cpl) {
     xmlNodePtr element = NULL;
 
-    element = xml_get_child_element_by_name(cpl_element, "Id");
-    if (!element)
+    if (!(element = xml_get_child_element_by_name(cpl_element, "Id")))
         return 1;
+
     return xml_read_UUID(element, cpl->id_uuid);
 }
 
@@ -185,22 +177,17 @@ static int fill_marker(xmlNodePtr marker_elem, IMFMarker *marker) {
     int ret = 0;
 
     /* read Offset */
-    element = xml_get_child_element_by_name(marker_elem, "Offset");
-    if (!element)
+    if (!(element = xml_get_child_element_by_name(marker_elem, "Offset")))
         return 1;
-    ret = xml_read_ulong(element, &marker->offset);
-    if (ret)
+    if ((ret = xml_read_ulong(element, &marker->offset)))
         return ret;
 
     /* read Label and Scope */
-    element = xml_get_child_element_by_name(marker_elem, "Label");
-    if (!element)
+    if (!(element = xml_get_child_element_by_name(marker_elem, "Label")))
         return 1;
-    marker->label_utf8 = xmlNodeListGetString(element->doc, element->xmlChildrenNode, 1);
-    if (!marker->label_utf8)
+    if (!(marker->label_utf8 = xmlNodeListGetString(element->doc, element->xmlChildrenNode, 1)))
         return 1;
-    marker->scope_utf8 = xmlGetNoNsProp(element, "scope");
-    if (!marker->scope_utf8) {
+    if (!(marker->scope_utf8 = xmlGetNoNsProp(element, "scope"))) {
         marker->scope_utf8 = xmlCharStrdup("http://www.smpte-ra.org/schemas/2067-3/2013#standard-markers");
     }
 
@@ -212,77 +199,60 @@ static int fill_base_resource(xmlNodePtr resource_elem, IMFBaseResource *resourc
     int ret = 0;
 
     /* read EditRate */
-    element = xml_get_child_element_by_name(resource_elem, "EditRate");
-    if (!element) {
+    if (!(element = xml_get_child_element_by_name(resource_elem, "EditRate"))) {
         resource->edit_rate = cpl->edit_rate;
-    } else {
-        ret = xml_read_rational(element, &resource->edit_rate);
-        if (ret)
-            return ret;
+    } else if (ret = xml_read_rational(element, &resource->edit_rate)) {
+        return ret;
     }
 
     /* read EntryPoint */
-    element = xml_get_child_element_by_name(resource_elem, "EntryPoint");
-    if (element) {
-        ret = xml_read_ulong(element, &resource->entry_point);
-        if (ret)
+    if (element = xml_get_child_element_by_name(resource_elem, "EntryPoint")) {
+        if (ret = xml_read_ulong(element, &resource->entry_point))
             return ret;
     } else
         resource->entry_point = 0;
 
     /* read IntrinsicDuration */
-    element = xml_get_child_element_by_name(resource_elem, "IntrinsicDuration");
-    if (!element)
+    if (!(element = xml_get_child_element_by_name(resource_elem, "IntrinsicDuration")))
         return 1;
-    ret = xml_read_ulong(element, &resource->duration);
-    if (ret)
+    if (ret = xml_read_ulong(element, &resource->duration))
         return ret;
     resource->duration -= resource->entry_point;
 
     /* read SourceDuration */
-    element = xml_get_child_element_by_name(resource_elem, "SourceDuration");
-    if (element) {
-        ret = xml_read_ulong(element, &resource->duration);
-        if (ret)
+    if (element = xml_get_child_element_by_name(resource_elem, "SourceDuration")) {
+        if (ret = xml_read_ulong(element, &resource->duration))
             return ret;
     }
 
     /* read RepeatCount */
-    element = xml_get_child_element_by_name(resource_elem, "RepeatCount");
-    if (element) {
+    if (element = xml_get_child_element_by_name(resource_elem, "RepeatCount")) {
         ret = xml_read_ulong(element, &resource->repeat_count);
-        if (ret)
-            return ret;
     }
 
-    return 0;
+    return ret;
 }
 
 static int fill_trackfile_resource(xmlNodePtr tf_resource_elem, IMFTrackFileResource *tf_resource, IMFCPL *cpl) {
     xmlNodePtr element = NULL;
     int ret = 0;
 
-    ret = fill_base_resource(tf_resource_elem, (IMFBaseResource *)tf_resource, cpl);
-    if (ret)
+    if (ret = fill_base_resource(tf_resource_elem, (IMFBaseResource *)tf_resource, cpl))
         return ret;
 
     /* read TrackFileId */
-    element = xml_get_child_element_by_name(tf_resource_elem, "TrackFileId");
-    if (element) {
+    if (element = xml_get_child_element_by_name(tf_resource_elem, "TrackFileId")) {
         ret = xml_read_UUID(element, tf_resource->track_file_uuid);
-        if (ret)
-            return ret;
     }
 
-    return 0;
+    return ret;
 }
 
 static int fill_marker_resource(xmlNodePtr marker_resource_elem, IMFMarkerResource *marker_resource, IMFCPL *cpl) {
     xmlNodePtr element = NULL;
     int ret = 0;
 
-    ret = fill_base_resource(marker_resource_elem, (IMFBaseResource *)marker_resource, cpl);
-    if (ret)
+    if (ret = fill_base_resource(marker_resource_elem, (IMFBaseResource *)marker_resource, cpl))
         return ret;
 
     /* read markers */
@@ -298,22 +268,20 @@ static int fill_marker_resource(xmlNodePtr marker_resource_elem, IMFMarkerResour
         element = xmlNextElementSibling(element);
     }
 
-    return 0;
+    return ret;
 }
 
 static int push_marker_sequence(xmlNodePtr marker_sequence_elem, IMFCPL *cpl) {
-    int ret;
+    int ret = 0;
     uint8_t uuid[16];
     xmlNodePtr resource_list_elem = NULL;
     xmlNodePtr resource_elem = NULL;
     xmlNodePtr track_id_elem = NULL;
 
     /* read TrackID element */
-    track_id_elem = xml_get_child_element_by_name(marker_sequence_elem, "TrackId");
-    if (!track_id_elem)
+    if (!(track_id_elem = xml_get_child_element_by_name(marker_sequence_elem, "TrackId")))
         return 1;
-    ret = xml_read_UUID(track_id_elem, uuid);
-    if (ret)
+    if (ret = xml_read_UUID(track_id_elem, uuid))
         return ret;
 
     /* create main marker virtual track if it does not exist */
@@ -338,7 +306,7 @@ static int push_marker_sequence(xmlNodePtr marker_sequence_elem, IMFCPL *cpl) {
         resource_elem = xmlNextElementSibling(resource_elem);
     }
 
-    return 0;
+    return ret;
 }
 
 static int has_stereo_resources(xmlNodePtr element) {
@@ -354,7 +322,7 @@ static int has_stereo_resources(xmlNodePtr element) {
 }
 
 static int push_main_audio_sequence(xmlNodePtr audio_sequence_elem, IMFCPL *cpl) {
-    int ret;
+    int ret = 0;
     uint8_t uuid[16];
     xmlNodePtr resource_list_elem = NULL;
     xmlNodePtr resource_elem = NULL;
@@ -362,15 +330,13 @@ static int push_main_audio_sequence(xmlNodePtr audio_sequence_elem, IMFCPL *cpl)
     IMFTrackFileVirtualTrack *vt = NULL;
 
     /* read TrackID element */
-    track_id_elem = xml_get_child_element_by_name(audio_sequence_elem, "TrackId");
-    if (!track_id_elem)
+    if (!(track_id_elem = xml_get_child_element_by_name(audio_sequence_elem, "TrackId")))
         return 1;
-    ret = xml_read_UUID(track_id_elem, uuid);
-    if (ret)
+    if (xml_read_UUID(track_id_elem, uuid))
         return ret;
 
     /* get the main audio virtual track corresponding to the sequence */
-    for (int i; i < cpl->main_audio_track_count; i++)
+    for (int i = 0; i < cpl->main_audio_track_count; i++)
         if (memcmp(cpl->main_audio_tracks[i].base.id_uuid, uuid, sizeof(uuid)) == 0) {
             vt = &cpl->main_audio_tracks[i];
             break;
@@ -396,11 +362,11 @@ static int push_main_audio_sequence(xmlNodePtr audio_sequence_elem, IMFCPL *cpl)
         resource_elem = xmlNextElementSibling(resource_elem);
     }
 
-    return 0;
+    return ret;
 }
 
 static int push_main_image_2d_sequence(xmlNodePtr image_sequence_elem, IMFCPL *cpl) {
-    int ret;
+    int ret = 0;
     uint8_t uuid[16];
     xmlNodePtr resource_list_elem = NULL;
     xmlNodePtr resource_elem = NULL;
@@ -411,11 +377,9 @@ static int push_main_image_2d_sequence(xmlNodePtr image_sequence_elem, IMFCPL *c
         return 1;
 
     /* read TrackId element*/
-    track_id_elem = xml_get_child_element_by_name(image_sequence_elem, "TrackId");
-    if (!track_id_elem)
+    if (!(track_id_elem = xml_get_child_element_by_name(image_sequence_elem, "TrackId")))
         return 1;
-    ret = xml_read_UUID(track_id_elem, uuid);
-    if (ret)
+    if (ret = xml_read_UUID(track_id_elem, uuid))
         return ret;
 
     /* create main image virtual track if one does not exist */
@@ -428,8 +392,7 @@ static int push_main_image_2d_sequence(xmlNodePtr image_sequence_elem, IMFCPL *c
         return 1;
 
     /* process resources */
-    resource_list_elem = xml_get_child_element_by_name(image_sequence_elem, "ResourceList");
-    if (!resource_list_elem)
+    if (!(resource_list_elem = xml_get_child_element_by_name(image_sequence_elem, "ResourceList")))
         return 0;
     resource_elem = xmlFirstElementChild(resource_list_elem);
     while (resource_elem) {
@@ -449,8 +412,7 @@ static int fill_virtual_tracks(xmlNodePtr cpl_element, IMFCPL *cpl) {
     xmlNodePtr sequence_list_elem = NULL;
     xmlNodePtr sequence_elem = NULL;
 
-    segment_list_elem = xml_get_child_element_by_name(cpl_element, "SegmentList");
-    if (!segment_list_elem)
+    if (!(segment_list_elem = xml_get_child_element_by_name(cpl_element, "SegmentList")))
         return 1;
 
     /* process sequences */
