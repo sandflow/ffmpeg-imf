@@ -124,28 +124,28 @@ static void imf_trackfile_virtual_track_init(IMFTrackFileVirtualTrack *track) {
     track->resources = NULL;
 }
 
-static void imf_base_resource_init(IMFBaseResource *r) {
-    r->duration = 0;
-    r->edit_rate = av_make_q(0, 0);
-    r->entry_point = 0;
-    r->repeat_count = 1;
+static void imf_base_resource_init(IMFBaseResource *rsrc) {
+    rsrc->duration = 0;
+    rsrc->edit_rate = av_make_q(0, 0);
+    rsrc->entry_point = 0;
+    rsrc->repeat_count = 1;
 }
 
-static void imf_marker_resource_init(IMFMarkerResource *r) {
-    imf_base_resource_init((IMFBaseResource *)r);
-    r->marker_count = 0;
-    r->markers = NULL;
+static void imf_marker_resource_init(IMFMarkerResource *rsrc) {
+    imf_base_resource_init((IMFBaseResource *)rsrc);
+    rsrc->marker_count = 0;
+    rsrc->markers = NULL;
 }
 
-static void imf_marker_init(IMFMarker *m) {
-    m->label_utf8 = NULL;
-    m->offset = 0;
-    m->scope_utf8 = NULL;
+static void imf_marker_init(IMFMarker *marker) {
+    marker->label_utf8 = NULL;
+    marker->offset = 0;
+    marker->scope_utf8 = NULL;
 }
 
-static void imf_trackfile_resource_init(IMFTrackFileResource *r) {
-    imf_base_resource_init((IMFBaseResource *)r);
-    memset(r->track_file_uuid, 0, sizeof(r->track_file_uuid));
+static void imf_trackfile_resource_init(IMFTrackFileResource *rsrc) {
+    imf_base_resource_init((IMFBaseResource *)rsrc);
+    memset(rsrc->track_file_uuid, 0, sizeof(rsrc->track_file_uuid));
 }
 
 static int fill_content_title(xmlNodePtr cpl_element, IMFCPL *cpl) {
@@ -508,19 +508,19 @@ cleanup:
     return ret;
 }
 
-static void imf_marker_free(IMFMarker *m) {
-    if (!m)
+static void imf_marker_free(IMFMarker *marker) {
+    if (!marker)
         return;
-    xmlFree(m->label_utf8);
-    xmlFree(m->scope_utf8);
+    xmlFree(marker->label_utf8);
+    xmlFree(marker->scope_utf8);
 }
 
-static void imf_marker_resource_free(IMFMarkerResource *r) {
-    if (!r)
+static void imf_marker_resource_free(IMFMarkerResource *rsrc) {
+    if (!rsrc)
         return;
-    for (unsigned long i = 0; i < r->marker_count; i++)
-        imf_marker_free(&r->markers[i]);
-    av_free(r->markers);
+    for (unsigned long i = 0; i < rsrc->marker_count; i++)
+        imf_marker_free(&rsrc->markers[i]);
+    av_free(rsrc->markers);
 }
 
 static void imf_marker_virtual_track_free(IMFMarkerVirtualTrack *vt) {
@@ -570,7 +570,6 @@ void imf_cpl_free(IMFCPL *cpl) {
 }
 
 int parse_imf_cpl(AVIOContext *in, IMFCPL **cpl) {
-
     AVBPrint buf;
     xmlDoc *doc = NULL;
     int ret = 0;

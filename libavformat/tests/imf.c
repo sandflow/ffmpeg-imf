@@ -132,11 +132,7 @@ const char *cpl_doc =
     "<ContentTitle>Hello</ContentTitle>"
     "</CompositionPlaylist>";
 
-static const char *UUID_PRINTF_FMT = "urn:uuid:%02hhx%02hhx%02hhx%02hhx-%02hhx%02hhx-%02hhx%02hhx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx";
-
-static void print_uuid(unsigned char uuid[16]) {
-    printf(UUID_PRINTF_FMT, UID_ARG(uuid));
-}
+#define UUID_PRINTF_FMT "urn:uuid:%02hhx%02hhx%02hhx%02hhx-%02hhx%02hhx-%02hhx%02hhx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx"
 
 int main(int argc, char *argv[]) {
     xmlDocPtr doc;
@@ -156,8 +152,7 @@ int main(int argc, char *argv[]) {
     }
 
     printf("%s\n", cpl->content_title_utf8);
-    print_uuid(cpl->id_uuid);
-    printf("\n");
+    printf(UUID_PRINTF_FMT "\n", UID_ARG(cpl->id_uuid));
     printf("%i %i\n", cpl->edit_rate.num, cpl->edit_rate.den);
 
     printf("Marker resource count: %lu\n", cpl->main_markers_track->resource_count);
@@ -173,9 +168,7 @@ int main(int argc, char *argv[]) {
     printf("Main image resource count: %lu\n", cpl->main_image_2d_track->resource_count);
     for (unsigned long i = 0; i < cpl->main_image_2d_track->resource_count; i++) {
         printf("Track file resource %lu\n", i);
-        printf("  ");
-        print_uuid(cpl->main_image_2d_track->resources[i].track_file_uuid);
-        printf("\n");
+        printf("  " UUID_PRINTF_FMT "\n", UID_ARG(cpl->main_image_2d_track->resources[i].track_file_uuid));
     }
 
     printf("Main audio track count: %lu\n", cpl->main_audio_track_count);
@@ -184,9 +177,7 @@ int main(int argc, char *argv[]) {
         printf("  Main audio resource count: %lu\n", cpl->main_audio_tracks[i].resource_count);
         for (unsigned long j = 0; j < cpl->main_audio_tracks[i].resource_count; j++) {
             printf("  Track file resource %lu\n", j);
-            printf("    ");
-            print_uuid(cpl->main_audio_tracks[i].resources[j].track_file_uuid);
-            printf("\n");
+            printf("    " UUID_PRINTF_FMT "\n", UID_ARG(cpl->main_audio_tracks[i].resources[j].track_file_uuid));
         }
     }
 
