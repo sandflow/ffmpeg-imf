@@ -42,6 +42,6 @@ int xml_read_rational(xmlNodePtr element, AVRational *rational);
 
 int xml_read_UUID(xmlNodePtr element, uint8_t uuid[16]);
 
-xmlNodePtr get_child_element_by_name(xmlNodePtr parent, const char *name_utf8);
+xmlNodePtr xml_get_child_element_by_name(xmlNodePtr parent, const char *name_utf8);
 
 #endif
