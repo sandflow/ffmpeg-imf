@@ -2,4 +2,4 @@
 
 ## Debug build
 
-`./configure --enable-libxml2 --enable-debug --disable-optimizations --prefix=$PWD/dist`
+`./configure --enable-libxml2 --enable-debug --enable-static --disable-optimizations --prefix=$PWD/dist`
