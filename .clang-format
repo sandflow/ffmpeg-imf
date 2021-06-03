@@ -1,0 +1,49 @@
+---
+Language: Cpp
+AlignAfterOpenBracket: false
+AlignConsecutiveAssignments: false
+AlignConsecutiveDeclarations: false
+AlignOperands: false
+AlignTrailingComments: false
+AllowAllParametersOfDeclarationOnNextLine: true
+AllowShortBlocksOnASingleLine: false
+AllowShortCaseLabelsOnASingleLine: false
+AllowShortFunctionsOnASingleLine: Inline
+AllowShortIfStatementsOnASingleLine: false
+AllowShortLoopsOnASingleLine: false
+AlwaysBreakAfterDefinitionReturnType: None
+AlwaysBreakBeforeMultilineStrings: true
+AlwaysBreakTemplateDeclarations: true
+BinPackArguments: false
+BinPackParameters: false
+BreakBeforeBinaryOperators: All
+BreakBeforeBraces: Attach
+BreakBeforeTernaryOperators: false
+BreakConstructorInitializersBeforeComma: true
+ColumnLimit: 0
+CommentPragmas: '^ IWYU pragma:'
+ContinuationIndentWidth: 4
+DerivePointerAlignment: false
+ExperimentalAutoDetectBinPacking: false
+ForEachMacros: [ foreach, Q_FOREACH, BOOST_FOREACH ]
+IndentCaseLabels: false
+IndentWidth: 4
+IndentWrappedFunctionNames: false
+KeepEmptyLinesAtTheStartOfBlocks: true
+MacroBlockBegin: ''
+MacroBlockEnd: ''
+MaxEmptyLinesToKeep: 1
+PointerAlignment: Right
+SpaceAfterCStyleCast: false
+SpaceBeforeAssignmentOperators: true
+SpaceBeforeParens: ControlStatements
+SpaceInEmptyParentheses: false
+SpacesBeforeTrailingComments: 1
+SpacesInContainerLiterals: true
+SpacesInCStyleCastParentheses: false
+SpacesInParentheses: false
+SpacesInSquareBrackets: false
+Standard: c++03
+TabWidth: 4
+UseTab: Never
+...
