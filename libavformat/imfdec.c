@@ -43,7 +43,6 @@
 #define MAX_BPRINT_READ_SIZE (UINT_MAX - 1)
 #define DEFAULT_ASSETMAP_SIZE 8 * 1024
 
-
 typedef struct IMFContext {
     const AVClass *class;
     char *base_url;
@@ -51,7 +50,6 @@ typedef struct IMFContext {
     AVDictionary *avio_opts;
     IMFAssetMapLocator *asset_map_locator;
 } IMFContext;
-
 
 int parse_imf_asset_map_from_xml_dom(AVFormatContext *s, xmlDocPtr doc, IMFAssetMapLocator **asset_map_locator) {
     xmlNodePtr asset_map_element = NULL;
@@ -68,8 +66,7 @@ int parse_imf_asset_map_from_xml_dom(AVFormatContext *s, xmlDocPtr doc, IMFAsset
         return AVERROR_INVALIDDATA;
     }
 
-    if (asset_map_element->type != XML_ELEMENT_NODE ||
-        av_strcasecmp(asset_map_element->name, "AssetMap")) {
+    if (asset_map_element->type != XML_ELEMENT_NODE || av_strcasecmp(asset_map_element->name, "AssetMap")) {
         av_log(s, AV_LOG_ERROR, "Unable to parse asset map XML - wrong root node name[%s] type[%d]\n", asset_map_element->name, (int)asset_map_element->type);
         return AVERROR_INVALIDDATA;
     }
@@ -191,9 +188,7 @@ static int parse_assetmap(AVFormatContext *s, const char *url, AVIOContext *in) 
 
     av_bprint_init(&buf, filesize + 1, AV_BPRINT_SIZE_UNLIMITED);
 
-    if ((ret = avio_read_to_bprint(in, &buf, MAX_BPRINT_READ_SIZE)) < 0 ||
-        !avio_feof(in) ||
-        (filesize = buf.len) == 0) {
+    if ((ret = avio_read_to_bprint(in, &buf, MAX_BPRINT_READ_SIZE)) < 0 || !avio_feof(in) || (filesize = buf.len) == 0) {
         av_log(s, AV_LOG_ERROR, "Unable to read to assetmap '%s'\n", url);
         if (ret == 0)
             ret = AVERROR_INVALIDDATA;
@@ -274,9 +269,7 @@ static int open_asset_streams(AVFormatContext *s) {
 
 static int imf_close(AVFormatContext *s);
 
-static int imf_read_header(AVFormatContext *s)
-{
-    AVStream *stream;
+static int imf_read_header(AVFormatContext *s) {
     int ret = 0;
 
     av_log(s, AV_LOG_DEBUG, "start to parse IMF package\n");
@@ -297,13 +290,11 @@ fail:
     return ret;
 }
 
-static int ff_imf_read_packet(AVFormatContext *s, AVPacket *pkt)
-{
-  return AVERROR_EOF;
+static int ff_imf_read_packet(AVFormatContext *s, AVPacket *pkt) {
+    return AVERROR_EOF;
 }
 
-static int imf_close(AVFormatContext *s)
-{
+static int imf_close(AVFormatContext *s) {
     av_log(s, AV_LOG_DEBUG, "Close IMF package\n");
     IMFContext *c = s->priv_data;
     av_dict_free(&c->avio_opts);
@@ -313,23 +304,22 @@ static int imf_close(AVFormatContext *s)
 }
 
 static const AVOption imf_options[] = {
-    {NULL}
-};
+    {NULL}};
 
 static const AVClass imf_class = {
     .class_name = "imf",
-    .item_name  = av_default_item_name,
-    .option     = imf_options,
-    .version    = LIBAVUTIL_VERSION_INT,
+    .item_name = av_default_item_name,
+    .option = imf_options,
+    .version = LIBAVUTIL_VERSION_INT,
 };
 
 const AVInputFormat ff_imf_demuxer = {
-    .name           = "imf",
-    .long_name      = NULL_IF_CONFIG_SMALL("IMF (Interoperable Master Format)"),
-    .priv_class     = &imf_class,
+    .name = "imf",
+    .long_name = NULL_IF_CONFIG_SMALL("IMF (Interoperable Master Format)"),
+    .priv_class = &imf_class,
     .priv_data_size = sizeof(IMFContext),
-    .read_header    = imf_read_header,
-    .read_packet    = ff_imf_read_packet,
-    .read_close     = imf_close,
-    .extensions     = "xml",
+    .read_header = imf_read_header,
+    .read_packet = ff_imf_read_packet,
+    .read_close = imf_close,
+    .extensions = "xml",
 };
