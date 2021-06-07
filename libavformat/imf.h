@@ -110,6 +110,33 @@ typedef struct IMFCPL {
     IMFTrackFileVirtualTrack *main_audio_tracks;
 } IMFCPL;
 
+/**
+ * IMF Asset type
+ */
+enum AVIMFAssetType {
+    AV_IMF_ASSET_TYPE_MEDIA = 0,
+    AV_IMF_ASSET_TYPE_CPL,
+    AV_IMF_ASSET_TYPE_PKL,
+};
+
+/**
+ * IMF Asset locator
+ */
+typedef struct IMFAssetLocator {
+    char *uuid;
+    char *path;
+    int asset_type;
+} IMFAssetLocator;
+
+/**
+ * IMF Asset Map locator
+ */
+typedef struct IMFAssetMapLocator {
+    const char *root_url;
+    uint8_t assets_count;
+    IMFAssetLocator *assets[];
+} IMFAssetMapLocator;
+
 int parse_imf_cpl_from_xml_dom(xmlDocPtr doc, IMFCPL **cpl);
 
 int parse_imf_cpl(AVIOContext *in, IMFCPL **cpl);
