@@ -33,6 +33,8 @@
 #include "libavformat/imf_internal.h"
 #include "libavformat/mxf.h"
 
+#define UUID_PRINTF_FMT "urn:uuid:%02hhx%02hhx%02hhx%02hhx-%02hhx%02hhx-%02hhx%02hhx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx"
+
 const char *cpl_doc =
     "<CompositionPlaylist xmlns=\"http://example.com\">"
     "<Id>urn:uuid:8713c020-2489-45f5-a9f7-87be539e20b5</Id>"
@@ -132,9 +134,76 @@ const char *cpl_doc =
     "<ContentTitle>Hello</ContentTitle>"
     "</CompositionPlaylist>";
 
-#define UUID_PRINTF_FMT "urn:uuid:%02hhx%02hhx%02hhx%02hhx-%02hhx%02hhx-%02hhx%02hhx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx"
+const char *asset_map_doc =
+    "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>"
+    "<am:AssetMap xmlns:am=\"http://www.smpte-ra.org/schemas/429-9/2007/AM\">"
+    "<am:Id>urn:uuid:68d9f591-8191-46b5-38b4-affb87a14132</am:Id>"
+    "<am:AnnotationText>IMF_TEST_ASSET_MAP</am:AnnotationText>"
+    "<am:Creator>Some tool</am:Creator>"
+    "<am:VolumeCount>1</am:VolumeCount>"
+    "<am:IssueDate>2021-06-07T12:00:00+00:00</am:IssueDate>"
+    "<am:Issuer>FFmpeg</am:Issuer>"
+    "<am:AssetList>"
+    "<am:Asset>"
+    "<am:Id>urn:uuid:b5d674b8-c6ce-4bce-3bdf-be045dfdb2d0</am:Id>"
+    "<am:ChunkList>"
+    "<am:Chunk>"
+    "<am:Path>IMF_TEST_ASSET_MAP_video.mxf</am:Path>"
+    "<am:VolumeIndex>1</am:VolumeIndex>"
+    "<am:Offset>0</am:Offset>"
+    "<am:Length>1234567</am:Length>"
+    "</am:Chunk>"
+    "</am:ChunkList>"
+    "</am:Asset>"
+    "<am:Asset>"
+    "<am:Id>urn:uuid:ec3467ec-ab2a-4f49-c8cb-89caa3761f4a</am:Id>"
+    "<am:ChunkList>"
+    "<am:Chunk>"
+    "<am:Path>IMF_TEST_ASSET_MAP_video_1.mxf</am:Path>"
+    "<am:VolumeIndex>1</am:VolumeIndex>"
+    "<am:Offset>0</am:Offset>"
+    "<am:Length>234567</am:Length>"
+    "</am:Chunk>"
+    "</am:ChunkList>"
+    "</am:Asset>"
+    "<am:Asset>"
+    "<am:Id>urn:uuid:5cf5b5a7-8bb3-4f08-eaa6-3533d4b77fa6</am:Id>"
+    "<am:ChunkList>"
+    "<am:Chunk>"
+    "<am:Path>IMF_TEST_ASSET_MAP_audio.mxf</am:Path>"
+    "<am:VolumeIndex>1</am:VolumeIndex>"
+    "<am:Offset>0</am:Offset>"
+    "<am:Length>34567</am:Length>"
+    "</am:Chunk>"
+    "</am:ChunkList>"
+    "</am:Asset>"
+    "<am:Asset>"
+    "<am:Id>urn:uuid:559777d6-ec29-4375-f90d-300b0bf73686</am:Id>"
+    "<am:ChunkList>"
+    "<am:Chunk>"
+    "<am:Path>CPL_IMF_TEST_ASSET_MAP.xml</am:Path>"
+    "<am:VolumeIndex>1</am:VolumeIndex>"
+    "<am:Offset>0</am:Offset>"
+    "<am:Length>12345</am:Length>"
+    "</am:Chunk>"
+    "</am:ChunkList>"
+    "</am:Asset>"
+    "<am:Asset>"
+    "<am:Id>urn:uuid:dd04528d-9b80-452a-7a13-805b08278b3d</am:Id>"
+    "<am:PackingList>true</am:PackingList>"
+    "<am:ChunkList>"
+    "<am:Chunk>"
+    "<am:Path>PKL_IMF_TEST_ASSET_MAP.xml</am:Path>"
+    "<am:VolumeIndex>1</am:VolumeIndex>"
+    "<am:Offset>0</am:Offset>"
+    "<am:Length>2345</am:Length>"
+    "</am:Chunk>"
+    "</am:ChunkList>"
+    "</am:Asset>"
+    "</am:AssetList>"
+    "</am:AssetMap>";
 
-int main(int argc, char *argv[]) {
+static int test_cpl_parsing() {
     xmlDocPtr doc;
     IMFCPL *cpl;
     int ret;
@@ -184,4 +253,84 @@ int main(int argc, char *argv[]) {
     imf_cpl_free(cpl);
 
     return 0;
+}
+
+static int check_asset_locator_attributes(IMFAssetLocator *asset_locator, IMFAssetLocator expected_asset_locator) {
+
+    if (strcmp(asset_locator->uuid, expected_asset_locator.uuid) != 0) {
+        printf("Invalid asset locator UUID: found %s instead of %s expected.", asset_locator->uuid, expected_asset_locator.uuid);
+        return 1;
+    }
+
+    if (strcmp(asset_locator->path, expected_asset_locator.path) != 0) {
+        printf("Invalid asset locator path: found %s instead of %s expected.", asset_locator->path, expected_asset_locator.path);
+        return 1;
+    }
+
+    if (asset_locator->asset_type != expected_asset_locator.asset_type) {
+        printf("Invalid asset locator type: found %d instead of %d expected.", asset_locator->asset_type, expected_asset_locator.asset_type);
+        return 1;
+    }
+
+    return 0;
+}
+
+static const IMFAssetLocator ASSET_MAP_EXPECTED_LOCATORS[5] = {
+    [0] = {.uuid = "urn:uuid:b5d674b8-c6ce-4bce-3bdf-be045dfdb2d0", .path = "IMF_TEST_ASSET_MAP_video.mxf", .asset_type = 0},
+    [1] = {.uuid = "urn:uuid:ec3467ec-ab2a-4f49-c8cb-89caa3761f4a", .path = "IMF_TEST_ASSET_MAP_video_1.mxf", .asset_type = 0},
+    [2] = {.uuid = "urn:uuid:5cf5b5a7-8bb3-4f08-eaa6-3533d4b77fa6", .path = "IMF_TEST_ASSET_MAP_audio.mxf", .asset_type = 0},
+    [3] = {.uuid = "urn:uuid:559777d6-ec29-4375-f90d-300b0bf73686", .path = "CPL_IMF_TEST_ASSET_MAP.xml", .asset_type = 1},
+    [4] = {.uuid = "urn:uuid:dd04528d-9b80-452a-7a13-805b08278b3d", .path = "PKL_IMF_TEST_ASSET_MAP.xml", .asset_type = 2},
+};
+
+static int test_asset_map_parsing() {
+    IMFAssetMapLocator *asset_map_locator;
+    xmlDoc *doc;
+    int ret;
+
+    doc = xmlReadMemory(asset_map_doc, strlen(asset_map_doc), NULL, NULL, 0);
+    if (doc == NULL) {
+        printf("Asset map XML parsing failed.");
+        return 1;
+    }
+
+    asset_map_locator = imf_asset_map_locator_alloc();
+
+    ret = parse_imf_asset_map_from_xml_dom(NULL, doc, &asset_map_locator);
+    if (ret) {
+        printf("Asset map parsing failed.");
+        goto cleanup;
+    }
+
+    if (asset_map_locator->assets_count != 5) {
+        printf("Asset map parsing failed: found %d assets instead of 5 expected.", asset_map_locator->assets_count);
+        ret = 1;
+        goto cleanup;
+    }
+
+    for (int i = 0; i < asset_map_locator->assets_count; ++i) {
+        ret = check_asset_locator_attributes(asset_map_locator->assets[i], ASSET_MAP_EXPECTED_LOCATORS[i]);
+        if (ret > 0) {
+            goto cleanup;
+        }
+    }
+
+cleanup:
+    imf_asset_map_locator_free(asset_map_locator);
+    xmlFreeDoc(doc);
+    return ret;
+}
+
+int main(int argc, char *argv[]) {
+    int ret = 0;
+
+    if (test_cpl_parsing() != 0) {
+        ret = 1;
+    }
+
+    if (test_asset_map_parsing() != 0) {
+        ret = 1;
+    }
+
+    return ret;
 }
