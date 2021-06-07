@@ -34,32 +34,147 @@
  * ST 2067-102:2017 - SMPTE Standard - Interoperable Master Format — Common Image Pixel Color Schemes
  */
 
-#include <libxml/parser.h>
-#include "libavutil/opt.h"
+#include "imf.h"
+#include "imf_internal.h"
 #include "internal.h"
-#include "avformat.h"
+#include "libavutil/opt.h"
+#include <libxml/parser.h>
 
 #define MAX_BPRINT_READ_SIZE (UINT_MAX - 1)
 #define DEFAULT_ASSETMAP_SIZE 8 * 1024
+
 
 typedef struct IMFContext {
     const AVClass *class;
     char *base_url;
     AVIOInterruptCB *interrupt_callback;
     AVDictionary *avio_opts;
+    IMFAssetMapLocator *asset_map_locator;
 } IMFContext;
 
-static int parse_assetmap(AVFormatContext *s, const char *url, AVIOContext *in)
-{
+
+int parse_imf_asset_map_from_xml_dom(AVFormatContext *s, xmlDocPtr doc, IMFAssetMapLocator **asset_map_locator) {
+    xmlNodePtr asset_map_element = NULL;
+    xmlNodePtr node = NULL;
+    xmlChar *id;
+    char *path;
+
+    IMFAssetLocator *asset_locator = NULL;
+
+    asset_map_element = xmlDocGetRootElement(doc);
+
+    if (!asset_map_element) {
+        av_log(s, AV_LOG_ERROR, "Unable to parse asset map XML - missing root node\n");
+        return AVERROR_INVALIDDATA;
+    }
+
+    if (asset_map_element->type != XML_ELEMENT_NODE ||
+        av_strcasecmp(asset_map_element->name, "AssetMap")) {
+        av_log(s, AV_LOG_ERROR, "Unable to parse asset map XML - wrong root node name[%s] type[%d]\n", asset_map_element->name, (int)asset_map_element->type);
+        return AVERROR_INVALIDDATA;
+    }
+
+    // parse asset locators
+
+    if (!(node = xml_get_child_element_by_name(asset_map_element, "AssetList"))) {
+        av_log(s, AV_LOG_ERROR, "Unable to parse asset map XML - missing AssetList node\n");
+        return AVERROR_INVALIDDATA;
+    }
+
+    node = xmlFirstElementChild(node);
+    while (node) {
+        if (av_strcasecmp(node->name, "Asset") != 0) {
+            continue;
+        }
+
+        asset_locator = av_malloc(sizeof(IMFAssetLocator));
+
+        id = xmlNodeGetContent(xml_get_child_element_by_name(node, "Id"));
+        asset_locator->uuid = strdup(id);
+        xmlFree(id);
+
+        av_log(s, AV_LOG_DEBUG, "Found asset id: %s\n", asset_locator->uuid);
+
+        if (!(node = xml_get_child_element_by_name(node, "ChunkList"))) {
+            av_log(s, AV_LOG_ERROR, "Unable to parse asset map XML - missing ChunkList node\n");
+            return AVERROR_INVALIDDATA;
+        }
+
+        if (!(node = xml_get_child_element_by_name(node, "Chunk"))) {
+            av_log(s, AV_LOG_ERROR, "Unable to parse asset map XML - missing Chunk node\n");
+            return AVERROR_INVALIDDATA;
+        }
+
+        path = xmlNodeGetContent(xml_get_child_element_by_name(node, "Path"));
+
+        if (av_strstart(path, "CPL_", NULL)) {
+            asset_locator->asset_type = AV_IMF_ASSET_TYPE_CPL;
+        } else if (av_strstart(path, "PKL_", NULL)) {
+            asset_locator->asset_type = AV_IMF_ASSET_TYPE_PKL;
+        } else {
+            asset_locator->asset_type = AV_IMF_ASSET_TYPE_MEDIA;
+        }
+
+        path = av_append_path_component((*asset_map_locator)->root_url, path);
+        asset_locator->path = strdup(path);
+        av_free(path);
+
+        av_log(s, AV_LOG_DEBUG, "Found asset path: %s (type=%d)\n", asset_locator->path, asset_locator->asset_type);
+
+        node = xmlNextElementSibling(node->parent->parent);
+
+        (*asset_map_locator)->assets[(*asset_map_locator)->assets_count] = asset_locator;
+        (*asset_map_locator)->assets_count++;
+    }
+
+    return 0;
+}
+
+IMFAssetMapLocator *imf_asset_map_locator_alloc(void) {
+    IMFAssetMapLocator *asset_map_locator;
+
+    asset_map_locator = av_malloc(sizeof(IMFAssetMapLocator));
+    if (!asset_map_locator)
+        return NULL;
+
+    asset_map_locator->root_url = "";
+    asset_map_locator->assets_count = 0;
+    return asset_map_locator;
+}
+
+void imf_asset_map_locator_free(IMFAssetMapLocator *asset_map_locator) {
+    if (asset_map_locator == NULL) {
+        return;
+    }
+
+    for (int i = 0; i < asset_map_locator->assets_count; ++i) {
+        if (asset_map_locator->assets[i] != NULL) {
+            av_freep(asset_map_locator->assets[i]);
+        }
+    }
+
+    asset_map_locator->root_url = NULL;
+    av_freep(asset_map_locator);
+}
+
+static int parse_assetmap(AVFormatContext *s, const char *url, AVIOContext *in) {
     IMFContext *c = s->priv_data;
     AVBPrint buf;
     AVDictionary *opts = NULL;
     xmlDoc *doc = NULL;
-    xmlNodePtr root_element = NULL;
-    xmlNodePtr node = NULL;
+
     int close_in = 0;
     int ret = 0;
     int64_t filesize = 0;
+
+    c->asset_map_locator = imf_asset_map_locator_alloc();
+    if (!c->asset_map_locator) {
+        av_log(s, AV_LOG_ERROR, "Unable to allocate asset map locator\n");
+        return AVERROR_BUG;
+    }
+
+    c->asset_map_locator->root_url = av_dirname((char *)url);
+    av_log(s, AV_LOG_DEBUG, "Asset Map root URL: %s\n", c->asset_map_locator->root_url);
 
     if (!in) {
         close_in = 1;
@@ -86,26 +201,19 @@ static int parse_assetmap(AVFormatContext *s, const char *url, AVIOContext *in)
         LIBXML_TEST_VERSION
 
         doc = xmlReadMemory(buf.str, filesize, c->base_url, NULL, 0);
-        root_element = xmlDocGetRootElement(doc);
-        node = root_element;
 
-        if (!node) {
-            ret = AVERROR_INVALIDDATA;
-            av_log(s, AV_LOG_ERROR, "Unable to parse '%s' - missing root node\n", url);
+        ret = parse_imf_asset_map_from_xml_dom(s, doc, &c->asset_map_locator);
+        if (ret != 0) {
             goto cleanup;
         }
 
-        if (node->type != XML_ELEMENT_NODE ||
-            av_strcasecmp(node->name, "AssetMap")) {
-            ret = AVERROR_INVALIDDATA;
-            av_log(s, AV_LOG_ERROR, "Unable to parse '%s' - wrong root node name[%s] type[%d]\n", url, node->name, (int)node->type);
-            goto cleanup;
-        }
-cleanup:
+        av_log(s, AV_LOG_DEBUG, "Found %d assets from %s\n", c->asset_map_locator->assets_count, url);
+
+    cleanup:
         /*free the document */
         xmlFreeDoc(doc);
-        xmlCleanupParser();
-        // xmlFreeNode(mpd_baseurl_node);
+        // FIXME:"double free or corruption" error
+        // xmlCleanupParser();
     }
     if (close_in) {
         avio_close(in);
@@ -160,6 +268,7 @@ static int imf_close(AVFormatContext *s)
     IMFContext *c = s->priv_data;
     av_dict_free(&c->avio_opts);
     av_freep(&c->base_url);
+    imf_asset_map_locator_free(c->asset_map_locator);
     return 0;
 }
 
