@@ -32,6 +32,7 @@
 #ifndef AVCODEC_IMF_H
 #define AVCODEC_IMF_H
 
+#include "avformat.h"
 #include "libavformat/avio.h"
 #include "libavutil/rational.h"
 #include <libxml/tree.h>
@@ -123,8 +124,8 @@ enum AVIMFAssetType {
  * IMF Asset locator
  */
 typedef struct IMFAssetLocator {
-    char *uuid;
-    char *path;
+    const char *uuid;
+    const char *path;
     int asset_type;
 } IMFAssetLocator;
 
@@ -144,5 +145,11 @@ int parse_imf_cpl(AVIOContext *in, IMFCPL **cpl);
 IMFCPL *imf_cpl_alloc(void);
 
 void imf_cpl_free(IMFCPL *cpl);
+
+int parse_imf_asset_map_from_xml_dom(AVFormatContext *s, xmlDocPtr doc, IMFAssetMapLocator **asset_map_locator);
+
+IMFAssetMapLocator *imf_asset_map_locator_alloc(void);
+
+void imf_asset_map_locator_free(IMFAssetMapLocator *asset_map_locator);
 
 #endif
