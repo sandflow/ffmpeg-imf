@@ -92,7 +92,7 @@ int parse_imf_asset_map_from_xml_dom(AVFormatContext *s, xmlDocPtr doc, IMFAsset
             return 1;
         }
 
-        av_log(s, AV_LOG_DEBUG, "Found asset id: urn:uuid:%2hhx%2hhx%2hhx%2hhx-%2hhx%2hhx-%2hhx%2hhx-%2hhx%2hhx-%2hhx%2hhx%2hhx%2hhx%2hhx%2hhx\n", UID_ARG(asset_locator->uuid));
+        av_log(s, AV_LOG_DEBUG, "Found asset id: " UUID_FORMAT "\n", UID_ARG(asset_locator->uuid));
 
         if (!(node = xml_get_child_element_by_name(node, "ChunkList"))) {
             av_log(s, AV_LOG_ERROR, "Unable to parse asset map XML - missing ChunkList node\n");
@@ -228,8 +228,9 @@ static int ff_imf_read_packet(AVFormatContext *s, AVPacket *pkt) {
 }
 
 static int imf_close(AVFormatContext *s) {
-    av_log(s, AV_LOG_DEBUG, "Close IMF package\n");
     IMFContext *c = s->priv_data;
+
+    av_log(s, AV_LOG_DEBUG, "Close IMF package\n");
     av_dict_free(&c->avio_opts);
     av_freep(&c->base_url);
     imf_asset_map_locator_free(c->asset_map_locator);
