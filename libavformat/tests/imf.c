@@ -33,8 +33,6 @@
 #include "libavformat/imf_internal.h"
 #include "libavformat/mxf.h"
 
-#define UUID_PRINTF_FMT "urn:uuid:%02hhx%02hhx%02hhx%02hhx-%02hhx%02hhx-%02hhx%02hhx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx"
-
 const char *cpl_doc =
     "<CompositionPlaylist xmlns=\"http://example.com\">"
     "<Id>urn:uuid:8713c020-2489-45f5-a9f7-87be539e20b5</Id>"
@@ -221,7 +219,7 @@ static int test_cpl_parsing() {
     }
 
     printf("%s\n", cpl->content_title_utf8);
-    printf(UUID_PRINTF_FMT "\n", UID_ARG(cpl->id_uuid));
+    printf(UUID_FORMAT "\n", UID_ARG(cpl->id_uuid));
     printf("%i %i\n", cpl->edit_rate.num, cpl->edit_rate.den);
 
     printf("Marker resource count: %lu\n", cpl->main_markers_track->resource_count);
@@ -237,7 +235,7 @@ static int test_cpl_parsing() {
     printf("Main image resource count: %lu\n", cpl->main_image_2d_track->resource_count);
     for (unsigned long i = 0; i < cpl->main_image_2d_track->resource_count; i++) {
         printf("Track file resource %lu\n", i);
-        printf("  " UUID_PRINTF_FMT "\n", UID_ARG(cpl->main_image_2d_track->resources[i].track_file_uuid));
+        printf("  " UUID_FORMAT "\n", UID_ARG(cpl->main_image_2d_track->resources[i].track_file_uuid));
     }
 
     printf("Main audio track count: %lu\n", cpl->main_audio_track_count);
@@ -246,7 +244,7 @@ static int test_cpl_parsing() {
         printf("  Main audio resource count: %lu\n", cpl->main_audio_tracks[i].resource_count);
         for (unsigned long j = 0; j < cpl->main_audio_tracks[i].resource_count; j++) {
             printf("  Track file resource %lu\n", j);
-            printf("    " UUID_PRINTF_FMT "\n", UID_ARG(cpl->main_audio_tracks[i].resources[j].track_file_uuid));
+            printf("    " UUID_FORMAT "\n", UID_ARG(cpl->main_audio_tracks[i].resources[j].track_file_uuid));
         }
     }
 
@@ -257,10 +255,10 @@ static int test_cpl_parsing() {
 
 static int check_asset_locator_attributes(IMFAssetLocator *asset_locator, IMFAssetLocator expected_asset_locator) {
 
-    printf("\tCompare " UUID_PRINTF_FMT " to " UUID_PRINTF_FMT ".\n", UID_ARG(asset_locator->uuid), UID_ARG(expected_asset_locator.uuid));
+    printf("\tCompare " UUID_FORMAT " to " UUID_FORMAT ".\n", UID_ARG(asset_locator->uuid), UID_ARG(expected_asset_locator.uuid));
     for (int i = 0; i < 16; ++i) {
         if (asset_locator->uuid[i] != expected_asset_locator.uuid[i]) {
-            printf("Invalid asset locator UUID: found " UUID_PRINTF_FMT " instead of " UUID_PRINTF_FMT " expected.\n", UID_ARG(asset_locator->uuid), UID_ARG(expected_asset_locator.uuid));
+            printf("Invalid asset locator UUID: found " UUID_FORMAT " instead of " UUID_FORMAT " expected.\n", UID_ARG(asset_locator->uuid), UID_ARG(expected_asset_locator.uuid));
             return 1;
         }
     }
