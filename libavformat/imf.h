@@ -114,15 +114,6 @@ typedef struct IMFCPL {
 } IMFCPL;
 
 /**
- * IMF Asset type
- */
-enum AVIMFAssetType {
-    AV_IMF_ASSET_TYPE_MEDIA = 0,
-    AV_IMF_ASSET_TYPE_CPL,
-    AV_IMF_ASSET_TYPE_PKL,
-};
-
-/**
  * IMF Asset locator
  */
 typedef struct IMFAssetLocator {
