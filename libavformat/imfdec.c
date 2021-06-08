@@ -105,20 +105,11 @@ int parse_imf_asset_map_from_xml_dom(AVFormatContext *s, xmlDocPtr doc, IMFAsset
         }
 
         path = xmlNodeGetContent(xml_get_child_element_by_name(node, "Path"));
-
-        if (av_strstart(path, "CPL_", NULL)) {
-            asset_locator->asset_type = AV_IMF_ASSET_TYPE_CPL;
-        } else if (av_strstart(path, "PKL_", NULL)) {
-            asset_locator->asset_type = AV_IMF_ASSET_TYPE_PKL;
-        } else {
-            asset_locator->asset_type = AV_IMF_ASSET_TYPE_MEDIA;
-        }
-
         path = av_append_path_component((*asset_map_locator)->root_url, path);
         asset_locator->path = strdup(path);
         av_free(path);
 
-        av_log(s, AV_LOG_DEBUG, "Found asset path: %s (type=%d)\n", asset_locator->path, asset_locator->asset_type);
+        av_log(s, AV_LOG_DEBUG, "Found asset path: %s\n", asset_locator->path);
 
         node = xmlNextElementSibling(node->parent->parent);
 
@@ -212,57 +203,6 @@ static int parse_assetmap(AVFormatContext *s, const char *url, AVIOContext *in) 
     return ret;
 }
 
-static int open_asset_streams(AVFormatContext *s) {
-
-    IMFContext *c = s->priv_data;
-    AVStream *imf_stream;
-    AVFormatContext *asset_format_context;
-    AVStream *asset_stream;
-
-    IMFAssetLocator *asset_locator;
-    int ret = 0;
-
-    for (int i = 0; i < c->asset_map_locator->assets_count; ++i) {
-        asset_locator = c->asset_map_locator->assets[i];
-        av_log(s, AV_LOG_DEBUG, "Open asset %s: %s (type=%d)\n", asset_locator->uuid, asset_locator->path, asset_locator->asset_type);
-
-        if (asset_locator->asset_type == AV_IMF_ASSET_TYPE_CPL) {
-            av_log(s, AV_LOG_DEBUG, "Skip CPL %s\n", asset_locator->path);
-            continue;
-        }
-
-        if (asset_locator->asset_type == AV_IMF_ASSET_TYPE_PKL) {
-            av_log(s, AV_LOG_DEBUG, "Skip PKL %s\n", asset_locator->path);
-            continue;
-        }
-
-        asset_format_context = avformat_alloc_context();
-        ret = avformat_open_input(&asset_format_context, asset_locator->path, NULL, NULL);
-        if (ret < 0) {
-            goto cleanup;
-        }
-
-        for (int j = 0; j < asset_format_context->nb_streams; j++) {
-            av_log(s, AV_LOG_DEBUG, "Create new stream from file %s, stream=%d\n", asset_locator->path, j);
-            imf_stream = avformat_new_stream(s, NULL);
-            asset_stream = asset_format_context->streams[j];
-            if (!imf_stream) {
-                ret = AVERROR(ENOMEM);
-                goto cleanup;
-            }
-            imf_stream->id = j;
-            avformat_find_stream_info(asset_format_context, NULL);
-            avcodec_parameters_copy(imf_stream->codecpar, asset_stream->codecpar);
-            avpriv_set_pts_info(imf_stream, asset_stream->pts_wrap_bits, asset_stream->time_base.num, asset_stream->time_base.den);
-        }
-
-    cleanup:
-        avformat_free_context(asset_format_context);
-    }
-
-    return ret;
-}
-
 static int imf_close(AVFormatContext *s);
 
 static int imf_read_header(AVFormatContext *s) {
@@ -275,10 +215,7 @@ static int imf_read_header(AVFormatContext *s) {
 
     av_log(s, AV_LOG_DEBUG, "parsed IMF Asset Map \n");
 
-    if ((ret = open_asset_streams(s)) < 0)
-        goto fail;
-
-    av_log(s, AV_LOG_DEBUG, "parsed IMF package\n");
+    // av_log(s, AV_LOG_DEBUG, "parsed IMF package\n");
     return 0;
 
 fail:
