@@ -126,7 +126,6 @@ enum AVIMFAssetType {
 typedef struct IMFAssetLocator {
     uint8_t uuid[16];
     const char *path;
-    int asset_type;
 } IMFAssetLocator;
 
 /**
