@@ -36,6 +36,8 @@
 #include "libavutil/rational.h"
 #include <libxml/tree.h>
 
+#define UUID_FORMAT "urn:uuid:%02hhx%02hhx%02hhx%02hhx-%02hhx%02hhx-%02hhx%02hhx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx"
+
 int xml_read_ulong(xmlNodePtr element, unsigned long *number);
 
 int xml_read_rational(xmlNodePtr element, AVRational *rational);

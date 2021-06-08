@@ -35,8 +35,6 @@
 #include "libavutil/error.h"
 #include <libxml/parser.h>
 
-static const char *UUID_SCANF_FMT = "urn:uuid:%2hhx%2hhx%2hhx%2hhx-%2hhx%2hhx-%2hhx%2hhx-%2hhx%2hhx-%2hhx%2hhx%2hhx%2hhx%2hhx%2hhx";
-
 xmlNodePtr xml_get_child_element_by_name(xmlNodePtr parent, const char *name_utf8) {
     xmlNodePtr cur_element;
 
@@ -56,7 +54,7 @@ int xml_read_UUID(xmlNodePtr element, uint8_t uuid[16]) {
 
     element_text = xmlNodeListGetString(element->doc, element->xmlChildrenNode, 1);
     scanf_ret = sscanf(element_text,
-        UUID_SCANF_FMT,
+        UUID_FORMAT,
         &uuid[0],
         &uuid[1],
         &uuid[2],
