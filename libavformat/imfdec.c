@@ -38,6 +38,7 @@
 #include "imf_internal.h"
 #include "internal.h"
 #include "libavutil/opt.h"
+#include "mxf.h"
 #include <libxml/parser.h>
 
 #define MAX_BPRINT_READ_SIZE (UINT_MAX - 1)
@@ -54,7 +55,6 @@ typedef struct IMFContext {
 int parse_imf_asset_map_from_xml_dom(AVFormatContext *s, xmlDocPtr doc, IMFAssetMapLocator **asset_map_locator) {
     xmlNodePtr asset_map_element = NULL;
     xmlNodePtr node = NULL;
-    xmlChar *id;
     char *path;
 
     IMFAssetLocator *asset_locator = NULL;
@@ -86,11 +86,13 @@ int parse_imf_asset_map_from_xml_dom(AVFormatContext *s, xmlDocPtr doc, IMFAsset
 
         asset_locator = av_malloc(sizeof(IMFAssetLocator));
 
-        id = xmlNodeGetContent(xml_get_child_element_by_name(node, "Id"));
-        asset_locator->uuid = strdup(id);
-        xmlFree(id);
+        if (xml_read_UUID(xml_get_child_element_by_name(node, "Id"), asset_locator->uuid)) {
+            av_log(s, AV_LOG_ERROR, "Could not parse UUID from asset in ASSETMAP.\n");
+            av_freep(asset_locator);
+            return 1;
+        }
 
-        av_log(s, AV_LOG_DEBUG, "Found asset id: %s\n", asset_locator->uuid);
+        av_log(s, AV_LOG_DEBUG, "Found asset id: urn:uuid:%2hhx%2hhx%2hhx%2hhx-%2hhx%2hhx-%2hhx%2hhx-%2hhx%2hhx-%2hhx%2hhx%2hhx%2hhx%2hhx%2hhx\n", UID_ARG(asset_locator->uuid));
 
         if (!(node = xml_get_child_element_by_name(node, "ChunkList"))) {
             av_log(s, AV_LOG_ERROR, "Unable to parse asset map XML - missing ChunkList node\n");
@@ -142,12 +144,6 @@ IMFAssetMapLocator *imf_asset_map_locator_alloc(void) {
 void imf_asset_map_locator_free(IMFAssetMapLocator *asset_map_locator) {
     if (asset_map_locator == NULL) {
         return;
-    }
-
-    for (int i = 0; i < asset_map_locator->assets_count; ++i) {
-        if (asset_map_locator->assets[i] != NULL) {
-            av_freep(asset_map_locator->assets[i]);
-        }
     }
 
     asset_map_locator->root_url = NULL;
