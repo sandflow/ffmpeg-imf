@@ -257,18 +257,23 @@ static int test_cpl_parsing() {
 
 static int check_asset_locator_attributes(IMFAssetLocator *asset_locator, IMFAssetLocator expected_asset_locator) {
 
-    if (strcmp(asset_locator->uuid, expected_asset_locator.uuid) != 0) {
-        printf("Invalid asset locator UUID: found %s instead of %s expected.", asset_locator->uuid, expected_asset_locator.uuid);
-        return 1;
+    printf("\tCompare " UUID_PRINTF_FMT " to " UUID_PRINTF_FMT ".\n", UID_ARG(asset_locator->uuid), UID_ARG(expected_asset_locator.uuid));
+    for (int i = 0; i < 16; ++i) {
+        if (asset_locator->uuid[i] != expected_asset_locator.uuid[i]) {
+            printf("Invalid asset locator UUID: found " UUID_PRINTF_FMT " instead of " UUID_PRINTF_FMT " expected.\n", UID_ARG(asset_locator->uuid), UID_ARG(expected_asset_locator.uuid));
+            return 1;
+        }
     }
 
+    printf("\tCompare %s to %s.\n", asset_locator->path, expected_asset_locator.path);
     if (strcmp(asset_locator->path, expected_asset_locator.path) != 0) {
-        printf("Invalid asset locator path: found %s instead of %s expected.", asset_locator->path, expected_asset_locator.path);
+        printf("Invalid asset locator path: found %s instead of %s expected.\n", asset_locator->path, expected_asset_locator.path);
         return 1;
     }
 
+    printf("\tCompare %d to %d.\n", asset_locator->asset_type, expected_asset_locator.asset_type);
     if (asset_locator->asset_type != expected_asset_locator.asset_type) {
-        printf("Invalid asset locator type: found %d instead of %d expected.", asset_locator->asset_type, expected_asset_locator.asset_type);
+        printf("Invalid asset locator type: found %d instead of %d expected.\n", asset_locator->asset_type, expected_asset_locator.asset_type);
         return 1;
     }
 
@@ -276,11 +281,11 @@ static int check_asset_locator_attributes(IMFAssetLocator *asset_locator, IMFAss
 }
 
 static const IMFAssetLocator ASSET_MAP_EXPECTED_LOCATORS[5] = {
-    [0] = {.uuid = "urn:uuid:b5d674b8-c6ce-4bce-3bdf-be045dfdb2d0", .path = "IMF_TEST_ASSET_MAP_video.mxf", .asset_type = 0},
-    [1] = {.uuid = "urn:uuid:ec3467ec-ab2a-4f49-c8cb-89caa3761f4a", .path = "IMF_TEST_ASSET_MAP_video_1.mxf", .asset_type = 0},
-    [2] = {.uuid = "urn:uuid:5cf5b5a7-8bb3-4f08-eaa6-3533d4b77fa6", .path = "IMF_TEST_ASSET_MAP_audio.mxf", .asset_type = 0},
-    [3] = {.uuid = "urn:uuid:559777d6-ec29-4375-f90d-300b0bf73686", .path = "CPL_IMF_TEST_ASSET_MAP.xml", .asset_type = 1},
-    [4] = {.uuid = "urn:uuid:dd04528d-9b80-452a-7a13-805b08278b3d", .path = "PKL_IMF_TEST_ASSET_MAP.xml", .asset_type = 2},
+    [0] = {.uuid = {0xb5, 0xd6, 0x74, 0xb8, 0xc6, 0xce, 0x4b, 0xce, 0x3b, 0xdf, 0xbe, 0x04, 0x5d, 0xfd, 0xb2, 0xd0}, .path = "IMF_TEST_ASSET_MAP_video.mxf", .asset_type = 0},
+    [1] = {.uuid = {0xec, 0x34, 0x67, 0xec, 0xab, 0x2a, 0x4f, 0x49, 0xc8, 0xcb, 0x89, 0xca, 0xa3, 0x76, 0x1f, 0x4a}, .path = "IMF_TEST_ASSET_MAP_video_1.mxf", .asset_type = 0},
+    [2] = {.uuid = {0x5c, 0xf5, 0xb5, 0xa7, 0x8b, 0xb3, 0x4f, 0x08, 0xea, 0xa6, 0x35, 0x33, 0xd4, 0xb7, 0x7f, 0xa6}, .path = "IMF_TEST_ASSET_MAP_audio.mxf", .asset_type = 0},
+    [3] = {.uuid = {0x55, 0x97, 0x77, 0xd6, 0xec, 0x29, 0x43, 0x75, 0xf9, 0x0d, 0x30, 0x0b, 0x0b, 0xf7, 0x36, 0x86}, .path = "CPL_IMF_TEST_ASSET_MAP.xml", .asset_type = 1},
+    [4] = {.uuid = {0xdd, 0x04, 0x52, 0x8d, 0x9b, 0x80, 0x45, 0x2a, 0x7a, 0x13, 0x80, 0x5b, 0x08, 0x27, 0x8b, 0x3d}, .path = "PKL_IMF_TEST_ASSET_MAP.xml", .asset_type = 2},
 };
 
 static int test_asset_map_parsing() {
@@ -290,25 +295,29 @@ static int test_asset_map_parsing() {
 
     doc = xmlReadMemory(asset_map_doc, strlen(asset_map_doc), NULL, NULL, 0);
     if (doc == NULL) {
-        printf("Asset map XML parsing failed.");
+        printf("Asset map XML parsing failed.\n");
         return 1;
     }
 
+    printf("Allocate ASSETMAP locator\n");
     asset_map_locator = imf_asset_map_locator_alloc();
 
+    printf("Parse ASSETMAP XML document\n");
     ret = parse_imf_asset_map_from_xml_dom(NULL, doc, &asset_map_locator);
     if (ret) {
-        printf("Asset map parsing failed.");
+        printf("Asset map parsing failed.\n");
         goto cleanup;
     }
 
+    printf("Compare assets count: %d to 5\n", asset_map_locator->assets_count);
     if (asset_map_locator->assets_count != 5) {
-        printf("Asset map parsing failed: found %d assets instead of 5 expected.", asset_map_locator->assets_count);
+        printf("Asset map parsing failed: found %d assets instead of 5 expected.\n", asset_map_locator->assets_count);
         ret = 1;
         goto cleanup;
     }
 
     for (int i = 0; i < asset_map_locator->assets_count; ++i) {
+        printf("For asset: %d:\n", i);
         ret = check_asset_locator_attributes(asset_map_locator->assets[i], ASSET_MAP_EXPECTED_LOCATORS[i]);
         if (ret > 0) {
             goto cleanup;
