@@ -37,6 +37,8 @@
 #include "libavutil/rational.h"
 #include <libxml/tree.h>
 
+typedef uint8_t UUID[16];
+
 /**
  * IMF Composition Playlist Base Resource
  */
@@ -124,7 +126,7 @@ enum AVIMFAssetType {
  * IMF Asset locator
  */
 typedef struct IMFAssetLocator {
-    uint8_t uuid[16];
+    UUID uuid;
     const char *path;
 } IMFAssetLocator;
 
