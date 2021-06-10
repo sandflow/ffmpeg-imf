@@ -122,13 +122,13 @@ typedef struct IMFAssetLocator {
 } IMFAssetLocator;
 
 /**
- * IMF Asset Map locator
+ * IMF Asset Map
  */
-typedef struct IMFAssetMapLocator {
-    const char *root_url;
-    uint8_t assets_count;
+typedef struct IMFAssetMap {
+    const char *base_url;
+    uint8_t asset_count;
     IMFAssetLocator *assets[];
-} IMFAssetMapLocator;
+} IMFAssetMap;
 
 int parse_imf_cpl_from_xml_dom(xmlDocPtr doc, IMFCPL **cpl);
 
@@ -138,10 +138,10 @@ IMFCPL *imf_cpl_alloc(void);
 
 void imf_cpl_free(IMFCPL *cpl);
 
-int parse_imf_asset_map_from_xml_dom(AVFormatContext *s, xmlDocPtr doc, IMFAssetMapLocator **asset_map_locator);
+int parse_imf_asset_map_from_xml_dom(AVFormatContext *s, xmlDocPtr doc, IMFAssetMap **asset_map);
 
-IMFAssetMapLocator *imf_asset_map_locator_alloc(void);
+IMFAssetMap *imf_asset_map_alloc(void);
 
-void imf_asset_map_locator_free(IMFAssetMapLocator *asset_map_locator);
+void imf_asset_map_free(IMFAssetMap *asset_map);
 
 #endif
