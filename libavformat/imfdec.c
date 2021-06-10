@@ -23,6 +23,7 @@
  * Demuxes an IMF Composition
  * @file
  * @author Marc-Antoine Arnaud
+ * @author Valentin Noel
  *
  * References
  $ OV 2067-0:2018 - SMPTE Overview Document - Interoperable Master Format
@@ -32,6 +33,7 @@
  * ST 2067-20:2016 - SMPTE Standard - Interoperable Master Format — Application #2
  * ST 2067-21:2020 - SMPTE Standard - Interoperable Master Format — Application #2 Extended
  * ST 2067-102:2017 - SMPTE Standard - Interoperable Master Format — Common Image Pixel Color Schemes
+ * ST 429-9:2007 - SMPTE Standard - D-Cinema Packaging — Asset Mapping and File Segmentation
  */
 
 #include "imf.h"
@@ -192,10 +194,7 @@ static int parse_assetmap(AVFormatContext *s, const char *url, AVIOContext *in) 
         av_log(s, AV_LOG_DEBUG, "Found %d assets from %s\n", c->asset_map->asset_count, url);
 
     cleanup:
-        /*free the document */
         xmlFreeDoc(doc);
-        // FIXME:"double free or corruption" error
-        // xmlCleanupParser();
     }
     if (close_in) {
         avio_close(in);
