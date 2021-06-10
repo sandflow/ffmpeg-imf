@@ -49,15 +49,15 @@ typedef struct IMFContext {
     char *base_url;
     AVIOInterruptCB *interrupt_callback;
     AVDictionary *avio_opts;
-    IMFAssetMapLocator *asset_map_locator;
+    IMFAssetMap *asset_map;
 } IMFContext;
 
-int parse_imf_asset_map_from_xml_dom(AVFormatContext *s, xmlDocPtr doc, IMFAssetMapLocator **asset_map_locator) {
+int parse_imf_asset_map_from_xml_dom(AVFormatContext *s, xmlDocPtr doc, IMFAssetMap **asset_map) {
     xmlNodePtr asset_map_element = NULL;
     xmlNodePtr node = NULL;
     char *path;
 
-    IMFAssetLocator *asset_locator = NULL;
+    IMFAssetLocator *asset = NULL;
 
     asset_map_element = xmlDocGetRootElement(doc);
 
@@ -84,15 +84,15 @@ int parse_imf_asset_map_from_xml_dom(AVFormatContext *s, xmlDocPtr doc, IMFAsset
             continue;
         }
 
-        asset_locator = av_malloc(sizeof(IMFAssetLocator));
+        asset = av_malloc(sizeof(IMFAssetLocator));
 
-        if (xml_read_UUID(xml_get_child_element_by_name(node, "Id"), asset_locator->uuid)) {
-            av_log(s, AV_LOG_ERROR, "Could not parse UUID from asset in ASSETMAP.\n");
-            av_freep(asset_locator);
+        if (xml_read_UUID(xml_get_child_element_by_name(node, "Id"), asset->uuid)) {
+            av_log(s, AV_LOG_ERROR, "Could not parse UUID from asset in asset map.\n");
+            av_freep(asset);
             return 1;
         }
 
-        av_log(s, AV_LOG_DEBUG, "Found asset id: " UUID_FORMAT "\n", UID_ARG(asset_locator->uuid));
+        av_log(s, AV_LOG_DEBUG, "Found asset id: " UUID_FORMAT "\n", UID_ARG(asset->uuid));
 
         if (!(node = xml_get_child_element_by_name(node, "ChunkList"))) {
             av_log(s, AV_LOG_ERROR, "Unable to parse asset map XML - missing ChunkList node\n");
@@ -105,40 +105,40 @@ int parse_imf_asset_map_from_xml_dom(AVFormatContext *s, xmlDocPtr doc, IMFAsset
         }
 
         path = xmlNodeGetContent(xml_get_child_element_by_name(node, "Path"));
-        path = av_append_path_component((*asset_map_locator)->root_url, path);
-        asset_locator->path = strdup(path);
+        path = av_append_path_component((*asset_map)->base_url, path);
+        asset->path = strdup(path);
         av_free(path);
 
-        av_log(s, AV_LOG_DEBUG, "Found asset path: %s\n", asset_locator->path);
+        av_log(s, AV_LOG_DEBUG, "Found asset path: %s\n", asset->path);
 
         node = xmlNextElementSibling(node->parent->parent);
 
-        (*asset_map_locator)->assets[(*asset_map_locator)->assets_count] = asset_locator;
-        (*asset_map_locator)->assets_count++;
+        (*asset_map)->assets[(*asset_map)->asset_count] = asset;
+        (*asset_map)->asset_count++;
     }
 
     return 0;
 }
 
-IMFAssetMapLocator *imf_asset_map_locator_alloc(void) {
-    IMFAssetMapLocator *asset_map_locator;
+IMFAssetMap *imf_asset_map_alloc(void) {
+    IMFAssetMap *asset_map;
 
-    asset_map_locator = av_malloc(sizeof(IMFAssetMapLocator));
-    if (!asset_map_locator)
+    asset_map = av_malloc(sizeof(IMFAssetMap));
+    if (!asset_map)
         return NULL;
 
-    asset_map_locator->root_url = "";
-    asset_map_locator->assets_count = 0;
-    return asset_map_locator;
+    asset_map->base_url = "";
+    asset_map->asset_count = 0;
+    return asset_map;
 }
 
-void imf_asset_map_locator_free(IMFAssetMapLocator *asset_map_locator) {
-    if (asset_map_locator == NULL) {
+void imf_asset_map_free(IMFAssetMap *asset_map) {
+    if (asset_map == NULL) {
         return;
     }
 
-    asset_map_locator->root_url = NULL;
-    av_freep(asset_map_locator);
+    asset_map->base_url = NULL;
+    av_freep(asset_map);
 }
 
 static int parse_assetmap(AVFormatContext *s, const char *url, AVIOContext *in) {
@@ -151,14 +151,14 @@ static int parse_assetmap(AVFormatContext *s, const char *url, AVIOContext *in) 
     int ret = 0;
     int64_t filesize = 0;
 
-    c->asset_map_locator = imf_asset_map_locator_alloc();
-    if (!c->asset_map_locator) {
+    c->asset_map = imf_asset_map_alloc();
+    if (!c->asset_map) {
         av_log(s, AV_LOG_ERROR, "Unable to allocate asset map locator\n");
         return AVERROR_BUG;
     }
 
-    c->asset_map_locator->root_url = av_dirname((char *)url);
-    av_log(s, AV_LOG_DEBUG, "Asset Map root URL: %s\n", c->asset_map_locator->root_url);
+    c->asset_map->base_url = av_dirname((char *)url);
+    av_log(s, AV_LOG_DEBUG, "Asset Map root URL: %s\n", c->asset_map->base_url);
 
     if (!in) {
         close_in = 1;
@@ -176,7 +176,7 @@ static int parse_assetmap(AVFormatContext *s, const char *url, AVIOContext *in) 
     av_bprint_init(&buf, filesize + 1, AV_BPRINT_SIZE_UNLIMITED);
 
     if ((ret = avio_read_to_bprint(in, &buf, MAX_BPRINT_READ_SIZE)) < 0 || !avio_feof(in) || (filesize = buf.len) == 0) {
-        av_log(s, AV_LOG_ERROR, "Unable to read to assetmap '%s'\n", url);
+        av_log(s, AV_LOG_ERROR, "Unable to read to asset map '%s'\n", url);
         if (ret == 0)
             ret = AVERROR_INVALIDDATA;
     } else {
@@ -184,12 +184,12 @@ static int parse_assetmap(AVFormatContext *s, const char *url, AVIOContext *in) 
 
         doc = xmlReadMemory(buf.str, filesize, c->base_url, NULL, 0);
 
-        ret = parse_imf_asset_map_from_xml_dom(s, doc, &c->asset_map_locator);
+        ret = parse_imf_asset_map_from_xml_dom(s, doc, &c->asset_map);
         if (ret != 0) {
             goto cleanup;
         }
 
-        av_log(s, AV_LOG_DEBUG, "Found %d assets from %s\n", c->asset_map_locator->assets_count, url);
+        av_log(s, AV_LOG_DEBUG, "Found %d assets from %s\n", c->asset_map->asset_count, url);
 
     cleanup:
         /*free the document */
@@ -233,7 +233,7 @@ static int imf_close(AVFormatContext *s) {
     av_log(s, AV_LOG_DEBUG, "Close IMF package\n");
     av_dict_free(&c->avio_opts);
     av_freep(&c->base_url);
-    imf_asset_map_locator_free(c->asset_map_locator);
+    imf_asset_map_free(c->asset_map);
     return 0;
 }
 
