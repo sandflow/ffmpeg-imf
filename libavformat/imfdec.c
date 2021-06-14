@@ -90,7 +90,7 @@ int parse_imf_asset_map_from_xml_dom(AVFormatContext *s, xmlDocPtr doc, IMFAsset
 
         if (xml_read_UUID(xml_get_child_element_by_name(node, "Id"), asset->uuid)) {
             av_log(s, AV_LOG_ERROR, "Could not parse UUID from asset in asset map.\n");
-            av_freep(asset);
+            av_freep(&asset);
             return 1;
         }
 
@@ -115,8 +115,8 @@ int parse_imf_asset_map_from_xml_dom(AVFormatContext *s, xmlDocPtr doc, IMFAsset
 
         node = xmlNextElementSibling(node->parent->parent);
 
-        (*asset_map)->assets[(*asset_map)->asset_count] = asset;
-        (*asset_map)->asset_count++;
+        (*asset_map)->assets = av_realloc((*asset_map)->assets, (*asset_map)->asset_count + 1 * sizeof(IMFAssetLocator));
+        (*asset_map)->assets[(*asset_map)->asset_count++] = asset;
     }
 
     return 0;
@@ -129,6 +129,7 @@ IMFAssetMap *imf_asset_map_alloc(void) {
     if (!asset_map)
         return NULL;
 
+    asset_map->assets = NULL;
     asset_map->asset_count = 0;
     return asset_map;
 }
@@ -138,7 +139,12 @@ void imf_asset_map_free(IMFAssetMap *asset_map) {
         return;
     }
 
-    av_freep(asset_map);
+    for (int i = 0; i < asset_map->asset_count; ++i) {
+        av_free(asset_map->assets[i]);
+    }
+
+    av_freep(&asset_map->assets);
+    av_freep(&asset_map);
 }
 
 static int parse_assetmap(AVFormatContext *s, const char *url, AVIOContext *in) {
