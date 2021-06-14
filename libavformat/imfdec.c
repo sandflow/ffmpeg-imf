@@ -57,7 +57,7 @@ typedef struct IMFContext {
 int parse_imf_asset_map_from_xml_dom(AVFormatContext *s, xmlDocPtr doc, IMFAssetMap **asset_map, const char *base_url) {
     xmlNodePtr asset_map_element = NULL;
     xmlNodePtr node = NULL;
-    char *path;
+    char *uri;
 
     IMFAssetLocator *asset = NULL;
 
@@ -106,12 +106,12 @@ int parse_imf_asset_map_from_xml_dom(AVFormatContext *s, xmlDocPtr doc, IMFAsset
             return AVERROR_INVALIDDATA;
         }
 
-        path = xmlNodeGetContent(xml_get_child_element_by_name(node, "Path"));
-        path = av_append_path_component(base_url, path);
-        asset->path = strdup(path);
-        av_free(path);
+        uri = xmlNodeGetContent(xml_get_child_element_by_name(node, "Path"));
+        uri = av_append_path_component(base_url, uri);
+        asset->absolute_uri = strdup(uri);
+        av_free(uri);
 
-        av_log(s, AV_LOG_DEBUG, "Found asset path: %s\n", asset->path);
+        av_log(s, AV_LOG_DEBUG, "Found asset absolute URI: %s\n", asset->absolute_uri);
 
         node = xmlNextElementSibling(node->parent->parent);
 
