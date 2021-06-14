@@ -48,13 +48,13 @@
 
 typedef struct IMFContext {
     const AVClass *class;
-    char *base_url;
+    const char *base_url;
     AVIOInterruptCB *interrupt_callback;
     AVDictionary *avio_opts;
     IMFAssetMap *asset_map;
 } IMFContext;
 
-int parse_imf_asset_map_from_xml_dom(AVFormatContext *s, xmlDocPtr doc, IMFAssetMap **asset_map) {
+int parse_imf_asset_map_from_xml_dom(AVFormatContext *s, xmlDocPtr doc, IMFAssetMap **asset_map, const char *base_url) {
     xmlNodePtr asset_map_element = NULL;
     xmlNodePtr node = NULL;
     char *path;
@@ -107,7 +107,7 @@ int parse_imf_asset_map_from_xml_dom(AVFormatContext *s, xmlDocPtr doc, IMFAsset
         }
 
         path = xmlNodeGetContent(xml_get_child_element_by_name(node, "Path"));
-        path = av_append_path_component((*asset_map)->base_url, path);
+        path = av_append_path_component(base_url, path);
         asset->path = strdup(path);
         av_free(path);
 
@@ -129,7 +129,6 @@ IMFAssetMap *imf_asset_map_alloc(void) {
     if (!asset_map)
         return NULL;
 
-    asset_map->base_url = "";
     asset_map->asset_count = 0;
     return asset_map;
 }
@@ -139,7 +138,6 @@ void imf_asset_map_free(IMFAssetMap *asset_map) {
         return;
     }
 
-    asset_map->base_url = NULL;
     av_freep(asset_map);
 }
 
@@ -153,14 +151,14 @@ static int parse_assetmap(AVFormatContext *s, const char *url, AVIOContext *in) 
     int ret = 0;
     int64_t filesize = 0;
 
+    c->base_url = av_dirname(strdup(url));
     c->asset_map = imf_asset_map_alloc();
     if (!c->asset_map) {
         av_log(s, AV_LOG_ERROR, "Unable to allocate asset map locator\n");
         return AVERROR_BUG;
     }
 
-    c->asset_map->base_url = av_dirname((char *)url);
-    av_log(s, AV_LOG_DEBUG, "Asset Map root URL: %s\n", c->asset_map->base_url);
+    av_log(s, AV_LOG_DEBUG, "Asset Map URL: %s\n", url);
 
     if (!in) {
         close_in = 1;
@@ -184,9 +182,9 @@ static int parse_assetmap(AVFormatContext *s, const char *url, AVIOContext *in) 
     } else {
         LIBXML_TEST_VERSION
 
-        doc = xmlReadMemory(buf.str, filesize, c->base_url, NULL, 0);
+        doc = xmlReadMemory(buf.str, filesize, url, NULL, 0);
 
-        ret = parse_imf_asset_map_from_xml_dom(s, doc, &c->asset_map);
+        ret = parse_imf_asset_map_from_xml_dom(s, doc, &c->asset_map, c->base_url);
         if (ret != 0) {
             goto cleanup;
         }
