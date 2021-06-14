@@ -126,7 +126,7 @@ typedef struct IMFAssetLocator {
  */
 typedef struct IMFAssetMap {
     uint8_t asset_count;
-    IMFAssetLocator *assets[];
+    IMFAssetLocator **assets;
 } IMFAssetMap;
 
 int parse_imf_cpl_from_xml_dom(xmlDocPtr doc, IMFCPL **cpl);
