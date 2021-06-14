@@ -118,7 +118,7 @@ typedef struct IMFCPL {
  */
 typedef struct IMFAssetLocator {
     UUID uuid;
-    const char *path;
+    const char *absolute_uri;
 } IMFAssetLocator;
 
 /**
@@ -138,7 +138,7 @@ IMFCPL *imf_cpl_alloc(void);
 void imf_cpl_free(IMFCPL *cpl);
 
 /**
- * Parse a ASSETMAP XML file to extract the UUID-path mapping of assets.
+ * Parse a ASSETMAP XML file to extract the UUID-URI mapping of assets.
  * @param s the current format context, if any (can be NULL).
  * @param doc the XML document to be parsed.
  * @param asset_map pointer on the IMFAssetMap pointer to fill.
