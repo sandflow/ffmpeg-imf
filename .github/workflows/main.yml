@@ -13,8 +13,8 @@ jobs:
         sudo add-apt-repository -y "deb http://apt.llvm.org/bionic/ llvm-toolchain-bionic-12 main"
         sudo apt update -q
         sudo apt install -y clang-format-12
-        sudo update-alternatives --install /usr/bin/clang-format clang-format /usr/bin/clang-format-12 100
-        sudo apt-get -y install indent nasm
+        sudo update-alternatives --install /usr/bin/clang-format clang-format /usr/bin/clang-format-12 1000
+        sudo apt install -y nasm
 
     - name: Checkout
       uses: actions/checkout@v2
@@ -30,7 +30,9 @@ jobs:
         ref: 6482e3fb12fe9fbfe4ceb8ecdb1774ac853408c5
 
     - name: Check code style
-      run: ./imf-check-style.sh
+      run: |
+        clang-format -version
+        ./imf-check-style.sh
 
     - name: Configure
       run: ./configure --enable-libxml2
