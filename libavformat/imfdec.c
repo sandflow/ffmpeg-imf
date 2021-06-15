@@ -23,6 +23,7 @@
  * Demuxes an IMF Composition
  * @file
  * @author Marc-Antoine Arnaud
+ * @author Valentin Noel
  *
  * References
  $ OV 2067-0:2018 - SMPTE Overview Document - Interoperable Master Format
@@ -32,34 +33,138 @@
  * ST 2067-20:2016 - SMPTE Standard - Interoperable Master Format — Application #2
  * ST 2067-21:2020 - SMPTE Standard - Interoperable Master Format — Application #2 Extended
  * ST 2067-102:2017 - SMPTE Standard - Interoperable Master Format — Common Image Pixel Color Schemes
+ * ST 429-9:2007 - SMPTE Standard - D-Cinema Packaging — Asset Mapping and File Segmentation
  */
 
-#include <libxml/parser.h>
-#include "libavutil/opt.h"
+#include "imf.h"
+#include "imf_internal.h"
 #include "internal.h"
-#include "avformat.h"
+#include "libavutil/opt.h"
+#include "mxf.h"
+#include <libxml/parser.h>
 
 #define MAX_BPRINT_READ_SIZE (UINT_MAX - 1)
 #define DEFAULT_ASSETMAP_SIZE 8 * 1024
 
 typedef struct IMFContext {
     const AVClass *class;
-    char *base_url;
+    const char *base_url;
     AVIOInterruptCB *interrupt_callback;
     AVDictionary *avio_opts;
+    IMFAssetMap *asset_map;
 } IMFContext;
 
-static int parse_assetmap(AVFormatContext *s, const char *url, AVIOContext *in)
-{
+int parse_imf_asset_map_from_xml_dom(AVFormatContext *s, xmlDocPtr doc, IMFAssetMap **asset_map, const char *base_url) {
+    xmlNodePtr asset_map_element = NULL;
+    xmlNodePtr node = NULL;
+    char *uri;
+
+    IMFAssetLocator *asset = NULL;
+
+    asset_map_element = xmlDocGetRootElement(doc);
+
+    if (!asset_map_element) {
+        av_log(s, AV_LOG_ERROR, "Unable to parse asset map XML - missing root node\n");
+        return AVERROR_INVALIDDATA;
+    }
+
+    if (asset_map_element->type != XML_ELEMENT_NODE || av_strcasecmp(asset_map_element->name, "AssetMap")) {
+        av_log(s, AV_LOG_ERROR, "Unable to parse asset map XML - wrong root node name[%s] type[%d]\n", asset_map_element->name, (int)asset_map_element->type);
+        return AVERROR_INVALIDDATA;
+    }
+
+    // parse asset locators
+
+    if (!(node = xml_get_child_element_by_name(asset_map_element, "AssetList"))) {
+        av_log(s, AV_LOG_ERROR, "Unable to parse asset map XML - missing AssetList node\n");
+        return AVERROR_INVALIDDATA;
+    }
+
+    node = xmlFirstElementChild(node);
+    while (node) {
+        if (av_strcasecmp(node->name, "Asset") != 0) {
+            continue;
+        }
+
+        asset = av_malloc(sizeof(IMFAssetLocator));
+
+        if (xml_read_UUID(xml_get_child_element_by_name(node, "Id"), asset->uuid)) {
+            av_log(s, AV_LOG_ERROR, "Could not parse UUID from asset in asset map.\n");
+            av_freep(&asset);
+            return 1;
+        }
+
+        av_log(s, AV_LOG_DEBUG, "Found asset id: " UUID_FORMAT "\n", UID_ARG(asset->uuid));
+
+        if (!(node = xml_get_child_element_by_name(node, "ChunkList"))) {
+            av_log(s, AV_LOG_ERROR, "Unable to parse asset map XML - missing ChunkList node\n");
+            return AVERROR_INVALIDDATA;
+        }
+
+        if (!(node = xml_get_child_element_by_name(node, "Chunk"))) {
+            av_log(s, AV_LOG_ERROR, "Unable to parse asset map XML - missing Chunk node\n");
+            return AVERROR_INVALIDDATA;
+        }
+
+        uri = xmlNodeGetContent(xml_get_child_element_by_name(node, "Path"));
+        uri = av_append_path_component(base_url, uri);
+        asset->absolute_uri = strdup(uri);
+        av_free(uri);
+
+        av_log(s, AV_LOG_DEBUG, "Found asset absolute URI: %s\n", asset->absolute_uri);
+
+        node = xmlNextElementSibling(node->parent->parent);
+
+        (*asset_map)->assets = av_realloc((*asset_map)->assets, (*asset_map)->asset_count + 1 * sizeof(IMFAssetLocator));
+        (*asset_map)->assets[(*asset_map)->asset_count++] = asset;
+    }
+
+    return 0;
+}
+
+IMFAssetMap *imf_asset_map_alloc(void) {
+    IMFAssetMap *asset_map;
+
+    asset_map = av_malloc(sizeof(IMFAssetMap));
+    if (!asset_map)
+        return NULL;
+
+    asset_map->assets = NULL;
+    asset_map->asset_count = 0;
+    return asset_map;
+}
+
+void imf_asset_map_free(IMFAssetMap *asset_map) {
+    if (asset_map == NULL) {
+        return;
+    }
+
+    for (int i = 0; i < asset_map->asset_count; ++i) {
+        av_free(asset_map->assets[i]);
+    }
+
+    av_freep(&asset_map->assets);
+    av_freep(&asset_map);
+}
+
+static int parse_assetmap(AVFormatContext *s, const char *url, AVIOContext *in) {
     IMFContext *c = s->priv_data;
     AVBPrint buf;
     AVDictionary *opts = NULL;
     xmlDoc *doc = NULL;
-    xmlNodePtr root_element = NULL;
-    xmlNodePtr node = NULL;
+
     int close_in = 0;
     int ret = 0;
     int64_t filesize = 0;
+
+    c->base_url = av_dirname(strdup(url));
+    c->asset_map = imf_asset_map_alloc();
+    if (!c->asset_map) {
+        av_log(s, AV_LOG_ERROR, "Unable to allocate asset map locator\n");
+        return AVERROR_BUG;
+    }
+
+    av_log(s, AV_LOG_DEBUG, "Asset Map URL: %s\n", url);
 
     if (!in) {
         close_in = 1;
@@ -76,36 +181,24 @@ static int parse_assetmap(AVFormatContext *s, const char *url, AVIOContext *in)
 
     av_bprint_init(&buf, filesize + 1, AV_BPRINT_SIZE_UNLIMITED);
 
-    if ((ret = avio_read_to_bprint(in, &buf, MAX_BPRINT_READ_SIZE)) < 0 ||
-        !avio_feof(in) ||
-        (filesize = buf.len) == 0) {
-        av_log(s, AV_LOG_ERROR, "Unable to read to assetmap '%s'\n", url);
+    if ((ret = avio_read_to_bprint(in, &buf, MAX_BPRINT_READ_SIZE)) < 0 || !avio_feof(in) || (filesize = buf.len) == 0) {
+        av_log(s, AV_LOG_ERROR, "Unable to read to asset map '%s'\n", url);
         if (ret == 0)
             ret = AVERROR_INVALIDDATA;
     } else {
         LIBXML_TEST_VERSION
 
-        doc = xmlReadMemory(buf.str, filesize, c->base_url, NULL, 0);
-        root_element = xmlDocGetRootElement(doc);
-        node = root_element;
+        doc = xmlReadMemory(buf.str, filesize, url, NULL, 0);
 
-        if (!node) {
-            ret = AVERROR_INVALIDDATA;
-            av_log(s, AV_LOG_ERROR, "Unable to parse '%s' - missing root node\n", url);
+        ret = parse_imf_asset_map_from_xml_dom(s, doc, &c->asset_map, c->base_url);
+        if (ret != 0) {
             goto cleanup;
         }
 
-        if (node->type != XML_ELEMENT_NODE ||
-            av_strcasecmp(node->name, "AssetMap")) {
-            ret = AVERROR_INVALIDDATA;
-            av_log(s, AV_LOG_ERROR, "Unable to parse '%s' - wrong root node name[%s] type[%d]\n", url, node->name, (int)node->type);
-            goto cleanup;
-        }
-cleanup:
-        /*free the document */
+        av_log(s, AV_LOG_DEBUG, "Found %d assets from %s\n", c->asset_map->asset_count, url);
+
+    cleanup:
         xmlFreeDoc(doc);
-        xmlCleanupParser();
-        // xmlFreeNode(mpd_baseurl_node);
     }
     if (close_in) {
         avio_close(in);
@@ -115,9 +208,7 @@ cleanup:
 
 static int imf_close(AVFormatContext *s);
 
-static int imf_read_header(AVFormatContext *s)
-{
-    AVStream *stream;
+static int imf_read_header(AVFormatContext *s) {
     int ret = 0;
 
     av_log(s, AV_LOG_DEBUG, "start to parse IMF package\n");
@@ -125,23 +216,9 @@ static int imf_read_header(AVFormatContext *s)
     if ((ret = parse_assetmap(s, s->url, s->pb)) < 0)
         goto fail;
 
-    // @TODO create streams for each IMF virtual track
-    stream = avformat_new_stream(s, NULL);
-    if (!stream) {
-      ret = AVERROR(ENOMEM);
-      goto fail;
-    }
+    av_log(s, AV_LOG_DEBUG, "parsed IMF Asset Map \n");
 
-    // @TODO fill information with track information.
-    stream->time_base.num = 1;
-    stream->time_base.den = 24;
-    stream->codecpar->codec_type = AVMEDIA_TYPE_VIDEO;
-    stream->codecpar->codec_id = AV_CODEC_ID_JPEG2000;
-    stream->codecpar->format = AV_PIX_FMT_YUV420P10BE;
-    stream->codecpar->width = 1920;
-    stream->codecpar->height = 1080;
-
-    av_log(s, AV_LOG_DEBUG, "parsed IMF package\n");
+    // av_log(s, AV_LOG_DEBUG, "parsed IMF package\n");
     return 0;
 
 fail:
@@ -149,38 +226,37 @@ fail:
     return ret;
 }
 
-static int ff_imf_read_packet(AVFormatContext *s, AVPacket *pkt)
-{
-  return AVERROR_EOF;
+static int ff_imf_read_packet(AVFormatContext *s, AVPacket *pkt) {
+    return AVERROR_EOF;
 }
 
-static int imf_close(AVFormatContext *s)
-{
-    av_log(s, AV_LOG_DEBUG, "Close IMF package\n");
+static int imf_close(AVFormatContext *s) {
     IMFContext *c = s->priv_data;
+
+    av_log(s, AV_LOG_DEBUG, "Close IMF package\n");
     av_dict_free(&c->avio_opts);
     av_freep(&c->base_url);
+    imf_asset_map_free(c->asset_map);
     return 0;
 }
 
 static const AVOption imf_options[] = {
-    {NULL}
-};
+    {NULL}};
 
 static const AVClass imf_class = {
     .class_name = "imf",
-    .item_name  = av_default_item_name,
-    .option     = imf_options,
-    .version    = LIBAVUTIL_VERSION_INT,
+    .item_name = av_default_item_name,
+    .option = imf_options,
+    .version = LIBAVUTIL_VERSION_INT,
 };
 
 const AVInputFormat ff_imf_demuxer = {
-    .name           = "imf",
-    .long_name      = NULL_IF_CONFIG_SMALL("IMF (Interoperable Master Format)"),
-    .priv_class     = &imf_class,
+    .name = "imf",
+    .long_name = NULL_IF_CONFIG_SMALL("IMF (Interoperable Master Format)"),
+    .priv_class = &imf_class,
     .priv_data_size = sizeof(IMFContext),
-    .read_header    = imf_read_header,
-    .read_packet    = ff_imf_read_packet,
-    .read_close     = imf_close,
-    .extensions     = "xml",
+    .read_header = imf_read_header,
+    .read_packet = ff_imf_read_packet,
+    .read_close = imf_close,
+    .extensions = "xml",
 };
