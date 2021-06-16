@@ -31,7 +31,6 @@ jobs:
 
     - name: Check code style
       run: |
-        clang-format -version
         ./imf-check-style.sh
 
     - name: Configure
@@ -39,6 +38,11 @@ jobs:
 
     - name: Build
       run: make -j 8
+
+    - name: Basic unit tests
+      if: github.ref != 'refs/heads/develop'
+      run: |
+        ./imf-unit-tests.sh
 
     - name: Run Fate
       if: github.ref == 'refs/heads/develop'
