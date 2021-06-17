@@ -9,8 +9,12 @@ jobs:
     steps:
     - name: Install dependencies
       run: |
-        sudo apt-get update
-        sudo apt-get -y install indent nasm
+        wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
+        sudo add-apt-repository -y "deb http://apt.llvm.org/bionic/ llvm-toolchain-bionic-12 main"
+        sudo apt update -q
+        sudo apt install -y clang-format-12
+        sudo update-alternatives --install /usr/bin/clang-format clang-format /usr/bin/clang-format-12 1000
+        sudo apt install -y nasm
 
     - name: Checkout
       uses: actions/checkout@v2
@@ -25,18 +29,22 @@ jobs:
         persist-credentials: true
         ref: 6482e3fb12fe9fbfe4ceb8ecdb1774ac853408c5
 
+    - name: Check code style
+      run: |
+        ./imf-check-style.sh
+
     - name: Configure
       run: ./configure --enable-libxml2
-
-    - name: Check code style
-      run: indent -i4 -kr -nut libavformat/imf*.c
 
     - name: Build
       run: make -j 8
 
-    - name: Check
-      run: make check -j 8
+    - name: Basic unit tests
+      if: github.ref != 'refs/heads/develop'
+      run: |
+        ./imf-unit-tests.sh
 
     - name: Run Fate
       if: github.ref == 'refs/heads/develop'
-      run: FATE_SAMPLES=fate-suite/ make fate
+      run: |
+        FATE_SAMPLES=fate-suite/ make fate
