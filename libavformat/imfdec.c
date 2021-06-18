@@ -225,6 +225,17 @@ static int imf_read_header(AVFormatContext *s) {
     if ((ret = parse_imf_cpl(s->pb, &c->cpl)) < 0)
         goto fail;
 
+    av_log(s, AV_LOG_INFO, "parsed IMF CPL: " UUID_FORMAT "\n", UID_ARG(c->cpl->id_uuid));
+
+    if (!c->asset_map_path) {
+        c->asset_map_path = av_append_path_component(av_dirname(s->url), "ASSETMAP.xml");
+    }
+
+    av_log(s, AV_LOG_DEBUG, "start parsing IMF Asset Map: %s\n", c->asset_map_path);
+
+    if ((ret = parse_assetmap(s, c->asset_map_path, NULL)) < 0)
+        goto fail;
+
     av_log(s, AV_LOG_DEBUG, "parsed IMF Asset Map \n");
 
     // av_log(s, AV_LOG_DEBUG, "parsed IMF package\n");
@@ -250,7 +261,7 @@ static int imf_close(AVFormatContext *s) {
 }
 
 static const AVOption imf_options[] = {
-    {"assetmap", "IMF CPL-related asset map path", offsetof(IMFContext, asset_map_path), AV_OPT_TYPE_STRING, {.str = NULL}, 0, 0, AV_OPT_FLAG_DECODING_PARAM},
+    {"assetmap", "IMF CPL-related asset map absolute path. If not specified, the CPL sibling `ASSETMAP.xml` file is used.", offsetof(IMFContext, asset_map_path), AV_OPT_TYPE_STRING, {.str = NULL}, 0, 0, AV_OPT_FLAG_DECODING_PARAM},
     {NULL}};
 
 static const AVClass imf_class = {
