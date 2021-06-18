@@ -58,6 +58,7 @@ typedef struct IMFContext {
     char *asset_map_path;
     AVIOInterruptCB *interrupt_callback;
     AVDictionary *avio_opts;
+    IMFCPL *cpl;
     IMFAssetMap *asset_map;
 } IMFContext;
 
@@ -216,11 +217,12 @@ static int parse_assetmap(AVFormatContext *s, const char *url, AVIOContext *in) 
 static int imf_close(AVFormatContext *s);
 
 static int imf_read_header(AVFormatContext *s) {
+    IMFContext *c = s->priv_data;
     int ret = 0;
 
-    av_log(s, AV_LOG_DEBUG, "start to parse IMF package\n");
+    av_log(s, AV_LOG_DEBUG, "start parsing IMF CPL: %s\n", s->url);
 
-    if ((ret = parse_assetmap(s, s->url, s->pb)) < 0)
+    if ((ret = parse_imf_cpl(s->pb, &c->cpl)) < 0)
         goto fail;
 
     av_log(s, AV_LOG_DEBUG, "parsed IMF Asset Map \n");
