@@ -55,6 +55,7 @@
 typedef struct IMFContext {
     const AVClass *class;
     const char *base_url;
+    char *asset_map_path;
     AVIOInterruptCB *interrupt_callback;
     AVDictionary *avio_opts;
     IMFAssetMap *asset_map;
@@ -247,6 +248,7 @@ static int imf_close(AVFormatContext *s) {
 }
 
 static const AVOption imf_options[] = {
+    {"assetmap", "IMF CPL-related asset map path", offsetof(IMFContext, asset_map_path), AV_OPT_TYPE_STRING, {.str = NULL}, 0, 0, AV_OPT_FLAG_DECODING_PARAM},
     {NULL}};
 
 static const AVClass imf_class = {
