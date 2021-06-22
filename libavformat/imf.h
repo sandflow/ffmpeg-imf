@@ -60,7 +60,7 @@ typedef struct IMFBaseResource {
  */
 typedef struct IMFTrackFileResource {
     IMFBaseResource base;
-    unsigned char track_file_uuid[16]; /**< TrackFileResourceType/TrackFileId */
+    UUID track_file_uuid; /**< TrackFileResourceType/TrackFileId */
 } IMFTrackFileResource;
 
 /**
@@ -85,7 +85,7 @@ typedef struct IMFMarkerResource {
  * IMF Composition Playlist Virtual Track
  */
 typedef struct IMFBaseVirtualTrack {
-    unsigned char id_uuid[16]; /**< TrackId associated with the Virtual Track */
+    UUID id_uuid; /**< TrackId associated with the Virtual Track */
 } IMFBaseVirtualTrack;
 
 /**
@@ -110,7 +110,7 @@ typedef struct IMFMarkerVirtualTrack {
  * IMF Composition Playlist
  */
 typedef struct IMFCPL {
-    uint8_t id_uuid[16]; /**< CompositionPlaylist/Id element */
+    UUID id_uuid; /**< CompositionPlaylist/Id element */
     xmlChar *content_title_utf8; /**< CompositionPlaylist/ContentTitle element */
     AVRational edit_rate; /**< CompositionPlaylist/EditRate element */
     IMFMarkerVirtualTrack *main_markers_track; /**< Main Marker Virtual Track */
