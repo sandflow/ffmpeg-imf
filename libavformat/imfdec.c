@@ -214,11 +214,89 @@ static int parse_assetmap(AVFormatContext *s, const char *url, AVIOContext *in) 
     return ret;
 }
 
+static IMFAssetLocator *find_asset_map_locator(IMFAssetMap *asset_map, UUID uuid) {
+    IMFAssetLocator *asset_locator;
+    for (int i = 0; i < asset_map->asset_count; ++i) {
+        asset_locator = asset_map->assets[i];
+        if (memcmp(asset_map->assets[i]->uuid, uuid, 16) == 0) {
+            return asset_locator;
+        }
+    }
+    return NULL;
+}
+
+static int open_track_file_resource(AVFormatContext *s, IMFTrackFileResource *track_file_resource) {
+    IMFContext *c = s->priv_data;
+    int ret = 0;
+
+    AVFormatContext *track_file_context;
+    AVStream *track_file_stream;
+
+    IMFAssetLocator *asset_locator;
+    AVStream *asset_stream;
+
+    if (!(asset_locator = find_asset_map_locator(c->asset_map, track_file_resource->track_file_uuid))) {
+        av_log(s, AV_LOG_ERROR, "Could not find asset locator for UUID: " UUID_FORMAT "\n", UID_ARG(track_file_resource->track_file_uuid));
+        return AVERROR_INVALIDDATA;
+    }
+
+    av_log(s, AV_LOG_DEBUG, "Found locator for " UUID_FORMAT ": %s\n", UID_ARG(asset_locator->uuid), asset_locator->absolute_uri);
+
+    track_file_context = avformat_alloc_context();
+    ret = avformat_open_input(&track_file_context, asset_locator->absolute_uri, NULL, NULL);
+    if (ret < 0) {
+        goto cleanup;
+    }
+
+    for (int stream_index = 0; stream_index < track_file_context->nb_streams; stream_index++) {
+        av_log(s, AV_LOG_DEBUG, "Open stream from file %s, stream %d\n", asset_locator->absolute_uri, stream_index);
+
+        asset_stream = avformat_new_stream(s, NULL);
+        track_file_stream = track_file_context->streams[stream_index];
+        if (!asset_stream) {
+            ret = AVERROR(ENOMEM);
+            goto cleanup;
+        }
+
+        // Copy stream
+        asset_stream->id = stream_index;
+        avformat_find_stream_info(track_file_context, NULL);
+        avcodec_parameters_copy(asset_stream->codecpar, track_file_stream->codecpar);
+        avpriv_set_pts_info(asset_stream, track_file_stream->pts_wrap_bits, track_file_stream->time_base.num, track_file_stream->time_base.den);
+    }
+
+cleanup:
+    avformat_free_context(track_file_context);
+
+    return ret;
+}
+
+static int open_cpl_tracks(AVFormatContext *s) {
+    IMFContext *c = s->priv_data;
+    IMFTrackFileVirtualTrack virtual_track;
+    int ret;
+
+    if (c->cpl->main_image_2d_track) {
+        for (int resource_index = 0; resource_index < c->cpl->main_image_2d_track->resource_count; ++resource_index) {
+            ret = open_track_file_resource(s, &c->cpl->main_image_2d_track->resources[resource_index]);
+        }
+    }
+
+    for (int track_index = 0; track_index < c->cpl->main_audio_track_count; ++track_index) {
+        virtual_track = c->cpl->main_audio_tracks[track_index];
+        for (int resource_index = 0; resource_index < virtual_track.resource_count; ++resource_index) {
+            ret = open_track_file_resource(s, &virtual_track.resources[resource_index]);
+        }
+    }
+
+    return ret;
+}
+
 static int imf_close(AVFormatContext *s);
 
 static int imf_read_header(AVFormatContext *s) {
     IMFContext *c = s->priv_data;
-    int ret = 0;
+    int ret;
 
     av_log(s, AV_LOG_DEBUG, "start parsing IMF CPL: %s\n", s->url);
 
@@ -238,8 +316,12 @@ static int imf_read_header(AVFormatContext *s) {
 
     av_log(s, AV_LOG_DEBUG, "parsed IMF Asset Map \n");
 
-    // av_log(s, AV_LOG_DEBUG, "parsed IMF package\n");
-    return 0;
+    if ((ret = open_cpl_tracks(s))  != 0) {
+        goto fail;
+    }
+
+    av_log(s, AV_LOG_DEBUG, "parsed IMF package\n");
+    return ret;
 
 fail:
     imf_close(s);
