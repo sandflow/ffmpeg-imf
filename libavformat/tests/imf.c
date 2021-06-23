@@ -201,7 +201,7 @@ const char *asset_map_doc =
     "</am:AssetList>"
     "</am:AssetMap>";
 
-static int test_cpl_parsing() {
+static int test_cpl_parsing(void) {
     xmlDocPtr doc;
     IMFCPL *cpl;
     int ret;
@@ -280,7 +280,7 @@ static const IMFAssetLocator ASSET_MAP_EXPECTED_LOCATORS[5] = {
     [4] = {.uuid = {0xdd, 0x04, 0x52, 0x8d, 0x9b, 0x80, 0x45, 0x2a, 0x7a, 0x13, 0x80, 0x5b, 0x08, 0x27, 0x8b, 0x3d}, .absolute_uri = "PKL_IMF_TEST_ASSET_MAP.xml"},
 };
 
-static int test_asset_map_parsing() {
+static int test_asset_map_parsing(void) {
     IMFAssetMap *asset_map;
     xmlDoc *doc;
     int ret;
