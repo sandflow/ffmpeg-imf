@@ -1,4 +1,6 @@
 /*
+ * This file is part of FFmpeg.
+ *
  * Copyright (c) Sandflow Consulting LLC
  *
  * Redistribution and use in source and binary forms, with or without
@@ -29,8 +31,8 @@
  * Public header for processing of Interoperable Master Format packages
  */
 
-#ifndef AVCODEC_IMF_H
-#define AVCODEC_IMF_H
+#ifndef AVFORMAT_IMF_H
+#define AVFORMAT_IMF_H
 
 #include "avformat.h"
 #include "libavformat/avio.h"

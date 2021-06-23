@@ -1,4 +1,6 @@
 /*
+ * This file is part of FFmpeg.
+ *
  * Copyright (c) Sandflow Consulting LLC
  *
  * Redistribution and use in source and binary forms, with or without
@@ -29,8 +31,8 @@
  * IMF unittest
  */
 
-#ifndef AVCODEC_IMF_INTERNAL_H
-#define AVCODEC_IMF_INTERNAL_H
+#ifndef AVFORMAT_IMF_INTERNAL_H
+#define AVFORMAT_IMF_INTERNAL_H
 
 #include "libavformat/avio.h"
 #include "libavutil/rational.h"
