@@ -1,4 +1,6 @@
 /*
+ * This file is part of FFmpeg.
+ *
  * Interoperable Master Format demuxer
  * Copyright (c) 2021 Sandflow Consulting LLC
  *
