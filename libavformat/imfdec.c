@@ -388,15 +388,15 @@ static int ff_imf_read_packet(AVFormatContext *s, AVPacket *pkt) {
     }
 
     while (!ff_check_interrupt(c->interrupt_callback) && !ret) {
-        av_log(s, AV_LOG_DEBUG, "Try av_read_frame: %d\n", track_to_read->index);
         ret = av_read_frame(track_to_read->ctx, pkt);
-        av_log(s, AV_LOG_DEBUG, "av_read_frame: ret=%d, pkt->pts=%ld\n", ret, pkt->pts);
         if (ret >= 0) {
             // We got a packet, return it
-            track_to_read->current_timestamp = av_rescale(pkt->pts + 1, (int64_t)track_to_read->ctx->streams[0]->time_base.num * 90000, track_to_read->ctx->streams[0]->time_base.den);
-            av_log(s, AV_LOG_DEBUG, "track_to_read: index=%d, current_timestamp=%ld\n", track_to_read->index, track_to_read->current_timestamp);
+            track_to_read->current_timestamp = (!pkt->pts) ? 1 : av_rescale(pkt->pts, (int64_t)track_to_read->ctx->streams[0]->time_base.num * AV_TIME_BASE, track_to_read->ctx->streams[0]->time_base.den);
             pkt->stream_index = track_to_read->index;
             return 0;
+        } else if (ret != AVERROR_EOF) {
+            av_log(s, AV_LOG_ERROR, "Could not get packet from track %d: %s\n", track_to_read->index, av_err2str(ret));
+            return ret;
         }
     }
 
