@@ -1,4 +1,6 @@
 /*
+ * This file is part of FFmpeg.
+ *
  * Copyright (c) Sandflow Consulting LLC
  *
  * Redistribution and use in source and binary forms, with or without
