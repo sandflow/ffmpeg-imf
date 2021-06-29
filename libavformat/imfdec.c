@@ -338,7 +338,7 @@ static int imf_read_header(AVFormatContext *s) {
     av_log(s, AV_LOG_INFO, "parsed IMF CPL: " UUID_FORMAT "\n", UID_ARG(c->cpl->id_uuid));
 
     if (!c->asset_map_path) {
-        c->asset_map_path = av_append_path_component(av_dirname(s->url), "ASSETMAP.xml");
+        c->asset_map_path = av_append_path_component(av_dirname(av_strdup(s->url)), "ASSETMAP.xml");
     }
 
     av_log(s, AV_LOG_DEBUG, "start parsing IMF Asset Map: %s\n", c->asset_map_path);
@@ -348,7 +348,7 @@ static int imf_read_header(AVFormatContext *s) {
 
     av_log(s, AV_LOG_DEBUG, "parsed IMF Asset Map \n");
 
-    if ((ret = open_cpl_tracks(s))  != 0) {
+    if ((ret = open_cpl_tracks(s)) != 0) {
         goto fail;
     }
 
