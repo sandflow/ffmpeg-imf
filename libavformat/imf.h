@@ -28,7 +28,8 @@
 /**
  * @file
  * @ingroup lavu_imf
- * Public header for processing of Interoperable Master Format packages
+ * Public header for processing of Interoperable Master Format (IMF) packages.
+ * IMF is specified in the SMPTE ST 2067 family of standards.
  */
 
 #ifndef AVFORMAT_IMF_H
@@ -39,16 +40,19 @@
 #include "libavutil/rational.h"
 #include <libxml/tree.h>
 
+/**
+ * UUID as defined in IETF RFC 422
+ */
 typedef uint8_t UUID[16];
 
 /**
  * IMF Composition Playlist Base Resource
  */
 typedef struct IMFBaseResource {
-    AVRational edit_rate;
-    unsigned long entry_point;
-    unsigned long duration;
-    unsigned long repeat_count;
+    AVRational edit_rate; /**< BaseResourceType/EditRate */
+    unsigned long entry_point; /**< BaseResourceType/EntryPoint */
+    unsigned long duration; /**< BaseResourceType/Duration */
+    unsigned long repeat_count; /**< BaseResourceType/RepeatCount */
 } IMFBaseResource;
 
 /**
@@ -56,16 +60,16 @@ typedef struct IMFBaseResource {
  */
 typedef struct IMFTrackFileResource {
     IMFBaseResource base;
-    unsigned char track_file_uuid[16];
+    unsigned char track_file_uuid[16]; /**< TrackFileResourceType/TrackFileId */
 } IMFTrackFileResource;
 
 /**
  * IMF Marker
  */
 typedef struct IMFMarker {
-    xmlChar *label_utf8;
-    xmlChar *scope_utf8;
-    unsigned long offset;
+    xmlChar *label_utf8; /**< Marker/Label */
+    xmlChar *scope_utf8; /**< Marker/Label/\@scope */
+    unsigned long offset; /**< Marker/Offset */
 } IMFMarker;
 
 /**
@@ -73,15 +77,15 @@ typedef struct IMFMarker {
  */
 typedef struct IMFMarkerResource {
     IMFBaseResource base;
-    unsigned long marker_count;
-    IMFMarker *markers;
+    unsigned long marker_count; /**< Number of Marker elements */
+    IMFMarker *markers; /**< Marker elements */
 } IMFMarkerResource;
 
 /**
  * IMF Composition Playlist Virtual Track
  */
 typedef struct IMFBaseVirtualTrack {
-    unsigned char id_uuid[16];
+    unsigned char id_uuid[16]; /**< TrackId associated with the Virtual Track */
 } IMFBaseVirtualTrack;
 
 /**
@@ -89,8 +93,8 @@ typedef struct IMFBaseVirtualTrack {
  */
 typedef struct IMFTrackFileVirtualTrack {
     IMFBaseVirtualTrack base;
-    unsigned long resource_count;
-    IMFTrackFileResource *resources;
+    unsigned long resource_count; /**< Number of Resource elements present in the Virtual Track */
+    IMFTrackFileResource *resources; /**< Resource elements of the Virtual Track */
 } IMFTrackFileVirtualTrack;
 
 /**
@@ -98,21 +102,21 @@ typedef struct IMFTrackFileVirtualTrack {
  */
 typedef struct IMFMarkerVirtualTrack {
     IMFBaseVirtualTrack base;
-    unsigned long resource_count;
-    IMFMarkerResource *resources;
+    unsigned long resource_count; /**< Number of Resource elements present in the Virtual Track */
+    IMFMarkerResource *resources; /**< Resource elements of the Virtual Track */
 } IMFMarkerVirtualTrack;
 
 /**
  * IMF Composition Playlist
  */
 typedef struct IMFCPL {
-    uint8_t id_uuid[16];
-    xmlChar *content_title_utf8;
-    AVRational edit_rate;
-    IMFMarkerVirtualTrack *main_markers_track;
-    IMFTrackFileVirtualTrack *main_image_2d_track;
-    unsigned long main_audio_track_count;
-    IMFTrackFileVirtualTrack *main_audio_tracks;
+    uint8_t id_uuid[16]; /**< CompositionPlaylist/Id element */
+    xmlChar *content_title_utf8; /**< CompositionPlaylist/ContentTitle element */
+    AVRational edit_rate; /**< CompositionPlaylist/EditRate element */
+    IMFMarkerVirtualTrack *main_markers_track; /**< Main Marker Virtual Track */
+    IMFTrackFileVirtualTrack *main_image_2d_track; /**< Main Image Virtual Track */
+    unsigned long main_audio_track_count; /**< Number of Main Audio Virtual Tracks */
+    IMFTrackFileVirtualTrack *main_audio_tracks; /**< Main Audio Virtual Tracks */
 } IMFCPL;
 
 /**
@@ -131,12 +135,37 @@ typedef struct IMFAssetMap {
     IMFAssetLocator **assets;
 } IMFAssetMap;
 
+/**
+ * Parse an IMF CompositionPlaylist element into the IMFCPL data structure.
+ * @param[in] doc An XML document from which the CPL is read.
+ * @param[out] cpl Pointer to a memory area (allocated by the client), where the function writes a pointer to the newly constructed
+ * IMFCPL structure (or NULL if the CPL could not be parsed). The client is responsible for freeing the IMFCPL structure using
+ * imf_cpl_free().
+ * @return A non-zero value in case of an error.
+ */
 int parse_imf_cpl_from_xml_dom(xmlDocPtr doc, IMFCPL **cpl);
 
+/**
+ * Parse an IMF Composition Playlist document into the IMFCPL data structure.
+ * @param[in] in The context from which the CPL is read.
+ * @param[out] cpl Pointer to a memory area (allocated by the client), where the function writes a pointer to the newly constructed
+ * IMFCPL structure (or NULL if the CPL could not be parsed). The client is responsible for freeing the IMFCPL structure using
+ * imf_cpl_free().
+ * @return A non-zero value in case of an error.
+ */
 int parse_imf_cpl(AVIOContext *in, IMFCPL **cpl);
 
+/**
+ * Allocates and initializes an IMFCPL data structure.
+ * @return A pointer to the newly constructed IMFCPL structure (or NULL if the structure could not be constructed). The client is
+ * responsible for freeing the IMFCPL structure using imf_cpl_free().
+ */
 IMFCPL *imf_cpl_alloc(void);
 
+/**
+ * Deletes an IMFCPL data structure previously instantiated with imf_cpl_alloc().
+ * @param[in] cpl The IMFCPL structure to delete.
+ */
 void imf_cpl_free(IMFCPL *cpl);
 
 /**
