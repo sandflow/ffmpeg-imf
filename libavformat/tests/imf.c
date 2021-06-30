@@ -134,6 +134,8 @@ const char *cpl_doc =
     "<ContentTitle>Hello</ContentTitle>"
     "</CompositionPlaylist>";
 
+const char *cpl_bad_doc = "<Composition></Composition>";
+
 const char *asset_map_doc =
     "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>"
     "<am:AssetMap xmlns:am=\"http://www.smpte-ra.org/schemas/429-9/2007/AM\">"
@@ -210,13 +212,13 @@ static int test_cpl_parsing(void) {
 
     doc = xmlReadMemory(cpl_doc, strlen(cpl_doc), NULL, NULL, 0);
     if (doc == NULL) {
-        printf("XML parsing failed.");
+        printf("XML parsing failed.\n");
         return 1;
     }
 
     ret = parse_imf_cpl_from_xml_dom(doc, &cpl);
     if (ret) {
-        printf("CPL parsing failed.");
+        printf("CPL parsing failed.\n");
         return 1;
     }
 
@@ -251,6 +253,26 @@ static int test_cpl_parsing(void) {
     }
 
     imf_cpl_free(cpl);
+
+    return 0;
+}
+
+static int test_bad_cpl_parsing(void) {
+    xmlDocPtr doc;
+    IMFCPL *cpl;
+    int ret;
+
+    doc = xmlReadMemory(cpl_bad_doc, strlen(cpl_bad_doc), NULL, NULL, 0);
+    if (doc == NULL) {
+        printf("XML parsing failed.\n");
+        return ret;
+    }
+
+    ret = parse_imf_cpl_from_xml_dom(doc, &cpl);
+    if (ret) {
+        printf("CPL parsing failed.\n");
+        return ret;
+    }
 
     return 0;
 }
@@ -327,13 +349,16 @@ cleanup:
 int main(int argc, char *argv[]) {
     int ret = 0;
 
-    if (test_cpl_parsing() != 0) {
+    if (test_cpl_parsing() != 0)
         ret = 1;
-    }
 
-    if (test_asset_map_parsing() != 0) {
+    if (test_asset_map_parsing() != 0)
         ret = 1;
-    }
+
+    printf("#### The following should fail ####\n");
+    if (test_bad_cpl_parsing() == 0)
+        ret = 1;
+    printf("#### End failing test ####\n");
 
     return ret;
 }
