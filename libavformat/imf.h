@@ -125,6 +125,7 @@ typedef struct IMFCPL {
 typedef struct IMFAssetLocator {
     UUID uuid;
     const char *absolute_uri;
+    AVFormatContext *ctx;
 } IMFAssetLocator;
 
 /**
