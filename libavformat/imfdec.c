@@ -75,16 +75,16 @@ typedef struct IMFTrack {
 typedef struct IMFContext {
     const AVClass *class;
     const char *base_url;
-    char *asset_map_path;
+    char *asset_map_paths;
     AVIOInterruptCB *interrupt_callback;
     AVDictionary *avio_opts;
     IMFCPL *cpl;
-    IMFAssetMap *asset_map;
+    IMFAssetLocatorMap *asset_locator_map;
     unsigned int track_count;
     IMFTrack **tracks;
 } IMFContext;
 
-int parse_imf_asset_map_from_xml_dom(AVFormatContext *s, xmlDocPtr doc, IMFAssetMap **asset_map, const char *base_url) {
+int parse_imf_asset_map_from_xml_dom(AVFormatContext *s, xmlDocPtr doc, IMFAssetLocatorMap **asset_map, const char *base_url) {
     xmlNodePtr asset_map_element = NULL;
     xmlNodePtr node = NULL;
     char *uri;
@@ -154,10 +154,10 @@ int parse_imf_asset_map_from_xml_dom(AVFormatContext *s, xmlDocPtr doc, IMFAsset
     return ret;
 }
 
-IMFAssetMap *imf_asset_map_alloc(void) {
-    IMFAssetMap *asset_map;
+IMFAssetLocatorMap *imf_asset_locator_map_alloc(void) {
+    IMFAssetLocatorMap *asset_map;
 
-    asset_map = av_malloc(sizeof(IMFAssetMap));
+    asset_map = av_malloc(sizeof(IMFAssetLocatorMap));
     if (!asset_map)
         return NULL;
 
@@ -166,7 +166,7 @@ IMFAssetMap *imf_asset_map_alloc(void) {
     return asset_map;
 }
 
-void imf_asset_map_free(IMFAssetMap *asset_map) {
+void imf_asset_locator_map_free(IMFAssetLocatorMap *asset_map) {
     if (asset_map == NULL) {
         return;
     }
@@ -190,11 +190,13 @@ static int parse_assetmap(AVFormatContext *s, const char *url, AVIOContext *in) 
     int ret = 0;
     int64_t filesize = 0;
 
-    c->base_url = av_dirname(strdup(url));
-    c->asset_map = imf_asset_map_alloc();
-    if (!c->asset_map) {
-        av_log(s, AV_LOG_ERROR, "Unable to allocate asset map locator\n");
-        return AVERROR_BUG;
+    const char *base_url = av_dirname(strdup(url));
+    if (c->asset_locator_map == NULL) {
+        c->asset_locator_map = imf_asset_locator_map_alloc();
+        if (!c->asset_locator_map) {
+            av_log(s, AV_LOG_ERROR, "Unable to allocate asset map locator\n");
+            return AVERROR_BUG;
+        }
     }
 
     av_log(s, AV_LOG_DEBUG, "Asset Map URL: %s\n", url);
@@ -223,12 +225,12 @@ static int parse_assetmap(AVFormatContext *s, const char *url, AVIOContext *in) 
 
         doc = xmlReadMemory(buf.str, filesize, url, NULL, 0);
 
-        ret = parse_imf_asset_map_from_xml_dom(s, doc, &c->asset_map, c->base_url);
+        ret = parse_imf_asset_map_from_xml_dom(s, doc, &c->asset_locator_map, base_url);
         if (ret != 0) {
             goto cleanup;
         }
 
-        av_log(s, AV_LOG_DEBUG, "Found %d assets from %s\n", c->asset_map->asset_count, url);
+        av_log(s, AV_LOG_DEBUG, "Found %d assets from %s\n", c->asset_locator_map->asset_count, url);
 
     cleanup:
         xmlFreeDoc(doc);
@@ -239,7 +241,7 @@ static int parse_assetmap(AVFormatContext *s, const char *url, AVIOContext *in) 
     return ret;
 }
 
-static IMFAssetLocator *find_asset_map_locator(IMFAssetMap *asset_map, UUID uuid) {
+static IMFAssetLocator *find_asset_map_locator(IMFAssetLocatorMap *asset_map, UUID uuid) {
     IMFAssetLocator *asset_locator;
     for (int i = 0; i < asset_map->asset_count; ++i) {
         asset_locator = asset_map->assets[i];
@@ -285,7 +287,7 @@ static int open_track_file_resource(AVFormatContext *s, IMFTrackFileResource *tr
 
     int ret = 0;
 
-    if (!(asset_locator = find_asset_map_locator(c->asset_map, track_file_resource->track_file_uuid))) {
+    if (!(asset_locator = find_asset_map_locator(c->asset_locator_map, track_file_resource->track_file_uuid))) {
         av_log(s, AV_LOG_ERROR, "Could not find asset locator for UUID: " UUID_FORMAT "\n", UID_ARG(track_file_resource->track_file_uuid));
         return AVERROR_INVALIDDATA;
     }
@@ -392,25 +394,34 @@ static int imf_close(AVFormatContext *s);
 
 static int imf_read_header(AVFormatContext *s) {
     IMFContext *c = s->priv_data;
+    char *asset_map_path;
     int ret;
+
+    c->base_url = av_dirname(av_strdup(s->url));
 
     av_log(s, AV_LOG_DEBUG, "start parsing IMF CPL: %s\n", s->url);
 
     if ((ret = parse_imf_cpl(s->pb, &c->cpl)) < 0)
         goto fail;
 
-    av_log(s, AV_LOG_INFO, "parsed IMF CPL: " UUID_FORMAT "\n", UID_ARG(c->cpl->id_uuid));
+    av_log(s, AV_LOG_DEBUG, "parsed IMF CPL: " UUID_FORMAT "\n", UID_ARG(c->cpl->id_uuid));
 
-    if (!c->asset_map_path) {
-        c->asset_map_path = av_append_path_component(av_dirname(av_strdup(s->url)), "ASSETMAP.xml");
+    if (!c->asset_map_paths) {
+        c->asset_map_paths = av_append_path_component(c->base_url, "ASSETMAP.xml");
     }
 
-    av_log(s, AV_LOG_DEBUG, "start parsing IMF Asset Map: %s\n", c->asset_map_path);
+    // Parse each asset map XML file
+    asset_map_path = strtok(c->asset_map_paths, ",");
+    while (asset_map_path != NULL) {
+        av_log(s, AV_LOG_DEBUG, "start parsing IMF Asset Map: %s\n", asset_map_path);
 
-    if ((ret = parse_assetmap(s, c->asset_map_path, NULL)) < 0)
-        goto fail;
+        if ((ret = parse_assetmap(s, asset_map_path, NULL)) < 0)
+            goto fail;
 
-    av_log(s, AV_LOG_DEBUG, "parsed IMF Asset Map \n");
+        asset_map_path = strtok(NULL, ",");
+    }
+
+    av_log(s, AV_LOG_DEBUG, "parsed IMF Asset Maps\n");
 
     if ((ret = open_cpl_tracks(s)) != 0) {
         goto fail;
@@ -516,14 +527,14 @@ static int imf_close(AVFormatContext *s) {
     av_log(s, AV_LOG_DEBUG, "Close IMF package\n");
     av_dict_free(&c->avio_opts);
     av_freep(&c->base_url);
-    imf_asset_map_free(c->asset_map);
+    imf_asset_locator_map_free(c->asset_locator_map);
     imf_cpl_free(c->cpl);
 
     return 0;
 }
 
 static const AVOption imf_options[] = {
-    {"assetmap", "IMF CPL-related asset map absolute path. If not specified, the CPL sibling `ASSETMAP.xml` file is used.", offsetof(IMFContext, asset_map_path), AV_OPT_TYPE_STRING, {.str = NULL}, 0, 0, AV_OPT_FLAG_DECODING_PARAM},
+    {"assetmaps", "IMF CPL-related asset map comma-separated absolute paths. If not specified, the CPL sibling `ASSETMAP.xml` file is used.", offsetof(IMFContext, asset_map_paths), AV_OPT_TYPE_STRING, {.str = NULL}, 0, 0, AV_OPT_FLAG_DECODING_PARAM},
     {NULL}};
 
 static const AVClass imf_class = {
