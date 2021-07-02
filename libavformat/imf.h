@@ -60,7 +60,7 @@ typedef struct IMFBaseResource {
  */
 typedef struct IMFTrackFileResource {
     IMFBaseResource base;
-    unsigned char track_file_uuid[16]; /**< TrackFileResourceType/TrackFileId */
+    UUID track_file_uuid; /**< TrackFileResourceType/TrackFileId */
 } IMFTrackFileResource;
 
 /**
@@ -85,7 +85,7 @@ typedef struct IMFMarkerResource {
  * IMF Composition Playlist Virtual Track
  */
 typedef struct IMFBaseVirtualTrack {
-    unsigned char id_uuid[16]; /**< TrackId associated with the Virtual Track */
+    UUID id_uuid; /**< TrackId associated with the Virtual Track */
 } IMFBaseVirtualTrack;
 
 /**
@@ -110,7 +110,7 @@ typedef struct IMFMarkerVirtualTrack {
  * IMF Composition Playlist
  */
 typedef struct IMFCPL {
-    uint8_t id_uuid[16]; /**< CompositionPlaylist/Id element */
+    UUID id_uuid; /**< CompositionPlaylist/Id element */
     xmlChar *content_title_utf8; /**< CompositionPlaylist/ContentTitle element */
     AVRational edit_rate; /**< CompositionPlaylist/EditRate element */
     IMFMarkerVirtualTrack *main_markers_track; /**< Main Marker Virtual Track */
@@ -118,22 +118,6 @@ typedef struct IMFCPL {
     unsigned long main_audio_track_count; /**< Number of Main Audio Virtual Tracks */
     IMFTrackFileVirtualTrack *main_audio_tracks; /**< Main Audio Virtual Tracks */
 } IMFCPL;
-
-/**
- * IMF Asset locator
- */
-typedef struct IMFAssetLocator {
-    UUID uuid;
-    const char *absolute_uri;
-} IMFAssetLocator;
-
-/**
- * IMF Asset Map
- */
-typedef struct IMFAssetMap {
-    uint8_t asset_count;
-    IMFAssetLocator **assets;
-} IMFAssetMap;
 
 /**
  * Parse an IMF CompositionPlaylist element into the IMFCPL data structure.
@@ -167,26 +151,5 @@ IMFCPL *imf_cpl_alloc(void);
  * @param[in] cpl The IMFCPL structure to delete.
  */
 void imf_cpl_free(IMFCPL *cpl);
-
-/**
- * Parse a ASSETMAP XML file to extract the UUID-URI mapping of assets.
- * @param s the current format context, if any (can be NULL).
- * @param doc the XML document to be parsed.
- * @param asset_map pointer on the IMFAssetMap pointer to fill.
- * @param base_url the url of the asset map XML file, if any (can be NULL).
- * @return a negative value in case of error, 0 otherwise.
- */
-int parse_imf_asset_map_from_xml_dom(AVFormatContext *s, xmlDocPtr doc, IMFAssetMap **asset_map, const char *base_url);
-
-/**
- * Allocate a IMFAssetMap pointer and return it.
- * @return the allocated IMFAssetMap pointer.
- */
-IMFAssetMap *imf_asset_map_alloc(void);
-
-/**
- * Free a IMFAssetMap pointer.
- */
-void imf_asset_map_free(IMFAssetMap *asset_map);
 
 #endif
