@@ -147,7 +147,7 @@ int parse_imf_asset_map_from_xml_dom(AVFormatContext *s, xmlDocPtr doc, IMFAsset
 
         node = xmlNextElementSibling(node->parent->parent);
 
-        (*asset_map)->assets = av_realloc((*asset_map)->assets, (*asset_map)->asset_count + 1 * sizeof(IMFAssetLocator));
+        (*asset_map)->assets = av_realloc((*asset_map)->assets, ((*asset_map)->asset_count + 1) * sizeof(IMFAssetLocator));
         (*asset_map)->assets[(*asset_map)->asset_count++] = asset;
     }
 
