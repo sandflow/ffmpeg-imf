@@ -53,12 +53,12 @@
 #define MAX_BPRINT_READ_SIZE (UINT_MAX - 1)
 #define DEFAULT_ASSETMAP_SIZE 8 * 1024
 
-typedef struct IMFTrackResource {
+typedef struct IMFVirtualTrackResourcePlaybackCtx {
     IMFAssetLocator *locator;
     IMFTrackFileResource *resource;
-} IMFTrackResource;
+} IMFVirtualTrackResourcePlaybackCtx;
 
-typedef struct IMFTrack {
+typedef struct IMFVirtualTrackPlaybackCtx {
     // Track index in playlist
     int32_t index;
     // Time counters
@@ -66,11 +66,11 @@ typedef struct IMFTrack {
     int64_t duration;
     // Resources
     unsigned int resource_count;
-    IMFTrackResource **resources;
+    IMFVirtualTrackResourcePlaybackCtx **resources;
     // Decoding cursors
-    IMFTrackResource *current_resource;
+    IMFVirtualTrackResourcePlaybackCtx *current_resource;
     int64_t last_pts;
-} IMFTrack;
+} IMFVirtualTrackPlaybackCtx;
 
 typedef struct IMFContext {
     const AVClass *class;
@@ -81,7 +81,7 @@ typedef struct IMFContext {
     IMFCPL *cpl;
     IMFAssetLocatorMap *asset_locator_map;
     unsigned int track_count;
-    IMFTrack **tracks;
+    IMFVirtualTrackPlaybackCtx **tracks;
 } IMFContext;
 
 int parse_imf_asset_map_from_xml_dom(AVFormatContext *s, xmlDocPtr doc, IMFAssetLocatorMap **asset_map, const char *base_url) {
@@ -280,9 +280,9 @@ cleanup:
     return ret;
 }
 
-static int open_track_file_resource(AVFormatContext *s, IMFTrackFileResource *track_file_resource, IMFTrack *track) {
+static int open_track_file_resource(AVFormatContext *s, IMFTrackFileResource *track_file_resource, IMFVirtualTrackPlaybackCtx *track) {
     IMFContext *c = s->priv_data;
-    IMFTrackResource *track_resource;
+    IMFVirtualTrackResourcePlaybackCtx *track_resource;
     IMFAssetLocator *asset_locator;
 
     int ret = 0;
@@ -298,11 +298,11 @@ static int open_track_file_resource(AVFormatContext *s, IMFTrackFileResource *tr
         return ret;
     }
 
-    track_resource = av_mallocz(sizeof(IMFTrackResource));
+    track_resource = av_mallocz(sizeof(IMFVirtualTrackResourcePlaybackCtx));
     track_resource->locator = asset_locator;
     track_resource->resource = track_file_resource;
 
-    track->resources = av_realloc(track->resources, track->resource_count + 1 * sizeof(IMFTrackResource));
+    track->resources = av_realloc(track->resources, track->resource_count + 1 * sizeof(IMFVirtualTrackResourcePlaybackCtx));
     track->resources[track->resource_count++] = track_resource;
     track->duration += track_resource->locator->ctx->duration;
 
@@ -311,10 +311,10 @@ static int open_track_file_resource(AVFormatContext *s, IMFTrackFileResource *tr
 
 static int open_track_file(AVFormatContext *s, IMFTrackFileVirtualTrack *track_file, int32_t track_index) {
     IMFContext *c = s->priv_data;
-    IMFTrack *track;
+    IMFVirtualTrackPlaybackCtx *track;
     int ret = 0;
 
-    track = av_mallocz(sizeof(IMFTrack));
+    track = av_mallocz(sizeof(IMFVirtualTrackPlaybackCtx));
     track->index = track_index;
 
     for (int i = 0; i < track_file->resource_count; i++) {
@@ -325,7 +325,7 @@ static int open_track_file(AVFormatContext *s, IMFTrackFileVirtualTrack *track_f
         }
     }
 
-    c->tracks = av_realloc(c->tracks, c->track_count + 1 * sizeof(IMFTrack));
+    c->tracks = av_realloc(c->tracks, c->track_count + 1 * sizeof(IMFVirtualTrackPlaybackCtx));
     c->tracks[c->track_count++] = track;
 
     return ret;
@@ -435,7 +435,7 @@ fail:
     return ret;
 }
 
-static IMFTrackResource *get_resource_context_for_timestamp(AVFormatContext *s, IMFTrack *track) {
+static IMFVirtualTrackResourcePlaybackCtx *get_resource_context_for_timestamp(AVFormatContext *s, IMFVirtualTrackPlaybackCtx *track) {
     unsigned long cumulated_duration = 0;
     unsigned long edit_unit_duration;
 
@@ -463,9 +463,9 @@ static IMFTrackResource *get_resource_context_for_timestamp(AVFormatContext *s, 
 static int ff_imf_read_packet(AVFormatContext *s, AVPacket *pkt) {
     IMFContext *c = s->priv_data;
 
-    IMFTrack *track;
-    IMFTrack *track_to_read = NULL;
-    IMFTrackResource *resource_to_read = NULL;
+    IMFVirtualTrackPlaybackCtx *track;
+    IMFVirtualTrackPlaybackCtx *track_to_read = NULL;
+    IMFVirtualTrackResourcePlaybackCtx *resource_to_read = NULL;
     AVFormatContext *read_context = NULL;
 
     int64_t minimum_timestamp = get_minimum_track_timestamp(c);
