@@ -375,16 +375,6 @@ static int set_context_streams_from_tracks(AVFormatContext *s) {
     return ret;
 }
 
-static int64_t get_minimum_track_timestamp(IMFContext *c) {
-    int64_t minimum_timestamp = INT64_MAX;
-    for (int i = 0; i < c->track_count; ++i) {
-        if (c->tracks[i]->current_timestamp < minimum_timestamp) {
-            minimum_timestamp = c->tracks[i]->current_timestamp;
-        }
-    }
-    return minimum_timestamp;
-}
-
 static int open_cpl_tracks(AVFormatContext *s) {
     IMFContext *c = s->priv_data;
     int32_t track_index = 0;
@@ -452,6 +442,23 @@ fail:
     return ret;
 }
 
+static IMFVirtualTrackPlaybackCtx *get_next_track_with_minimum_timestamp(AVFormatContext *s) {
+    IMFContext *c = s->priv_data;
+    IMFVirtualTrackPlaybackCtx *track;
+
+    int64_t minimum_timestamp = INT64_MAX;
+    for (int i = 0; i < c->track_count; ++i) {
+        av_log(s, AV_LOG_DEBUG, "Compare track %p timestamp %ld to minimum %ld (over duration: %ld)\n", c->tracks[i], c->tracks[i]->current_timestamp, minimum_timestamp, c->tracks[i]->duration);
+        if (c->tracks[i]->current_timestamp < minimum_timestamp) {
+            track = c->tracks[i];
+            minimum_timestamp = track->current_timestamp;
+        }
+    }
+
+    av_log(s, AV_LOG_DEBUG, "Found next track to read: %d (timestamp: %ld / %ld)\n", track->index, track->current_timestamp, minimum_timestamp);
+    return track;
+}
+
 static IMFVirtualTrackResourcePlaybackCtx *get_resource_context_for_timestamp(AVFormatContext *s, IMFVirtualTrackPlaybackCtx *track) {
     unsigned long cumulated_duration = 0;
     unsigned long edit_unit_duration;
@@ -483,28 +490,10 @@ static IMFVirtualTrackResourcePlaybackCtx *get_resource_context_for_timestamp(AV
 static int ff_imf_read_packet(AVFormatContext *s, AVPacket *pkt) {
     IMFContext *c = s->priv_data;
 
-    IMFVirtualTrackPlaybackCtx *track;
-    IMFVirtualTrackPlaybackCtx *track_to_read = NULL;
     IMFVirtualTrackResourcePlaybackCtx *resource_to_read = NULL;
+    int ret = 0;
 
-    int64_t minimum_timestamp = get_minimum_track_timestamp(c);
-    int ret = 0, i;
-
-    for (i = 0; i < c->track_count; i++) {
-        track = c->tracks[i];
-        av_log(s, AV_LOG_DEBUG, "Compare track %p timestamp %ld to minimum %ld (over duration: %ld)\n", track, track->current_timestamp, minimum_timestamp, track->duration);
-        if (track->current_timestamp <= minimum_timestamp) {
-            track_to_read = track;
-            minimum_timestamp = track->current_timestamp;
-            av_log(s, AV_LOG_DEBUG, "Found next track to read: %d (timestamp: %ld / %ld)\n", track_to_read->index, track->current_timestamp, minimum_timestamp);
-            break;
-        }
-    }
-
-    if (!track_to_read) {
-        av_log(s, AV_LOG_ERROR, "Could not find IMF track to read\n");
-        return AVERROR_STREAM_NOT_FOUND;
-    }
+    IMFVirtualTrackPlaybackCtx *track_to_read = get_next_track_with_minimum_timestamp(s);
 
     if (track_to_read->current_timestamp == track_to_read->duration) {
         return AVERROR_EOF;
