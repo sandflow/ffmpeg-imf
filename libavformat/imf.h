@@ -120,23 +120,6 @@ typedef struct IMFCPL {
 } IMFCPL;
 
 /**
- * IMF Asset locator
- */
-typedef struct IMFAssetLocator {
-    UUID uuid;
-    const char *absolute_uri;
-    AVFormatContext *ctx;
-} IMFAssetLocator;
-
-/**
- * IMF Asset Map
- */
-typedef struct IMFAssetMap {
-    uint8_t asset_count;
-    IMFAssetLocator **assets;
-} IMFAssetMap;
-
-/**
  * Parse an IMF CompositionPlaylist element into the IMFCPL data structure.
  * @param[in] doc An XML document from which the CPL is read.
  * @param[out] cpl Pointer to a memory area (allocated by the client), where the function writes a pointer to the newly constructed
@@ -168,26 +151,5 @@ IMFCPL *imf_cpl_alloc(void);
  * @param[in] cpl The IMFCPL structure to delete.
  */
 void imf_cpl_free(IMFCPL *cpl);
-
-/**
- * Parse a ASSETMAP XML file to extract the UUID-URI mapping of assets.
- * @param s the current format context, if any (can be NULL).
- * @param doc the XML document to be parsed.
- * @param asset_map pointer on the IMFAssetMap pointer to fill.
- * @param base_url the url of the asset map XML file, if any (can be NULL).
- * @return a negative value in case of error, 0 otherwise.
- */
-int parse_imf_asset_map_from_xml_dom(AVFormatContext *s, xmlDocPtr doc, IMFAssetMap **asset_map, const char *base_url);
-
-/**
- * Allocate a IMFAssetMap pointer and return it.
- * @return the allocated IMFAssetMap pointer.
- */
-IMFAssetMap *imf_asset_map_alloc(void);
-
-/**
- * Free a IMFAssetMap pointer.
- */
-void imf_asset_map_free(IMFAssetMap *asset_map);
 
 #endif
