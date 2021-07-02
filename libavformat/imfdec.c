@@ -452,6 +452,9 @@ static IMFVirtualTrackResourcePlaybackCtx *get_resource_context_for_timestamp(AV
                 if (open_resource_locator_context(s, track->resources[i]->locator) != 0) {
                     return NULL;
                 }
+                if(track->current_resource != NULL) {
+                    avformat_close_input(&track->current_resource->locator->ctx);
+                }
                 track->current_resource = track->resources[i];
             }
             return track->current_resource;
