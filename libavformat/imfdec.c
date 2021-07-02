@@ -309,7 +309,7 @@ static int open_track_file_resource(AVFormatContext *s, IMFTrackFileResource *tr
     return ret;
 }
 
-static int open_track_file(AVFormatContext *s, IMFTrackFileVirtualTrack *track_file, int32_t track_index) {
+static int open_virtual_track(AVFormatContext *s, IMFTrackFileVirtualTrack *virtual_track, int32_t track_index) {
     IMFContext *c = s->priv_data;
     IMFVirtualTrackPlaybackCtx *track;
     int ret = 0;
@@ -317,10 +317,10 @@ static int open_track_file(AVFormatContext *s, IMFTrackFileVirtualTrack *track_f
     track = av_mallocz(sizeof(IMFVirtualTrackPlaybackCtx));
     track->index = track_index;
 
-    for (int i = 0; i < track_file->resource_count; i++) {
-        av_log(s, AV_LOG_DEBUG, "Open stream from file " UUID_FORMAT ", stream %d\n", UID_ARG(track_file->resources[i].track_file_uuid), i);
-        if ((ret = open_track_file_resource(s, &track_file->resources[i], track)) != 0) {
-            av_log(s, AV_LOG_ERROR, "Could not open image track resource " UUID_FORMAT "\n", UID_ARG(track_file->resources[i].track_file_uuid));
+    for (int i = 0; i < virtual_track->resource_count; i++) {
+        av_log(s, AV_LOG_DEBUG, "Open stream from file " UUID_FORMAT ", stream %d\n", UID_ARG(virtual_track->resources[i].track_file_uuid), i);
+        if ((ret = open_track_file_resource(s, &virtual_track->resources[i], track)) != 0) {
+            av_log(s, AV_LOG_ERROR, "Could not open image track resource " UUID_FORMAT "\n", UID_ARG(virtual_track->resources[i].track_file_uuid));
             return ret;
         }
     }
@@ -374,14 +374,14 @@ static int open_cpl_tracks(AVFormatContext *s) {
     int ret;
 
     if (c->cpl->main_image_2d_track) {
-        if ((ret = open_track_file(s, c->cpl->main_image_2d_track, track_index++)) != 0) {
+        if ((ret = open_virtual_track(s, c->cpl->main_image_2d_track, track_index++)) != 0) {
             av_log(s, AV_LOG_ERROR, "Could not open image track " UUID_FORMAT "\n", UID_ARG(c->cpl->main_image_2d_track->base.id_uuid));
             return ret;
         }
     }
 
     for (int audio_track_index = 0; audio_track_index < c->cpl->main_audio_track_count; ++audio_track_index) {
-        if ((ret = open_track_file(s, &c->cpl->main_audio_tracks[audio_track_index], track_index++)) != 0) {
+        if ((ret = open_virtual_track(s, &c->cpl->main_audio_tracks[audio_track_index], track_index++)) != 0) {
             av_log(s, AV_LOG_ERROR, "Could not open audio track " UUID_FORMAT "\n", UID_ARG(c->cpl->main_audio_tracks[audio_track_index].base.id_uuid));
             return ret;
         }
