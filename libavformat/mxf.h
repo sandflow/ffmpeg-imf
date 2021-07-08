@@ -75,7 +75,8 @@ typedef enum {
     NormalWrap = 0,
     D10D11Wrap,
     RawAWrap,
-    RawVWrap
+    RawVWrap,
+    AlwaysFrameWrap
 } MXFWrappingIndicatorType;
 
 typedef struct MXFLocalTagPair {
