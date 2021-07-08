@@ -1,10 +1,38 @@
 # FFMPEG IMF
 
-## Debug build
+# IMF for FFMPEG
 
-`./configure --enable-libxml2 --enable-debug --enable-static --disable-optimizations --prefix=$PWD/dist`
+## Introduction
 
-## Install clang-format-12 on ubuntu
+This project adds support for [IMF Compositions](https://ieeexplore.ieee.org/document/9097478) as an input format to [FFMPEG](https://ffmpeg.org).
+
+## Usage
+
+`./ffmpeg -i <path of CPL> -assetmaps <path of ASSETMAP1>,<path of ASSETMAP2>,...`
+
+If `-assetmaps` is not specified, FFMPEG looks for a file called `ASSETMAP.xml` in the same directory as the CPL.
+
+## Build
+
+### Release 
+
+`./configure --enable-libxml2`
+
+### Debug
+
+`./configure --enable-libxml2 --enable-debug --disable-optimizations --prefix=$PWD/dist`
+
+## Unit tests
+
+`./imf-unit-tests.sh`
+
+## Code style
+
+`./imf-check-style.sh`
+
+## Dependencies
+
+### clang-format-12
 
 ```sh
 wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
