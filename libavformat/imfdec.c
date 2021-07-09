@@ -253,6 +253,7 @@ static IMFAssetLocator *find_asset_map_locator(IMFAssetLocatorMap *asset_map, UU
 
 static int open_track_resource_context(AVFormatContext *s, IMFVirtualTrackResourcePlaybackCtx *track_resource) {
     int ret = 0;
+    int64_t entry_point;
 
     if (!track_resource->ctx) {
         track_resource->ctx = avformat_alloc_context();
@@ -273,6 +274,22 @@ static int open_track_resource_context(AVFormatContext *s, IMFVirtualTrackResour
     if (ret < 0) {
         av_log(s, AV_LOG_ERROR, "Could not find %s stream information: %s\n", track_resource->locator->absolute_uri, av_err2str(ret));
         goto cleanup;
+    }
+
+    // Compare the source timebase to the resource edit rate, considering the first stream of the source file
+    if (av_cmp_q(track_resource->ctx->streams[0]->time_base, av_inv_q(track_resource->resource->base.edit_rate))) {
+        av_log(s, AV_LOG_WARNING, "Incoherent source stream timebase %d/%d regarding resource edit rate: %d/%d", track_resource->ctx->streams[0]->time_base.num, track_resource->ctx->streams[0]->time_base.den, track_resource->resource->base.edit_rate.den, track_resource->resource->base.edit_rate.num);
+    }
+
+    entry_point = (int64_t)track_resource->resource->base.entry_point * track_resource->resource->base.edit_rate.den * AV_TIME_BASE / track_resource->resource->base.edit_rate.num;
+
+    if (entry_point) {
+        av_log(s, AV_LOG_DEBUG, "Seek at resource %s entry point: %ld\n", track_resource->locator->absolute_uri, track_resource->resource->base.entry_point);
+        ret = avformat_seek_file(track_resource->ctx, -1, entry_point, entry_point, entry_point, 0);
+        if (ret < 0) {
+            av_log(s, AV_LOG_ERROR, "Could not seek at %ld on %s: %s\n", entry_point, track_resource->locator->absolute_uri, av_err2str(ret));
+            goto cleanup;
+        }
     }
 
     return ret;
@@ -305,7 +322,7 @@ static int open_track_file_resource(AVFormatContext *s, IMFTrackFileResource *tr
 
     track->resources = av_realloc(track->resources, track->resource_count + 1 * sizeof(IMFVirtualTrackResourcePlaybackCtx));
     track->resources[track->resource_count++] = track_resource;
-    track->duration += track_resource->ctx->duration;
+    track->duration += (int64_t)track_resource->resource->base.duration * track_resource->resource->base.edit_rate.den * AV_TIME_BASE / track_resource->resource->base.edit_rate.num;
 
     return ret;
 }
@@ -512,6 +529,7 @@ static int ff_imf_read_packet(AVFormatContext *s, AVPacket *pkt) {
         if (ret >= 0) {
             // Update packet info from track
             pkt->pts = track_to_read->last_pts;
+            pkt->dts = pkt->dts - (int64_t)track_to_read->current_resource->resource->base.entry_point;
             pkt->stream_index = track_to_read->index;
 
             // Update track cursors
