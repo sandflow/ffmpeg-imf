@@ -535,11 +535,15 @@ static int ff_imf_read_packet(AVFormatContext *s, AVPacket *pkt) {
 
     while (!ff_check_interrupt(c->interrupt_callback) && !ret) {
         ret = av_read_frame(resource_to_read->ctx, pkt);
-        av_log(s, AV_LOG_DEBUG, "Got packet: pts=%ld, dts=%ld, duration=%ld, stream_index=%d, pos=%ld,\n", pkt->pts, pkt->dts, pkt->duration, pkt->stream_index, pkt->pos);
+        av_log(s, AV_LOG_DEBUG, "Got packet: pts=%ld, dts=%ld, duration=%ld, stream_index=%d, pos=%ld\n", pkt->pts, pkt->dts, pkt->duration, pkt->stream_index, pkt->pos);
         if (ret >= 0) {
             // Update packet info from track
+            if (pkt->dts < s->streams[track_to_read->index]->cur_dts && track_to_read->last_pts > 0) {
+                pkt->dts = s->streams[track_to_read->index]->cur_dts;
+            }
+
             pkt->pts = track_to_read->last_pts;
-            pkt->dts = pkt->dts - (int64_t)track_to_read->current_resource->resource->base.entry_point;
+            pkt->dts = pkt->dts - (int64_t)track_to_read->resources[track_to_read->current_resource_index]->resource->base.entry_point;
             pkt->stream_index = track_to_read->index;
 
             // Update track cursors
