@@ -390,6 +390,7 @@ static int set_context_streams_from_tracks(AVFormatContext *s) {
             break;
         }
         avpriv_set_pts_info(asset_stream, first_resource_stream->pts_wrap_bits, first_resource_stream->time_base.num, first_resource_stream->time_base.den);
+        asset_stream->duration = c->tracks[i]->duration * asset_stream->time_base.den / (asset_stream->time_base.num * AV_TIME_BASE);
     }
 
     return ret;
