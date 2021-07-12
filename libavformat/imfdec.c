@@ -57,6 +57,7 @@ typedef struct IMFVirtualTrackResourcePlaybackCtx {
     IMFAssetLocator *locator;
     IMFTrackFileResource *resource;
     AVFormatContext *ctx;
+    uint32_t repetition;
 } IMFVirtualTrackResourcePlaybackCtx;
 
 typedef struct IMFVirtualTrackPlaybackCtx {
@@ -69,7 +70,7 @@ typedef struct IMFVirtualTrackPlaybackCtx {
     unsigned int resource_count;
     IMFVirtualTrackResourcePlaybackCtx **resources;
     // Decoding cursors
-    IMFVirtualTrackResourcePlaybackCtx *current_resource;
+    uint32_t current_resource_index;
     int64_t last_pts;
 } IMFVirtualTrackPlaybackCtx;
 
@@ -320,9 +321,11 @@ static int open_track_file_resource(AVFormatContext *s, IMFTrackFileResource *tr
         return ret;
     }
 
-    track->resources = av_realloc(track->resources, track->resource_count + 1 * sizeof(IMFVirtualTrackResourcePlaybackCtx));
-    track->resources[track->resource_count++] = track_resource;
-    track->duration += (int64_t)track_resource->resource->base.duration * track_resource->resource->base.edit_rate.den * AV_TIME_BASE / track_resource->resource->base.edit_rate.num;
+    for (int repetition = 0; repetition < track_file_resource->base.repeat_count; ++repetition) {
+        track->resources = av_realloc(track->resources, track->resource_count + 1 * sizeof(IMFVirtualTrackResourcePlaybackCtx));
+        track->resources[track->resource_count++] = track_resource;
+        track->duration += (int64_t)track_resource->resource->base.duration * track_resource->resource->base.edit_rate.den * AV_TIME_BASE / track_resource->resource->base.edit_rate.num;
+    }
 
     return ret;
 }
@@ -488,17 +491,17 @@ static IMFVirtualTrackResourcePlaybackCtx *get_resource_context_for_timestamp(AV
         if (track->current_timestamp + edit_unit_duration <= cumulated_duration) {
             av_log(s, AV_LOG_DEBUG, "Found resource %d in track %d to read for timestamp %ld (on cumulated=%ld): entry=%ld, duration=%lu, editrate=%d/%d | edit_unit_duration=%ld\n", i, track->index, track->current_timestamp, cumulated_duration, track->resources[i]->resource->base.entry_point, track->resources[i]->resource->base.duration, track->resources[i]->resource->base.edit_rate.num, track->resources[i]->resource->base.edit_rate.den, edit_unit_duration);
 
-            if (track->current_resource != track->resources[i]) {
+            if (track->current_resource_index != i) {
                 av_log(s, AV_LOG_DEBUG, "Switch resource on track %d: re-open context\n", track->index);
-                if (track->current_resource != NULL) {
-                    avformat_close_input(&track->current_resource->ctx);
+                if (track->resources[track->current_resource_index] != NULL) {
+                    avformat_close_input(&track->resources[track->current_resource_index]->ctx);
                 }
                 if (open_track_resource_context(s, track->resources[i]) != 0) {
                     return NULL;
                 }
-                track->current_resource = track->resources[i];
+                track->current_resource_index = i;
             }
-            return track->current_resource;
+            return track->resources[track->current_resource_index];
         }
     }
     return NULL;
@@ -520,7 +523,8 @@ static int ff_imf_read_packet(AVFormatContext *s, AVPacket *pkt) {
     resource_to_read = get_resource_context_for_timestamp(s, track_to_read);
 
     if (!resource_to_read) {
-        edit_unit_duration = track_to_read->current_resource->resource->base.edit_rate.den * AV_TIME_BASE / track_to_read->current_resource->resource->base.edit_rate.num;
+        edit_unit_duration = track_to_read->resources[track_to_read->current_resource_index]->resource->base.edit_rate.den
+            * AV_TIME_BASE / track_to_read->resources[track_to_read->current_resource_index]->resource->base.edit_rate.num;
         if (track_to_read->current_timestamp + edit_unit_duration > track_to_read->duration) {
             return AVERROR_EOF;
         }
