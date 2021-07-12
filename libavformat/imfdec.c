@@ -508,6 +508,7 @@ static int ff_imf_read_packet(AVFormatContext *s, AVPacket *pkt) {
     IMFContext *c = s->priv_data;
 
     IMFVirtualTrackResourcePlaybackCtx *resource_to_read = NULL;
+    int64_t edit_unit_duration;
     int ret = 0;
 
     IMFVirtualTrackPlaybackCtx *track_to_read = get_next_track_with_minimum_timestamp(s);
@@ -519,6 +520,11 @@ static int ff_imf_read_packet(AVFormatContext *s, AVPacket *pkt) {
     resource_to_read = get_resource_context_for_timestamp(s, track_to_read);
 
     if (!resource_to_read) {
+        edit_unit_duration = track_to_read->current_resource->resource->base.edit_rate.den * AV_TIME_BASE / track_to_read->current_resource->resource->base.edit_rate.num;
+        if (track_to_read->current_timestamp + edit_unit_duration > track_to_read->duration) {
+            return AVERROR_EOF;
+        }
+
         av_log(s, AV_LOG_ERROR, "Could not find IMF track resource to read\n");
         return AVERROR_STREAM_NOT_FOUND;
     }
