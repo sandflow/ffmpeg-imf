@@ -39,6 +39,8 @@
 #include <libxml/tree.h>
 
 #define UUID_FORMAT "urn:uuid:%02hhx%02hhx%02hhx%02hhx-%02hhx%02hhx-%02hhx%02hhx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx"
+#define AVRATIONAL_FORMAT "%d/%d"
+#define AVRATIONAL_ARG(rational) rational.num, rational.den
 
 /**
  * IMF Asset locator
