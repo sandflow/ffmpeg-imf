@@ -322,7 +322,7 @@ static int open_track_file_resource(AVFormatContext *s, IMFTrackFileResource *tr
     }
 
     for (int repetition = 0; repetition < track_file_resource->base.repeat_count; ++repetition) {
-        track->resources = av_realloc(track->resources, track->resource_count + 1 * sizeof(IMFVirtualTrackResourcePlaybackCtx));
+        track->resources = av_realloc(track->resources, (track->resource_count + 1) * sizeof(IMFVirtualTrackResourcePlaybackCtx));
         track->resources[track->resource_count++] = track_resource;
         track->duration += (int64_t)track_resource->resource->base.duration * track_resource->resource->base.edit_rate.den * AV_TIME_BASE / track_resource->resource->base.edit_rate.num;
     }
@@ -346,7 +346,7 @@ static int open_virtual_track(AVFormatContext *s, IMFTrackFileVirtualTrack *virt
         }
     }
 
-    c->tracks = av_realloc(c->tracks, c->track_count + 1 * sizeof(IMFVirtualTrackPlaybackCtx));
+    c->tracks = av_realloc(c->tracks, (c->track_count + 1) * sizeof(IMFVirtualTrackPlaybackCtx));
     c->tracks[c->track_count++] = track;
 
     return ret;
