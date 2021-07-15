@@ -364,6 +364,7 @@ static void imf_virtual_track_playback_context_free(IMFVirtualTrackPlaybackCtx *
 
         if (track->resources[i]->ctx && track->resources[i]->ctx->iformat) {
             avformat_free_context(track->resources[i]->ctx);
+            track->resources[i]->ctx = NULL;
         }
     }
 }
