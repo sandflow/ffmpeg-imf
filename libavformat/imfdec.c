@@ -57,7 +57,6 @@ typedef struct IMFVirtualTrackResourcePlaybackCtx {
     IMFAssetLocator *locator;
     IMFTrackFileResource *resource;
     AVFormatContext *ctx;
-    uint32_t repetition;
 } IMFVirtualTrackResourcePlaybackCtx;
 
 typedef struct IMFVirtualTrackPlaybackCtx {
@@ -186,9 +185,9 @@ static int parse_assetmap(AVFormatContext *s, const char *url, AVIOContext *in) 
     AVDictionary *opts = NULL;
     xmlDoc *doc = NULL;
 
-    int close_in = 0;
-    int ret = 0;
-    int64_t filesize = 0;
+    int close_in;
+    int ret;
+    int64_t filesize;
 
     const char *base_url = av_dirname(strdup(url));
     if (c->asset_locator_map == NULL) {
@@ -304,7 +303,7 @@ static int open_track_file_resource(AVFormatContext *s, IMFTrackFileResource *tr
     IMFVirtualTrackResourcePlaybackCtx *track_resource;
     IMFAssetLocator *asset_locator;
 
-    int ret = 0;
+    int ret;
 
     if (!(asset_locator = find_asset_map_locator(c->asset_locator_map, track_file_resource->track_file_uuid))) {
         av_log(s, AV_LOG_ERROR, "Could not find asset locator for UUID: " UUID_FORMAT "\n", UID_ARG(track_file_resource->track_file_uuid));
