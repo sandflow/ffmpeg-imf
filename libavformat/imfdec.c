@@ -64,8 +64,8 @@ typedef struct IMFVirtualTrackPlaybackCtx {
     // Track index in playlist
     int32_t index;
     // Time counters
-    int64_t current_timestamp;
-    int64_t duration;
+    AVRational current_timestamp;
+    AVRational duration;
     // Resources
     unsigned int resource_count;
     IMFVirtualTrackResourcePlaybackCtx **resources;
@@ -324,7 +324,7 @@ static int open_track_file_resource(AVFormatContext *s, IMFTrackFileResource *tr
     for (int repetition = 0; repetition < track_file_resource->base.repeat_count; ++repetition) {
         track->resources = av_realloc(track->resources, (track->resource_count + 1) * sizeof(IMFVirtualTrackResourcePlaybackCtx));
         track->resources[track->resource_count++] = track_resource;
-        track->duration += (int64_t)track_resource->resource->base.duration * track_resource->resource->base.edit_rate.den * AV_TIME_BASE / track_resource->resource->base.edit_rate.num;
+        track->duration = av_add_q(track->duration, av_make_q((int)track_resource->resource->base.duration * track_resource->resource->base.edit_rate.den, track_resource->resource->base.edit_rate.num));
     }
 
     return ret;
@@ -337,6 +337,7 @@ static int open_virtual_track(AVFormatContext *s, IMFTrackFileVirtualTrack *virt
 
     track = av_mallocz(sizeof(IMFVirtualTrackPlaybackCtx));
     track->index = track_index;
+    track->duration = av_make_q(0, INT32_MAX);
 
     for (int i = 0; i < virtual_track->resource_count; i++) {
         av_log(s, AV_LOG_DEBUG, "Open stream from file " UUID_FORMAT ", stream %d\n", UID_ARG(virtual_track->resources[i].track_file_uuid), i);
@@ -345,6 +346,8 @@ static int open_virtual_track(AVFormatContext *s, IMFTrackFileVirtualTrack *virt
             return ret;
         }
     }
+
+    track->current_timestamp = av_make_q(0, track->duration.den);
 
     c->tracks = av_realloc(c->tracks, (c->track_count + 1) * sizeof(IMFVirtualTrackPlaybackCtx));
     c->tracks[c->track_count++] = track;
@@ -391,7 +394,7 @@ static int set_context_streams_from_tracks(AVFormatContext *s) {
             break;
         }
         avpriv_set_pts_info(asset_stream, first_resource_stream->pts_wrap_bits, first_resource_stream->time_base.num, first_resource_stream->time_base.den);
-        asset_stream->duration = c->tracks[i]->duration * asset_stream->time_base.den / (asset_stream->time_base.num * AV_TIME_BASE);
+        asset_stream->duration = (int64_t)av_q2d(av_mul_q(c->tracks[i]->duration, av_inv_q(asset_stream->time_base)));
     }
 
     return ret;
@@ -468,30 +471,29 @@ static IMFVirtualTrackPlaybackCtx *get_next_track_with_minimum_timestamp(AVForma
     IMFContext *c = s->priv_data;
     IMFVirtualTrackPlaybackCtx *track;
 
-    int64_t minimum_timestamp = INT64_MAX;
+    AVRational minimum_timestamp = av_make_q(INT32_MAX, 1);
     for (int i = 0; i < c->track_count; ++i) {
-        av_log(s, AV_LOG_DEBUG, "Compare track %p timestamp %ld to minimum %ld (over duration: %ld)\n", c->tracks[i], c->tracks[i]->current_timestamp, minimum_timestamp, c->tracks[i]->duration);
-        if (c->tracks[i]->current_timestamp < minimum_timestamp) {
+        av_log(s, AV_LOG_DEBUG, "Compare track %d timestamp " AVRATIONAL_FORMAT " to minimum " AVRATIONAL_FORMAT " (over duration: " AVRATIONAL_FORMAT ")\n", i, AVRATIONAL_ARG(c->tracks[i]->current_timestamp), AVRATIONAL_ARG(minimum_timestamp), AVRATIONAL_ARG(c->tracks[i]->duration));
+        if (av_cmp_q(c->tracks[i]->current_timestamp, minimum_timestamp) < 0) {
             track = c->tracks[i];
             minimum_timestamp = track->current_timestamp;
         }
     }
 
-    av_log(s, AV_LOG_DEBUG, "Found next track to read: %d (timestamp: %ld / %ld)\n", track->index, track->current_timestamp, minimum_timestamp);
+    av_log(s, AV_LOG_DEBUG, "Found next track to read: %d (timestamp: %lf / %lf)\n", track->index, av_q2d(track->current_timestamp), av_q2d(minimum_timestamp));
     return track;
 }
 
 static IMFVirtualTrackResourcePlaybackCtx *get_resource_context_for_timestamp(AVFormatContext *s, IMFVirtualTrackPlaybackCtx *track) {
-    unsigned long cumulated_duration = 0;
-    unsigned long edit_unit_duration;
+    AVRational edit_unit_duration = av_inv_q(track->resources[0]->resource->base.edit_rate);
+    AVRational cumulated_duration = av_make_q(0, edit_unit_duration.den);
 
-    av_log(s, AV_LOG_DEBUG, "Looking for track %d resource for timestamp = %ld / %ld\n", track->index, track->current_timestamp, track->duration);
+    av_log(s, AV_LOG_DEBUG, "Looking for track %d resource for timestamp = %lf / %lf\n", track->index, av_q2d(track->current_timestamp), av_q2d(track->duration));
     for (int i = 0; i < track->resource_count; ++i) {
-        edit_unit_duration = track->resources[i]->resource->base.edit_rate.den * AV_TIME_BASE / track->resources[i]->resource->base.edit_rate.num;
-        cumulated_duration += track->resources[i]->resource->base.duration * track->resources[i]->resource->base.edit_rate.den * AV_TIME_BASE / track->resources[i]->resource->base.edit_rate.num;
+        cumulated_duration = av_add_q(cumulated_duration, av_make_q((int)track->resources[i]->resource->base.duration * edit_unit_duration.num, edit_unit_duration.den));
 
-        if (track->current_timestamp + edit_unit_duration <= cumulated_duration) {
-            av_log(s, AV_LOG_DEBUG, "Found resource %d in track %d to read for timestamp %ld (on cumulated=%ld): entry=%ld, duration=%lu, editrate=%d/%d | edit_unit_duration=%ld\n", i, track->index, track->current_timestamp, cumulated_duration, track->resources[i]->resource->base.entry_point, track->resources[i]->resource->base.duration, track->resources[i]->resource->base.edit_rate.num, track->resources[i]->resource->base.edit_rate.den, edit_unit_duration);
+        if (av_cmp_q(av_add_q(track->current_timestamp, edit_unit_duration), cumulated_duration) <= 0) {
+            av_log(s, AV_LOG_DEBUG, "Found resource %d in track %d to read for timestamp %lf (on cumulated=%lf): entry=%ld, duration=%lu, editrate=" AVRATIONAL_FORMAT " | edit_unit_duration=%lf\n", i, track->index, av_q2d(track->current_timestamp), av_q2d(cumulated_duration), track->resources[i]->resource->base.entry_point, track->resources[i]->resource->base.duration, AVRATIONAL_ARG(track->resources[i]->resource->base.edit_rate), av_q2d(edit_unit_duration));
 
             if (track->current_resource_index != i) {
                 av_log(s, AV_LOG_DEBUG, "Switch resource on track %d: re-open context\n", track->index);
@@ -513,21 +515,20 @@ static int ff_imf_read_packet(AVFormatContext *s, AVPacket *pkt) {
     IMFContext *c = s->priv_data;
 
     IMFVirtualTrackResourcePlaybackCtx *resource_to_read = NULL;
-    int64_t edit_unit_duration;
+    AVRational edit_unit_duration;
     int ret = 0;
 
     IMFVirtualTrackPlaybackCtx *track_to_read = get_next_track_with_minimum_timestamp(s);
 
-    if (track_to_read->current_timestamp == track_to_read->duration) {
+    if (av_cmp_q(track_to_read->current_timestamp, track_to_read->duration) == 0) {
         return AVERROR_EOF;
     }
 
     resource_to_read = get_resource_context_for_timestamp(s, track_to_read);
 
     if (!resource_to_read) {
-        edit_unit_duration = track_to_read->resources[track_to_read->current_resource_index]->resource->base.edit_rate.den
-            * AV_TIME_BASE / track_to_read->resources[track_to_read->current_resource_index]->resource->base.edit_rate.num;
-        if (track_to_read->current_timestamp + edit_unit_duration > track_to_read->duration) {
+        edit_unit_duration = av_inv_q(track_to_read->resources[track_to_read->current_resource_index]->resource->base.edit_rate);
+        if (av_cmp_q(av_add_q(track_to_read->current_timestamp, edit_unit_duration), track_to_read->duration) > 0) {
             return AVERROR_EOF;
         }
 
@@ -549,7 +550,7 @@ static int ff_imf_read_packet(AVFormatContext *s, AVPacket *pkt) {
             pkt->stream_index = track_to_read->index;
 
             // Update track cursors
-            track_to_read->current_timestamp += av_rescale(pkt->duration, (int64_t)resource_to_read->ctx->streams[0]->time_base.num * AV_TIME_BASE, resource_to_read->ctx->streams[0]->time_base.den);
+            track_to_read->current_timestamp = av_add_q(track_to_read->current_timestamp, av_make_q((int)pkt->duration * resource_to_read->ctx->streams[0]->time_base.num, resource_to_read->ctx->streams[0]->time_base.den));
             track_to_read->last_pts += pkt->duration;
 
             return 0;
