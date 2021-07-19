@@ -544,8 +544,10 @@ int parse_imf_cpl_from_xml_dom(xmlDocPtr doc, IMFCPL **cpl) {
         goto cleanup;
 
 cleanup:
-    if (*cpl && ret)
+    if (*cpl && ret) {
         imf_cpl_free(*cpl);
+        *cpl = NULL;
+    }
     return ret;
 }
 
