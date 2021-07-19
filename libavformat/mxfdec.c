@@ -55,6 +55,7 @@
 #include "libavutil/parseutils.h"
 #include "libavutil/timecode.h"
 #include "libavutil/opt.h"
+#include "libswresample/swresample.h"
 #include "avformat.h"
 #include "internal.h"
 #include "mxf.h"
@@ -86,6 +87,14 @@ typedef enum {
     FrameWrapped,
     ClipWrapped,
 } MXFWrappingScheme;
+
+typedef enum {
+    LeftAudioChannel,
+    RightAudioChannel,
+    CenterAudioChannel,
+    SurroundLeftAudioChannel,
+    SurroundRightAudioChannel,
+} MxfAudioChannel;
 
 typedef struct MXFPartition {
     int closed;
@@ -177,6 +186,7 @@ typedef struct {
     int body_sid;
     MXFWrappingScheme wrapping;
     int edit_units_per_packet; /* how many edit units to read at a time (PCM, ClipWrapped) */
+    MxfAudioChannel* channel_ordering;
 } MXFTrack;
 
 typedef struct MXFDescriptor {
@@ -195,6 +205,8 @@ typedef struct MXFDescriptor {
 #define MXF_FIELD_DOMINANCE_FL 2 /* coded first, displayed last */
     int field_dominance;
     int channels;
+    // if allocated, the size is the number of channels and requires to be used to update the audio mapping
+    MxfAudioChannel* channel_ordering;
     int bits_per_sample;
     int64_t duration; /* ContainerDuration optional property */
     unsigned int component_depth;
@@ -215,6 +227,9 @@ typedef struct MXFDescriptor {
     AVMasteringDisplayMetadata *mastering;
     AVContentLightMetadata *coll;
     size_t coll_size;
+    UID mca_link_id;
+    UID mca_group_link_id;
+    UID mca_label_dictionnary_id;
 } MXFDescriptor;
 
 typedef struct MXFIndexTableSegment {
@@ -311,6 +326,8 @@ static const uint8_t mxf_system_item_key_cp[]              = { 0x06,0x0e,0x2b,0x
 static const uint8_t mxf_system_item_key_gc[]              = { 0x06,0x0e,0x2b,0x34,0x02,0x53,0x01,0x01,0x0d,0x01,0x03,0x01,0x14 };
 static const uint8_t mxf_klv_key[]                         = { 0x06,0x0e,0x2b,0x34 };
 static const uint8_t mxf_apple_coll_prefix[]               = { 0x06,0x0e,0x2b,0x34,0x01,0x01,0x01,0x0e,0x0e,0x20,0x04,0x01,0x05,0x03,0x01 };
+static const uint8_t mxf_mca_prefix[]                      = { 0x06,0x0e,0x2b,0x34,0x01,0x01,0x01,0x0e,0x01,0x03,0x07,0x01 };
+
 /* complete keys to match */
 static const uint8_t mxf_crypto_source_container_ul[]      = { 0x06,0x0e,0x2b,0x34,0x01,0x01,0x01,0x09,0x06,0x01,0x01,0x02,0x02,0x00,0x00,0x00 };
 static const uint8_t mxf_encrypted_triplet_key[]           = { 0x06,0x0e,0x2b,0x34,0x02,0x04,0x01,0x07,0x0d,0x01,0x03,0x01,0x02,0x7e,0x01,0x00 };
@@ -322,6 +339,18 @@ static const uint8_t mxf_indirect_value_utf16le[]          = { 0x4c,0x00,0x02,0x
 static const uint8_t mxf_indirect_value_utf16be[]          = { 0x42,0x01,0x10,0x02,0x00,0x00,0x00,0x00,0x00,0x06,0x0e,0x2b,0x34,0x01,0x04,0x01,0x01 };
 static const uint8_t mxf_apple_coll_max_cll[]              = { 0x06,0x0e,0x2b,0x34,0x01,0x01,0x01,0x0e,0x0e,0x20,0x04,0x01,0x05,0x03,0x01,0x01 };
 static const uint8_t mxf_apple_coll_max_fall[]             = { 0x06,0x0e,0x2b,0x34,0x01,0x01,0x01,0x0e,0x0e,0x20,0x04,0x01,0x05,0x03,0x01,0x02 };
+
+static const uint8_t mxf_mca_label_dictionnary_id[]        = { 0x06,0x0e,0x2b,0x34,0x01,0x01,0x01,0x0e,0x01,0x03,0x07,0x01,0x01,0x00,0x00,0x00 };
+static const uint8_t mxf_mca_tag_symbol[]                  = { 0x06,0x0e,0x2b,0x34,0x01,0x01,0x01,0x0e,0x01,0x03,0x07,0x01,0x02,0x00,0x00,0x00 };
+static const uint8_t mxf_mca_tag_name[]                    = { 0x06,0x0e,0x2b,0x34,0x01,0x01,0x01,0x0e,0x01,0x03,0x07,0x01,0x03,0x00,0x00,0x00 };
+static const uint8_t mxf_mca_link_id[]                     = { 0x06,0x0e,0x2b,0x34,0x01,0x01,0x01,0x0e,0x01,0x03,0x07,0x01,0x05,0x00,0x00,0x00 };
+static const uint8_t mxf_soundfield_group_link_id[]        = { 0x06,0x0e,0x2b,0x34,0x01,0x01,0x01,0x0e,0x01,0x03,0x07,0x01,0x06,0x00,0x00,0x00 };
+static const uint8_t mxf_mca_rfc5646_spoken_language[]     = { 0x06,0x0e,0x2b,0x34,0x01,0x01,0x01,0x0d,0x03,0x01,0x01,0x02,0x03,0x15,0x00,0x00 };
+
+static const uint8_t mxf_left_audio_channel[]              = { 0x06,0x0e,0x2b,0x34,0x04,0x01,0x01,0x0d,0x03,0x02,0x01,0x01,0x00,0x00,0x00,0x00 };
+static const uint8_t mxf_right_audio_channel[]             = { 0x06,0x0e,0x2b,0x34,0x04,0x01,0x01,0x0d,0x03,0x02,0x01,0x02,0x00,0x00,0x00,0x00 };
+
+static const uint8_t mxf_sub_descriptor[]                  = { 0x06,0x0e,0x2b,0x34,0x01,0x01,0x01,0x09,0x06,0x01,0x01,0x04,0x06,0x10,0x00,0x00 };
 
 static const uint8_t mxf_mastering_display_prefix[13]      = { FF_MXF_MasteringDisplay_PREFIX };
 static const uint8_t mxf_mastering_display_uls[4][16] = {
@@ -899,6 +928,30 @@ static int mxf_read_strong_ref_array(AVIOContext *pb, UID **refs, int *count)
     return 0;
 }
 
+static inline int mxf_read_string(AVIOContext *pb, int size, char** str)
+{
+    int ret;
+    size_t buf_size;
+
+    if (size < 0)
+        return AVERROR(EINVAL);
+
+    buf_size = size + 1;
+    av_free(*str);
+    *str = av_malloc(buf_size);
+    if (!*str)
+        return AVERROR(ENOMEM);
+
+    ret = avio_get_str(pb, size, *str, buf_size);
+
+    if (ret < 0) {
+        av_freep(str);
+        return ret;
+    }
+
+    return ret;
+}
+
 static inline int mxf_read_utf16_string(AVIOContext *pb, int size, char** str, int be)
 {
     int ret;
@@ -1352,6 +1405,32 @@ static int mxf_read_generic_descriptor(void *arg, AVIOContext *pb, int tag, int 
             if (IS_KLV_KEY(uid, mxf_apple_coll_max_fall)) {
                 descriptor->coll->MaxFALL = avio_rb16(pb);
             }
+        }
+
+        if (IS_KLV_KEY(uid, mxf_sub_descriptor)) {
+            mxf_read_strong_ref_array(pb, &descriptor->sub_descriptors_refs, &descriptor->sub_descriptors_count);
+            break;
+        }
+
+        if (IS_KLV_KEY(uid, mxf_mca_prefix)) {
+            if (IS_KLV_KEY(uid, mxf_mca_label_dictionnary_id)) {
+                avio_read(pb, descriptor->mca_label_dictionnary_id, 16);
+            }
+            if (IS_KLV_KEY(uid, mxf_mca_link_id)) {
+                avio_read(pb, descriptor->mca_link_id, 16);
+            }
+            if (IS_KLV_KEY(uid, mxf_soundfield_group_link_id)) {
+                avio_read(pb, descriptor->mca_group_link_id, 16);
+            }
+        }
+        if (IS_KLV_KEY(uid, mxf_mca_rfc5646_spoken_language)) {
+            char *str = NULL;
+            int ret = 0;
+
+            if ((ret = mxf_read_string(pb, size, &str)) < 0) \
+                return ret;
+
+            av_log(NULL, AV_LOG_WARNING, "MCA Spoken Language: %s\n", str);
         }
         break;
     }
@@ -2649,6 +2728,13 @@ static int mxf_parse_structural_metadata(MXFContext *mxf)
                 st->codecpar->codec_id = (enum AVCodecID)container_ul->id;
             st->codecpar->channels = descriptor->channels;
 
+            if (descriptor->channel_ordering != NULL) {
+                av_log(mxf->fc, AV_LOG_WARNING, "MCA audio mapping");
+
+                // source_track->channels = descriptor->channels;
+                source_track->channel_ordering = descriptor->channel_ordering;
+            }
+
             if (descriptor->sample_rate.den > 0) {
                 st->codecpar->sample_rate = descriptor->sample_rate.num / descriptor->sample_rate.den;
                 avpriv_set_pts_info(st, 64, descriptor->sample_rate.den, descriptor->sample_rate.num);
@@ -2881,6 +2967,8 @@ static const MXFMetadataReadTableEntry mxf_metadata_read_table[] = {
     { { 0x06,0x0e,0x2b,0x34,0x02,0x53,0x01,0x01,0x0d,0x01,0x01,0x01,0x01,0x01,0x5c,0x00 }, mxf_read_generic_descriptor, sizeof(MXFDescriptor), Descriptor }, /* VANC/VBI - SMPTE 436M */
     { { 0x06,0x0e,0x2b,0x34,0x02,0x53,0x01,0x01,0x0d,0x01,0x01,0x01,0x01,0x01,0x5e,0x00 }, mxf_read_generic_descriptor, sizeof(MXFDescriptor), Descriptor }, /* MPEG2AudioDescriptor */
     { { 0x06,0x0e,0x2b,0x34,0x02,0x53,0x01,0x01,0x0d,0x01,0x01,0x01,0x01,0x01,0x64,0x00 }, mxf_read_generic_descriptor, sizeof(MXFDescriptor), Descriptor }, /* DC Timed Text Descriptor */
+    { { 0x06,0x0e,0x2b,0x34,0x02,0x53,0x01,0x01,0x0d,0x01,0x01,0x01,0x01,0x01,0x6c,0x00 }, mxf_read_generic_descriptor, sizeof(MXFDescriptor), SubDescriptor }, /* Soundfield Group Label Subdescriptor */
+    { { 0x06,0x0e,0x2b,0x34,0x02,0x53,0x01,0x01,0x0d,0x01,0x01,0x01,0x01,0x01,0x6b,0x00 }, mxf_read_generic_descriptor, sizeof(MXFDescriptor), SubDescriptor }, /* Audio Channel Label Subdescriptor */
     { { 0x06,0x0e,0x2b,0x34,0x02,0x53,0x01,0x01,0x0d,0x01,0x01,0x01,0x01,0x01,0x3A,0x00 }, mxf_read_track, sizeof(MXFTrack), Track }, /* Static Track */
     { { 0x06,0x0e,0x2b,0x34,0x02,0x53,0x01,0x01,0x0d,0x01,0x01,0x01,0x01,0x01,0x3B,0x00 }, mxf_read_track, sizeof(MXFTrack), Track }, /* Generic Track */
     { { 0x06,0x0e,0x2b,0x34,0x02,0x53,0x01,0x01,0x0d,0x01,0x01,0x01,0x01,0x01,0x14,0x00 }, mxf_read_timecode_component, sizeof(MXFTimecodeComponent), TimecodeComponent },
@@ -3725,6 +3813,50 @@ static int mxf_read_packet(AVFormatContext *s, AVPacket *pkt)
                 mxf->current_klv_data = (KLVPacket){{0}};
                 return ret;
             }
+
+            if (st->codecpar->codec_type == AVMEDIA_TYPE_AUDIO) {
+                if (track->channel_ordering != NULL && st->codecpar->format != AV_SAMPLE_FMT_NONE) {
+                    SwrContext* swr_context = swr_alloc();
+                    int channel_map[2];
+
+                    for(int i = 0; i < st->codecpar->channels; ++i) {
+                        if (track->channel_ordering[i] == LeftAudioChannel) {
+                            channel_map[0] = i;
+                        }
+                        if (track->channel_ordering[i] == RightAudioChannel) {
+                            channel_map[1] = i;
+                        }
+                    }
+
+                    av_log(s, AV_LOG_INFO, "Audio mapping (");
+                    for(int i = 0; i < st->codecpar->channels; ++i) {
+                        if (i == st->codecpar->channels - 1)
+                            av_log(s, AV_LOG_INFO, "%d -> %d", channel_map[i], i);
+                        else
+                            av_log(s, AV_LOG_INFO, "%d -> %d, ", channel_map[i], i);
+                    }
+                    av_log(s, AV_LOG_INFO, ")\n");
+
+                    swr_set_channel_mapping(swr_context, channel_map);
+
+                    av_opt_set_int(swr_context, "in_channel_count", st->codecpar->channels, 0);
+                    av_opt_set_int(swr_context, "out_channel_count", st->codecpar->channels, 0);
+                    av_opt_set_int(swr_context, "in_channel_layout", st->codecpar->channel_layout, 0);
+                    av_opt_set_int(swr_context, "out_channel_layout", st->codecpar->channel_layout, 0);
+                    av_opt_set_int(swr_context, "in_sample_rate", st->codecpar->sample_rate, 0);
+                    av_opt_set_int(swr_context, "out_sample_rate", st->codecpar->sample_rate, 0);
+                    av_opt_set_sample_fmt(swr_context, "in_sample_fmt", st->codecpar->format, 0);
+                    av_opt_set_sample_fmt(swr_context, "out_sample_fmt", st->codecpar->format, 0);
+
+                    if (swr_init(swr_context) < 0) {
+                        av_log(s, AV_LOG_ERROR, "Unable to init swresample context\n");
+                    }
+
+                    swr_convert(swr_context, &pkt->data, pkt->size / 2 / 2, (const uint8_t **)&pkt->data, pkt->size / 2 / 2);
+                    // swr_free(&swr_context);
+                }
+            }
+
 
             /* seek for truncated packets */
             avio_seek(s->pb, klv.next_klv, SEEK_SET);
