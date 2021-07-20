@@ -375,6 +375,10 @@ static void mxf_free_metadataset(MXFMetadataSet **ctx, int freectx)
         av_freep(&((MXFDescriptor *)*ctx)->mastering);
         av_freep(&((MXFDescriptor *)*ctx)->coll);
         av_freep(&((MXFDescriptor *)*ctx)->sub_descriptors_refs);
+        if (((MXFDescriptor *)*ctx)->channel_ordering) {
+            av_freep(&((MXFDescriptor *)*ctx)->channel_ordering);
+        }
+        
         break;
     case Sequence:
         av_freep(&((MXFSequence *)*ctx)->structural_components_refs);
@@ -394,6 +398,10 @@ static void mxf_free_metadataset(MXFMetadataSet **ctx, int freectx)
         break;
     case Track:
         av_freep(&((MXFTrack *)*ctx)->name);
+        if (((MXFTrack *)*ctx)->channel_reordering_context != NULL) {
+            swr_free(&((MXFTrack *)*ctx)->channel_reordering_context);
+            ((MXFTrack *)*ctx)->channel_reordering_context = NULL;
+        }
         break;
     case IndexTableSegment:
         seg = (MXFIndexTableSegment *)*ctx;
