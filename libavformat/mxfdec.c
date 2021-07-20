@@ -45,6 +45,7 @@
  */
 
 #include <inttypes.h>
+#include <stdbool.h>
 
 #include "libavutil/aes.h"
 #include "libavutil/avstring.h"
@@ -186,7 +187,7 @@ typedef struct {
     int body_sid;
     MXFWrappingScheme wrapping;
     int edit_units_per_packet; /* how many edit units to read at a time (PCM, ClipWrapped) */
-    MxfAudioChannel* channel_ordering;
+    SwrContext* channel_reordering_context;
 } MXFTrack;
 
 typedef struct MXFDescriptor {
@@ -205,8 +206,9 @@ typedef struct MXFDescriptor {
 #define MXF_FIELD_DOMINANCE_FL 2 /* coded first, displayed last */
     int field_dominance;
     int channels;
-    // if allocated, the size is the number of channels and requires to be used to update the audio mapping
-    MxfAudioChannel* channel_ordering;
+    // if allocated, it represent the audio mapping detected from MCA labels,
+    // matches with the SwrContext mapping struct
+    int* channel_ordering;
     int bits_per_sample;
     int64_t duration; /* ContainerDuration optional property */
     unsigned int component_depth;
@@ -327,6 +329,7 @@ static const uint8_t mxf_system_item_key_gc[]              = { 0x06,0x0e,0x2b,0x
 static const uint8_t mxf_klv_key[]                         = { 0x06,0x0e,0x2b,0x34 };
 static const uint8_t mxf_apple_coll_prefix[]               = { 0x06,0x0e,0x2b,0x34,0x01,0x01,0x01,0x0e,0x0e,0x20,0x04,0x01,0x05,0x03,0x01 };
 static const uint8_t mxf_mca_prefix[]                      = { 0x06,0x0e,0x2b,0x34,0x01,0x01,0x01,0x0e,0x01,0x03,0x07,0x01 };
+static const uint8_t mxf_audio_channel[]                   = { 0x06,0x0e,0x2b,0x34,0x04,0x01,0x01,0x0d,0x03,0x02,0x01 };
 
 /* complete keys to match */
 static const uint8_t mxf_crypto_source_container_ul[]      = { 0x06,0x0e,0x2b,0x34,0x01,0x01,0x01,0x09,0x06,0x01,0x01,0x02,0x02,0x00,0x00,0x00 };
@@ -1430,6 +1433,7 @@ static int mxf_read_generic_descriptor(void *arg, AVIOContext *pb, int tag, int 
             if ((ret = mxf_read_string(pb, size, &str)) < 0) \
                 return ret;
 
+            // metadata -> "language"
             av_log(NULL, AV_LOG_WARNING, "MCA Spoken Language: %s\n", str);
         }
         break;
@@ -2147,6 +2151,7 @@ static MXFDescriptor* mxf_resolve_multidescriptor(MXFContext *mxf, MXFDescriptor
 {
     MXFDescriptor *sub_descriptor = NULL;
     int i;
+    bool require_reordering;
 
     if (!descriptor)
         return NULL;
@@ -2364,6 +2369,12 @@ static enum AVColorRange mxf_get_color_range(MXFContext *mxf, MXFDescriptor *des
     }
 
     return AVCOL_RANGE_UNSPECIFIED;
+}
+
+static int is_pcm(enum AVCodecID codec_id)
+{
+    /* we only care about "normal" PCM codecs until we get samples */
+    return codec_id >= AV_CODEC_ID_PCM_S16LE && codec_id < AV_CODEC_ID_PCM_S24DAUD;
 }
 
 static int mxf_parse_structural_metadata(MXFContext *mxf)
@@ -2728,13 +2739,6 @@ static int mxf_parse_structural_metadata(MXFContext *mxf)
                 st->codecpar->codec_id = (enum AVCodecID)container_ul->id;
             st->codecpar->channels = descriptor->channels;
 
-            if (descriptor->channel_ordering != NULL) {
-                av_log(mxf->fc, AV_LOG_WARNING, "MCA audio mapping");
-
-                // source_track->channels = descriptor->channels;
-                source_track->channel_ordering = descriptor->channel_ordering;
-            }
-
             if (descriptor->sample_rate.den > 0) {
                 st->codecpar->sample_rate = descriptor->sample_rate.num / descriptor->sample_rate.den;
                 avpriv_set_pts_info(st, 64, descriptor->sample_rate.den, descriptor->sample_rate.num);
@@ -2767,6 +2771,55 @@ static int mxf_parse_structural_metadata(MXFContext *mxf)
                 st->internal->need_parsing = AVSTREAM_PARSE_FULL;
             }
             st->codecpar->bits_per_coded_sample = av_get_bits_per_sample(st->codecpar->codec_id);
+
+            if (descriptor->channel_ordering != NULL && is_pcm(st->codecpar->codec_id)) {
+                // set language from MCA spoken language information
+                // av_dict_set(&st->metadata, "language", "eng", 0);
+
+                SwrContext* swr_context = swr_alloc();
+
+                av_log(mxf->fc, AV_LOG_INFO, "Audio mapping (");
+                for(int i = 0; i < descriptor->channels; ++i) {
+                    if (i == descriptor->channels - 1)
+                        av_log(mxf->fc, AV_LOG_INFO, "%d -> %d", descriptor->channel_ordering[i], i);
+                    else
+                        av_log(mxf->fc, AV_LOG_INFO, "%d -> %d, ", descriptor->channel_ordering[i], i);
+                }
+                av_log(mxf->fc, AV_LOG_INFO, ")\n");
+
+                swr_set_channel_mapping(swr_context, descriptor->channel_ordering);
+
+                int64_t channel_layout = av_get_default_channel_layout(descriptor->channels);
+
+                enum AVSampleFormat format = AV_SAMPLE_FMT_NONE;
+                if (st->codecpar->codec_id == AV_CODEC_ID_PCM_S16LE ||
+                    st->codecpar->codec_id == AV_CODEC_ID_PCM_S16BE) {
+                    format = AV_SAMPLE_FMT_S16;
+                }
+
+                if (st->codecpar->codec_id == AV_CODEC_ID_PCM_S24LE ||
+                    st->codecpar->codec_id == AV_CODEC_ID_PCM_S24BE ||
+                    st->codecpar->codec_id == AV_CODEC_ID_PCM_S32LE ||
+                    st->codecpar->codec_id == AV_CODEC_ID_PCM_S32BE) {
+                    format = AV_SAMPLE_FMT_S32;
+                }
+
+                av_opt_set_int(swr_context, "in_channel_count", descriptor->channels, 0);
+                av_opt_set_int(swr_context, "out_channel_count", descriptor->channels, 0);
+                av_opt_set_int(swr_context, "in_channel_layout", channel_layout, 0);
+                av_opt_set_int(swr_context, "out_channel_layout", channel_layout, 0);
+                av_opt_set_int(swr_context, "in_sample_rate", st->codecpar->sample_rate, 0);
+                av_opt_set_int(swr_context, "out_sample_rate", st->codecpar->sample_rate, 0);
+                av_opt_set_sample_fmt(swr_context, "in_sample_fmt", format, 0);
+                av_opt_set_sample_fmt(swr_context, "out_sample_fmt", format, 0);
+
+                if (swr_init(swr_context) < 0) {
+                    av_log(mxf->fc, AV_LOG_ERROR, "Unable to init swresample context\n");
+                }
+
+                source_track->channel_reordering_context = swr_context;
+            }
+
         } else if (st->codecpar->codec_type == AVMEDIA_TYPE_DATA) {
             enum AVMediaType type;
             container_ul = mxf_get_codec_ul(mxf_data_essence_container_uls, essence_container_ul);
@@ -3266,12 +3319,6 @@ static void mxf_compute_essence_containers(AVFormatContext *s)
             }
         }
     }
-}
-
-static int is_pcm(enum AVCodecID codec_id)
-{
-    /* we only care about "normal" PCM codecs until we get samples */
-    return codec_id >= AV_CODEC_ID_PCM_S16LE && codec_id < AV_CODEC_ID_PCM_S24DAUD;
 }
 
 static MXFIndexTable *mxf_find_index_table(MXFContext *mxf, int index_sid)
@@ -3814,49 +3861,12 @@ static int mxf_read_packet(AVFormatContext *s, AVPacket *pkt)
                 return ret;
             }
 
-            if (st->codecpar->codec_type == AVMEDIA_TYPE_AUDIO) {
-                if (track->channel_ordering != NULL && st->codecpar->format != AV_SAMPLE_FMT_NONE) {
-                    SwrContext* swr_context = swr_alloc();
-                    int channel_map[2];
-
-                    for(int i = 0; i < st->codecpar->channels; ++i) {
-                        if (track->channel_ordering[i] == LeftAudioChannel) {
-                            channel_map[0] = i;
-                        }
-                        if (track->channel_ordering[i] == RightAudioChannel) {
-                            channel_map[1] = i;
-                        }
-                    }
-
-                    av_log(s, AV_LOG_INFO, "Audio mapping (");
-                    for(int i = 0; i < st->codecpar->channels; ++i) {
-                        if (i == st->codecpar->channels - 1)
-                            av_log(s, AV_LOG_INFO, "%d -> %d", channel_map[i], i);
-                        else
-                            av_log(s, AV_LOG_INFO, "%d -> %d, ", channel_map[i], i);
-                    }
-                    av_log(s, AV_LOG_INFO, ")\n");
-
-                    swr_set_channel_mapping(swr_context, channel_map);
-
-                    av_opt_set_int(swr_context, "in_channel_count", st->codecpar->channels, 0);
-                    av_opt_set_int(swr_context, "out_channel_count", st->codecpar->channels, 0);
-                    av_opt_set_int(swr_context, "in_channel_layout", st->codecpar->channel_layout, 0);
-                    av_opt_set_int(swr_context, "out_channel_layout", st->codecpar->channel_layout, 0);
-                    av_opt_set_int(swr_context, "in_sample_rate", st->codecpar->sample_rate, 0);
-                    av_opt_set_int(swr_context, "out_sample_rate", st->codecpar->sample_rate, 0);
-                    av_opt_set_sample_fmt(swr_context, "in_sample_fmt", st->codecpar->format, 0);
-                    av_opt_set_sample_fmt(swr_context, "out_sample_fmt", st->codecpar->format, 0);
-
-                    if (swr_init(swr_context) < 0) {
-                        av_log(s, AV_LOG_ERROR, "Unable to init swresample context\n");
-                    }
-
-                    swr_convert(swr_context, &pkt->data, pkt->size / 2 / 2, (const uint8_t **)&pkt->data, pkt->size / 2 / 2);
-                    // swr_free(&swr_context);
-                }
+            // for audio, process audio remapping if MCA label requires it 
+            if (st->codecpar->codec_type == AVMEDIA_TYPE_AUDIO && track->channel_reordering_context != NULL) {
+                int byte_per_sample = st->codecpar->bits_per_coded_sample / 8;
+                int number_of_samples = pkt->size / byte_per_sample / st->codecpar->channels;
+                swr_convert(track->channel_reordering_context, &pkt->data, number_of_samples, (const uint8_t **)&pkt->data, number_of_samples);
             }
-
 
             /* seek for truncated packets */
             avio_seek(s->pb, klv.next_klv, SEEK_SET);
