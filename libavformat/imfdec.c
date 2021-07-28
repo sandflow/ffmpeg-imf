@@ -85,6 +85,38 @@ typedef struct IMFContext {
     IMFVirtualTrackPlaybackCtx **tracks;
 } IMFContext;
 
+int is_url(const char *string) {
+    char *substr = strstr(string, "://");
+    return substr != NULL;
+}
+
+int is_unix_absolute_path(const char *string) {
+    char *substr = strstr(string, "/");
+    int index = (int)(substr - string);
+    return index == 0;
+}
+
+int is_dos_absolute_path(const char *string) {
+    // Absolute path case: `C:\path\to\somwhere`
+    char *substr = strstr(string, ":\\");
+    int index = (int)(substr - string);
+    if (index == 1) {
+        return 1;
+    }
+
+    // Absolute path case: `C:/path/to/somwhere`
+    substr = strstr(string, ":/");
+    index = (int)(substr - string);
+    if (index == 1) {
+        return 1;
+    }
+
+    // Network path case: `\\path\to\somwhere`
+    substr = strstr(string, "\\\\");
+    index = (int)(substr - string);
+    return index == 0;
+}
+
 int parse_imf_asset_map_from_xml_dom(AVFormatContext *s, xmlDocPtr doc, IMFAssetLocatorMap **asset_map, const char *base_url) {
     xmlNodePtr asset_map_element = NULL;
     xmlNodePtr node = NULL;
@@ -139,7 +171,11 @@ int parse_imf_asset_map_from_xml_dom(AVFormatContext *s, xmlDocPtr doc, IMFAsset
         }
 
         uri = xmlNodeGetContent(xml_get_child_element_by_name(node, "Path"));
-        uri = av_append_path_component(base_url, uri);
+
+        if (!is_url(uri) && !is_unix_absolute_path(uri) && !is_dos_absolute_path(uri)) {
+            uri = av_append_path_component(base_url, uri);
+        }
+
         asset->absolute_uri = strdup(uri);
         av_free(uri);
 
