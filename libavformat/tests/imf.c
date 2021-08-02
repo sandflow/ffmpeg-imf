@@ -35,6 +35,8 @@
 #include "libavformat/imf_internal.h"
 #include "libavformat/mxf.h"
 
+#include <stdio.h>
+
 const char *cpl_doc =
     "<CompositionPlaylist xmlns=\"http://example.com\">"
     "<Id>urn:uuid:8713c020-2489-45f5-a9f7-87be539e20b5</Id>"
@@ -364,6 +366,53 @@ cleanup:
     return ret;
 }
 
+typedef struct PathTypeTestStruct {
+    const char *path;
+    int is_url;
+    int is_unix_absolute_path;
+    int is_dos_absolute_path;
+} PathTypeTestStruct;
+
+static const PathTypeTestStruct PATH_TYPE_TEST_STRUCTS[11] = {
+    [0] = {.path = "file://path/to/somewhere", .is_url = 1, .is_unix_absolute_path = 0, .is_dos_absolute_path = 0},
+    [1] = {.path = "http://path/to/somewhere", .is_url = 1, .is_unix_absolute_path = 0, .is_dos_absolute_path = 0},
+    [2] = {.path = "https://path/to/somewhere", .is_url = 1, .is_unix_absolute_path = 0, .is_dos_absolute_path = 0},
+    [3] = {.path = "s3://path/to/somewhere", .is_url = 1, .is_unix_absolute_path = 0, .is_dos_absolute_path = 0},
+    [4] = {.path = "ftp://path/to/somewhere", .is_url = 1, .is_unix_absolute_path = 0, .is_dos_absolute_path = 0},
+    [5] = {.path = "/path/to/somewhere", .is_url = 0, .is_unix_absolute_path = 1, .is_dos_absolute_path = 0},
+    [6] = {.path = "path/to/somewhere", .is_url = 0, .is_unix_absolute_path = 0, .is_dos_absolute_path = 0},
+    [7] = {.path = "C:\\path\\to\\somewhere", .is_url = 0, .is_unix_absolute_path = 0, .is_dos_absolute_path = 1},
+    [8] = {.path = "C:/path/to/somewhere", .is_url = 0, .is_unix_absolute_path = 0, .is_dos_absolute_path = 1},
+    [9] = {.path = "\\\\path\\to\\somewhere", .is_url = 0, .is_unix_absolute_path = 0, .is_dos_absolute_path = 1},
+    [10] = {.path = "path\\to\\somewhere", .is_url = 0, .is_unix_absolute_path = 0, .is_dos_absolute_path = 0},
+};
+
+static int test_path_type_functions(void) {
+    PathTypeTestStruct path_type;
+    for (int i = 0; i < 11; ++i) {
+        path_type = PATH_TYPE_TEST_STRUCTS[i];
+        if (is_url(path_type.path) != path_type.is_url) {
+            fprintf(stderr, "URL comparison test failed for '%s', got %d instead of expected %d\n", path_type.path, path_type.is_url, !path_type.is_url);
+            goto fail;
+        }
+
+        if (is_unix_absolute_path(path_type.path) != path_type.is_unix_absolute_path) {
+            fprintf(stderr, "Unix absolute path comparison test failed for '%s', got %d instead of expected %d\n", path_type.path, path_type.is_unix_absolute_path, !path_type.is_unix_absolute_path);
+            goto fail;
+        }
+
+        if (is_dos_absolute_path(path_type.path) != path_type.is_dos_absolute_path) {
+            fprintf(stderr, "DOS absolute path comparison test failed for '%s', got %d instead of expected %d\n", path_type.path, path_type.is_dos_absolute_path, !path_type.is_dos_absolute_path);
+            goto fail;
+        }
+    }
+
+    return 0;
+
+fail:
+    return 1;
+}
+
 int main(int argc, char *argv[]) {
     int ret = 0;
 
@@ -371,6 +420,9 @@ int main(int argc, char *argv[]) {
         ret = 1;
 
     if (test_asset_map_parsing() != 0)
+        ret = 1;
+
+    if (test_path_type_functions() != 0)
         ret = 1;
 
     printf("#### The following should fail ####\n");
