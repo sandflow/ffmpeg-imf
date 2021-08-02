@@ -507,8 +507,7 @@ static int fill_virtual_tracks(xmlNodePtr cpl_element, IMFCPL *cpl) {
             else if (xmlStrcmp(sequence_elem->name, "MainAudioSequence") == 0)
                 push_main_audio_sequence(sequence_elem, cpl);
             else {
-                av_log(NULL, AV_LOG_ERROR, "Unknown Sequence found\n");
-                return AVERROR_INVALIDDATA;
+                av_log(NULL, AV_LOG_INFO, "The following Sequence is not supported and is ignored: %s\n", sequence_elem->name);
             }
             sequence_elem = xmlNextElementSibling(sequence_elem);
         }
