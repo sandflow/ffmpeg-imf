@@ -88,4 +88,10 @@ IMFAssetLocatorMap *imf_asset_locator_map_alloc(void);
  */
 void imf_asset_locator_map_free(IMFAssetLocatorMap *asset_map);
 
+int is_url(const char *string);
+
+int is_unix_absolute_path(const char *string);
+
+int is_dos_absolute_path(const char *string);
+
 #endif
