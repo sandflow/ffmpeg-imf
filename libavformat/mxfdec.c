@@ -208,6 +208,8 @@ typedef struct MXFDescriptor {
     unsigned int vert_subsampling;
     UID *file_descriptors_refs;
     int file_descriptors_count;
+    UID *sub_descriptors_refs;
+    int sub_descriptors_count;
     int linked_track_id;
     uint8_t *extradata;
     int extradata_size;
@@ -412,6 +414,11 @@ static void mxf_free_metadataset(MXFMetadataSet **ctx, int freectx)
         av_freep(&((MXFDescriptor *)*ctx)->mastering);
         av_freep(&((MXFDescriptor *)*ctx)->coll);
         av_freep(&((MXFDescriptor *)*ctx)->file_descriptors_refs);
+        av_freep(&((MXFDescriptor *)*ctx)->sub_descriptors_refs);
+        break;
+    case MCASubDescriptor:
+        if (((MXFMCASubDescriptor *)*ctx)->language)
+            av_freep(&((MXFMCASubDescriptor *)*ctx)->language);
         break;
     case MCASubDescriptor:
         if (((MXFMCASubDescriptor *)*ctx)->language)
@@ -2465,6 +2472,7 @@ static int mxf_parse_structural_metadata(MXFContext *mxf)
         int* channel_ordering;
         int flags;
         int current_channel;
+        bool require_reordering;
 
         if (!(material_track = mxf_resolve_strong_ref(mxf, &material_package->tracks_refs[i], Track))) {
             av_log(mxf->fc, AV_LOG_ERROR, "could not resolve material track strong ref\n");
@@ -2828,6 +2836,10 @@ static int mxf_parse_structural_metadata(MXFContext *mxf)
 
             channel_ordering = av_mallocz_array(descriptor->channels, sizeof(int));
 
+            for (j = 0; j < descriptor->channels; ++j) {
+                channel_ordering[j] = j;
+            }
+
             for (j = 0; j < descriptor->sub_descriptors_count; j++) {
                 MXFMCASubDescriptor *mca_sub_descriptor = mxf_resolve_strong_ref(mxf, &descriptor->sub_descriptors_refs[j], MCASubDescriptor);
                 if (mca_sub_descriptor == NULL) {
@@ -2975,7 +2987,7 @@ static int mxf_parse_structural_metadata(MXFContext *mxf)
             }
 
             // check if the mapping is not required
-            bool require_reordering = false;
+            require_reordering = false;
             for (j = 0; j < descriptor->channels; ++j) {
                 if (channel_ordering[j] != j) {
                     require_reordering = true;
