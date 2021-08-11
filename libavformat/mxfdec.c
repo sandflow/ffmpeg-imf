@@ -45,12 +45,14 @@
  */
 
 #include <inttypes.h>
+#include <stdbool.h>
 
 #include "libavutil/aes.h"
 #include "libavutil/avstring.h"
 #include "libavutil/mastering_display_metadata.h"
 #include "libavutil/mathematics.h"
 #include "libavcodec/bytestream.h"
+#include "libavutil/channel_layout.h"
 #include "libavutil/intreadwrite.h"
 #include "libavutil/parseutils.h"
 #include "libavutil/timecode.h"
@@ -177,6 +179,7 @@ typedef struct {
     int body_sid;
     MXFWrappingScheme wrapping;
     int edit_units_per_packet; /* how many edit units to read at a time (PCM, ClipWrapped) */
+    int* channel_ordering;
 } MXFTrack;
 
 typedef struct MXFDescriptor {
@@ -205,6 +208,8 @@ typedef struct MXFDescriptor {
     unsigned int vert_subsampling;
     UID *file_descriptors_refs;
     int file_descriptors_count;
+    UID *sub_descriptors_refs;
+    int sub_descriptors_count;
     int linked_track_id;
     uint8_t *extradata;
     int extradata_size;
@@ -216,6 +221,15 @@ typedef struct MXFDescriptor {
     AVContentLightMetadata *coll;
     size_t coll_size;
 } MXFDescriptor;
+
+typedef struct MXFMCASubDescriptor {
+    MXFMetadataSet meta;
+    UID uid;
+    UID mca_link_id;
+    UID mca_group_link_id;
+    UID mca_label_dictionnary_id;
+    char *language;
+} MXFMCASubDescriptor;
 
 typedef struct MXFIndexTableSegment {
     MXFMetadataSet meta;
@@ -311,6 +325,10 @@ static const uint8_t mxf_system_item_key_cp[]              = { 0x06,0x0e,0x2b,0x
 static const uint8_t mxf_system_item_key_gc[]              = { 0x06,0x0e,0x2b,0x34,0x02,0x53,0x01,0x01,0x0d,0x01,0x03,0x01,0x14 };
 static const uint8_t mxf_klv_key[]                         = { 0x06,0x0e,0x2b,0x34 };
 static const uint8_t mxf_apple_coll_prefix[]               = { 0x06,0x0e,0x2b,0x34,0x01,0x01,0x01,0x0e,0x0e,0x20,0x04,0x01,0x05,0x03,0x01 };
+static const uint8_t mxf_mca_prefix[]                      = { 0x06,0x0e,0x2b,0x34,0x01,0x01,0x01,0x0e,0x01,0x03,0x07,0x01 };
+static const uint8_t mxf_audio_channel[]                   = { 0x06,0x0e,0x2b,0x34,0x04,0x01,0x01,0x0d,0x03,0x02,0x01 };
+static const uint8_t mxf_soundfield_group[]                = { 0x06,0x0e,0x2b,0x34,0x04,0x01,0x01,0x0d,0x03,0x02,0x02 };
+
 /* complete keys to match */
 static const uint8_t mxf_crypto_source_container_ul[]      = { 0x06,0x0e,0x2b,0x34,0x01,0x01,0x01,0x09,0x06,0x01,0x01,0x02,0x02,0x00,0x00,0x00 };
 static const uint8_t mxf_encrypted_triplet_key[]           = { 0x06,0x0e,0x2b,0x34,0x02,0x04,0x01,0x07,0x0d,0x01,0x03,0x01,0x02,0x7e,0x01,0x00 };
@@ -322,6 +340,59 @@ static const uint8_t mxf_indirect_value_utf16le[]          = { 0x4c,0x00,0x02,0x
 static const uint8_t mxf_indirect_value_utf16be[]          = { 0x42,0x01,0x10,0x02,0x00,0x00,0x00,0x00,0x00,0x06,0x0e,0x2b,0x34,0x01,0x04,0x01,0x01 };
 static const uint8_t mxf_apple_coll_max_cll[]              = { 0x06,0x0e,0x2b,0x34,0x01,0x01,0x01,0x0e,0x0e,0x20,0x04,0x01,0x05,0x03,0x01,0x01 };
 static const uint8_t mxf_apple_coll_max_fall[]             = { 0x06,0x0e,0x2b,0x34,0x01,0x01,0x01,0x0e,0x0e,0x20,0x04,0x01,0x05,0x03,0x01,0x02 };
+
+static const uint8_t mxf_mca_label_dictionnary_id[]        = { 0x06,0x0e,0x2b,0x34,0x01,0x01,0x01,0x0e,0x01,0x03,0x07,0x01,0x01,0x00,0x00,0x00 };
+static const uint8_t mxf_mca_tag_symbol[]                  = { 0x06,0x0e,0x2b,0x34,0x01,0x01,0x01,0x0e,0x01,0x03,0x07,0x01,0x02,0x00,0x00,0x00 };
+static const uint8_t mxf_mca_tag_name[]                    = { 0x06,0x0e,0x2b,0x34,0x01,0x01,0x01,0x0e,0x01,0x03,0x07,0x01,0x03,0x00,0x00,0x00 };
+static const uint8_t mxf_mca_link_id[]                     = { 0x06,0x0e,0x2b,0x34,0x01,0x01,0x01,0x0e,0x01,0x03,0x07,0x01,0x05,0x00,0x00,0x00 };
+static const uint8_t mxf_soundfield_group_link_id[]        = { 0x06,0x0e,0x2b,0x34,0x01,0x01,0x01,0x0e,0x01,0x03,0x07,0x01,0x06,0x00,0x00,0x00 };
+static const uint8_t mxf_mca_rfc5646_spoken_language[]     = { 0x06,0x0e,0x2b,0x34,0x01,0x01,0x01,0x0d,0x03,0x01,0x01,0x02,0x03,0x15,0x00,0x00 };
+
+// Soundfield Groups
+static const uint8_t mxf_soundfield_group_51[]                                       = { 0x06,0x0e,0x2b,0x34,0x04,0x01,0x01,0x0d,0x03,0x02,0x02,0x01,0x00,0x00,0x00,0x00 };
+static const uint8_t mxf_soundfield_group_71ds[]                                     = { 0x06,0x0e,0x2b,0x34,0x04,0x01,0x01,0x0d,0x03,0x02,0x02,0x02,0x00,0x00,0x00,0x00 };
+static const uint8_t mxf_soundfield_group_71sds[]                                    = { 0x06,0x0e,0x2b,0x34,0x04,0x01,0x01,0x0d,0x03,0x02,0x02,0x03,0x00,0x00,0x00,0x00 };
+static const uint8_t mxf_soundfield_group_61[]                                       = { 0x06,0x0e,0x2b,0x34,0x04,0x01,0x01,0x0d,0x03,0x02,0x02,0x04,0x00,0x00,0x00,0x00 };
+static const uint8_t mxf_soundfield_group_10_monoral[]                               = { 0x06,0x0e,0x2b,0x34,0x04,0x01,0x01,0x0d,0x03,0x02,0x02,0x05,0x00,0x00,0x00,0x00 };
+
+static const uint8_t mxf_soundfield_group_smpte_st2067_8_standard_stereo[]           = { 0x06,0x0e,0x2b,0x34,0x04,0x01,0x01,0x0d,0x03,0x02,0x02,0x20,0x01,0x00,0x00,0x00 };
+static const uint8_t mxf_soundfield_group_smpte_st2067_8_dual_mono[]                 = { 0x06,0x0e,0x2b,0x34,0x04,0x01,0x01,0x0d,0x03,0x02,0x02,0x20,0x02,0x00,0x00,0x00 };
+static const uint8_t mxf_soundfield_group_smpte_st2067_8_discrete_numbered_sources[] = { 0x06,0x0e,0x2b,0x34,0x04,0x01,0x01,0x0d,0x03,0x02,0x02,0x20,0x03,0x00,0x00,0x00 };
+static const uint8_t mxf_soundfield_group_smpte_st2067_8_30[]                        = { 0x06,0x0e,0x2b,0x34,0x04,0x01,0x01,0x0d,0x03,0x02,0x02,0x20,0x04,0x00,0x00,0x00 };
+static const uint8_t mxf_soundfield_group_smpte_st2067_8_40[]                        = { 0x06,0x0e,0x2b,0x34,0x04,0x01,0x01,0x0d,0x03,0x02,0x02,0x20,0x05,0x00,0x00,0x00 };
+static const uint8_t mxf_soundfield_group_smpte_st2067_8_50[]                        = { 0x06,0x0e,0x2b,0x34,0x04,0x01,0x01,0x0d,0x03,0x02,0x02,0x20,0x06,0x00,0x00,0x00 };
+static const uint8_t mxf_soundfield_group_smpte_st2067_8_60[]                        = { 0x06,0x0e,0x2b,0x34,0x04,0x01,0x01,0x0d,0x03,0x02,0x02,0x20,0x07,0x00,0x00,0x00 };
+static const uint8_t mxf_soundfield_group_smpte_st2067_8_70_ds[]                     = { 0x06,0x0e,0x2b,0x34,0x04,0x01,0x01,0x0d,0x03,0x02,0x02,0x20,0x08,0x00,0x00,0x00 };
+static const uint8_t mxf_soundfield_group_smpte_st2067_8_lt_rt[]                     = { 0x06,0x0e,0x2b,0x34,0x04,0x01,0x01,0x0d,0x03,0x02,0x02,0x20,0x09,0x00,0x00,0x00 };
+static const uint8_t mxf_soundfield_group_smpte_st2067_8_51ex[]                      = { 0x06,0x0e,0x2b,0x34,0x04,0x01,0x01,0x0d,0x03,0x02,0x02,0x20,0x0a,0x00,0x00,0x00 };
+static const uint8_t mxf_soundfield_group_smpte_st2067_8_hearing_accessibility[]     = { 0x06,0x0e,0x2b,0x34,0x04,0x01,0x01,0x0d,0x03,0x02,0x02,0x20,0x0b,0x00,0x00,0x00 };
+static const uint8_t mxf_soundfield_group_smpte_st2067_8_visual_accessibility[]      = { 0x06,0x0e,0x2b,0x34,0x04,0x01,0x01,0x0d,0x03,0x02,0x02,0x20,0x0c,0x00,0x00,0x00 };
+
+// Audio Channel definitions
+static const uint8_t mxf_left_audio_channel[]                                = { 0x06,0x0e,0x2b,0x34,0x04,0x01,0x01,0x0d,0x03,0x02,0x01,0x01,0x00,0x00,0x00,0x00 };
+static const uint8_t mxf_right_audio_channel[]                               = { 0x06,0x0e,0x2b,0x34,0x04,0x01,0x01,0x0d,0x03,0x02,0x01,0x02,0x00,0x00,0x00,0x00 };
+static const uint8_t mxf_center_audio_channel[]                              = { 0x06,0x0e,0x2b,0x34,0x04,0x01,0x01,0x0d,0x03,0x02,0x01,0x03,0x00,0x00,0x00,0x00 };
+static const uint8_t mxf_lfe_audio_channel[]                                 = { 0x06,0x0e,0x2b,0x34,0x04,0x01,0x01,0x0d,0x03,0x02,0x01,0x04,0x00,0x00,0x00,0x00 };
+static const uint8_t mxf_left_surround_audio_channel[]                       = { 0x06,0x0e,0x2b,0x34,0x04,0x01,0x01,0x0d,0x03,0x02,0x01,0x05,0x00,0x00,0x00,0x00 };
+static const uint8_t mxf_right_surround_audio_channel[]                      = { 0x06,0x0e,0x2b,0x34,0x04,0x01,0x01,0x0d,0x03,0x02,0x01,0x06,0x00,0x00,0x00,0x00 };
+static const uint8_t mxf_left_side_surround_audio_channel[]                  = { 0x06,0x0e,0x2b,0x34,0x04,0x01,0x01,0x0d,0x03,0x02,0x01,0x07,0x00,0x00,0x00,0x00 };
+static const uint8_t mxf_right_side_surround_audio_channel[]                 = { 0x06,0x0e,0x2b,0x34,0x04,0x01,0x01,0x0d,0x03,0x02,0x01,0x08,0x00,0x00,0x00,0x00 };
+static const uint8_t mxf_left_rear_surround_audio_channel[]                  = { 0x06,0x0e,0x2b,0x34,0x04,0x01,0x01,0x0d,0x03,0x02,0x01,0x09,0x00,0x00,0x00,0x00 };
+static const uint8_t mxf_right_rear_surround_audio_channel[]                 = { 0x06,0x0e,0x2b,0x34,0x04,0x01,0x01,0x0d,0x03,0x02,0x01,0x0a,0x00,0x00,0x00,0x00 };
+static const uint8_t mxf_left_center_audio_channel[]                         = { 0x06,0x0e,0x2b,0x34,0x04,0x01,0x01,0x0d,0x03,0x02,0x01,0x0b,0x00,0x00,0x00,0x00 };
+static const uint8_t mxf_right_center_audio_channel[]                        = { 0x06,0x0e,0x2b,0x34,0x04,0x01,0x01,0x0d,0x03,0x02,0x01,0x0c,0x00,0x00,0x00,0x00 };
+static const uint8_t mxf_center_surround_audio_channel[]                     = { 0x06,0x0e,0x2b,0x34,0x04,0x01,0x01,0x0d,0x03,0x02,0x01,0x0d,0x00,0x00,0x00,0x00 };
+static const uint8_t mxf_hearing_impaired_audio_channel[]                    = { 0x06,0x0e,0x2b,0x34,0x04,0x01,0x01,0x0d,0x03,0x02,0x01,0x0e,0x00,0x00,0x00,0x00 };
+static const uint8_t mxf_visually_impaired_narrative_audio_channel[]         = { 0x06,0x0e,0x2b,0x34,0x04,0x01,0x01,0x0d,0x03,0x02,0x01,0x0f,0x00,0x00,0x00,0x00 };
+static const uint8_t mxf_smpte_st2067_8_mono_one_audio_channel[]             = { 0x06,0x0e,0x2b,0x34,0x04,0x01,0x01,0x0d,0x03,0x02,0x01,0x20,0x01,0x00,0x00,0x00 };
+static const uint8_t mxf_smpte_st2067_8_mono_two_audio_channel[]             = { 0x06,0x0e,0x2b,0x34,0x04,0x01,0x01,0x0d,0x03,0x02,0x01,0x20,0x02,0x00,0x00,0x00 };
+static const uint8_t mxf_smpte_st2067_8_left_total_audio_channel[]           = { 0x06,0x0e,0x2b,0x34,0x04,0x01,0x01,0x0d,0x03,0x02,0x01,0x20,0x03,0x00,0x00,0x00 };
+static const uint8_t mxf_smpte_st2067_8_right_total_audio_channel[]          = { 0x06,0x0e,0x2b,0x34,0x04,0x01,0x01,0x0d,0x03,0x02,0x01,0x20,0x04,0x00,0x00,0x00 };
+static const uint8_t mxf_smpte_st2067_8_left_surround_total_audio_channel[]  = { 0x06,0x0e,0x2b,0x34,0x04,0x01,0x01,0x0d,0x03,0x02,0x01,0x20,0x05,0x00,0x00,0x00 };
+static const uint8_t mxf_smpte_st2067_8_right_surround_total_audio_channel[] = { 0x06,0x0e,0x2b,0x34,0x04,0x01,0x01,0x0d,0x03,0x02,0x01,0x20,0x06,0x00,0x00,0x00 };
+static const uint8_t mxf_smpte_st2067_8_surround_audio_channel[]             = { 0x06,0x0e,0x2b,0x34,0x04,0x01,0x01,0x0d,0x03,0x02,0x01,0x20,0x07,0x00,0x00,0x00 };
+
+static const uint8_t mxf_sub_descriptor[]                  = { 0x06,0x0e,0x2b,0x34,0x01,0x01,0x01,0x09,0x06,0x01,0x01,0x04,0x06,0x10,0x00,0x00 };
 
 static const uint8_t mxf_mastering_display_prefix[13]      = { FF_MXF_MasteringDisplay_PREFIX };
 static const uint8_t mxf_mastering_display_uls[4][16] = {
@@ -343,6 +414,15 @@ static void mxf_free_metadataset(MXFMetadataSet **ctx, int freectx)
         av_freep(&((MXFDescriptor *)*ctx)->mastering);
         av_freep(&((MXFDescriptor *)*ctx)->coll);
         av_freep(&((MXFDescriptor *)*ctx)->file_descriptors_refs);
+        av_freep(&((MXFDescriptor *)*ctx)->sub_descriptors_refs);
+        break;
+    case MCASubDescriptor:
+        if (((MXFMCASubDescriptor *)*ctx)->language)
+            av_freep(&((MXFMCASubDescriptor *)*ctx)->language);
+        break;
+    case MCASubDescriptor:
+        if (((MXFMCASubDescriptor *)*ctx)->language)
+            av_freep(&((MXFMCASubDescriptor *)*ctx)->language);
         break;
     case Sequence:
         av_freep(&((MXFSequence *)*ctx)->structural_components_refs);
@@ -362,6 +442,8 @@ static void mxf_free_metadataset(MXFMetadataSet **ctx, int freectx)
         break;
     case Track:
         av_freep(&((MXFTrack *)*ctx)->name);
+        if (((MXFTrack *)*ctx)->channel_ordering)
+            av_freep(&((MXFTrack *)*ctx)->channel_ordering);
         break;
     case IndexTableSegment:
         seg = (MXFIndexTableSegment *)*ctx;
@@ -902,6 +984,30 @@ static int mxf_read_strong_ref_array(AVIOContext *pb, UID **refs, int *count)
     return 0;
 }
 
+static inline int mxf_read_us_ascii_string(AVIOContext *pb, int size, char** str)
+{
+    int ret;
+    size_t buf_size;
+
+    if (size < 0)
+        return AVERROR(EINVAL);
+
+    buf_size = size + 1;
+    av_free(*str);
+    *str = av_malloc(buf_size);
+    if (!*str)
+        return AVERROR(ENOMEM);
+
+    ret = avio_get_str(pb, size, *str, buf_size);
+
+    if (ret < 0) {
+        av_freep(str);
+        return ret;
+    }
+
+    return ret;
+}
+
 static inline int mxf_read_utf16_string(AVIOContext *pb, int size, char** str, int be)
 {
     int ret;
@@ -1356,8 +1462,42 @@ static int mxf_read_generic_descriptor(void *arg, AVIOContext *pb, int tag, int 
                 descriptor->coll->MaxFALL = avio_rb16(pb);
             }
         }
+
+        if (IS_KLV_KEY(uid, mxf_sub_descriptor)) {
+            mxf_read_strong_ref_array(pb, &descriptor->sub_descriptors_refs, &descriptor->sub_descriptors_count);
+            break;
+        }
         break;
     }
+    return 0;
+}
+
+static int mxf_read_mca_sub_descriptor(void *arg, AVIOContext *pb, int tag, int size, UID uid, int64_t klv_offset)
+{
+    MXFMCASubDescriptor *mca_sub_descriptor = arg;
+
+    if (IS_KLV_KEY(uid, mxf_mca_prefix)) {
+        if (IS_KLV_KEY(uid, mxf_mca_label_dictionnary_id)) {
+            avio_read(pb, mca_sub_descriptor->mca_label_dictionnary_id, 16);
+        }
+        if (IS_KLV_KEY(uid, mxf_mca_link_id)) {
+            avio_read(pb, mca_sub_descriptor->mca_link_id, 16);
+        }
+        if (IS_KLV_KEY(uid, mxf_soundfield_group_link_id)) {
+            avio_read(pb, mca_sub_descriptor->mca_group_link_id, 16);
+        }
+    }
+
+    if (IS_KLV_KEY(uid, mxf_mca_rfc5646_spoken_language)) {
+        char *str = NULL;
+        int ret = 0;
+
+        if ((ret = mxf_read_us_ascii_string(pb, size, &str)) < 0) \
+            return ret;
+
+        mca_sub_descriptor->language = str;
+    }
+
     return 0;
 }
 
@@ -2290,6 +2430,12 @@ static enum AVColorRange mxf_get_color_range(MXFContext *mxf, MXFDescriptor *des
     return AVCOL_RANGE_UNSPECIFIED;
 }
 
+static int is_pcm(enum AVCodecID codec_id)
+{
+    /* we only care about "normal" PCM codecs until we get samples */
+    return codec_id >= AV_CODEC_ID_PCM_S16LE && codec_id < AV_CODEC_ID_PCM_S24DAUD;
+}
+
 static int mxf_parse_structural_metadata(MXFContext *mxf)
 {
     MXFPackage *material_package = NULL;
@@ -2325,7 +2471,11 @@ static int mxf_parse_structural_metadata(MXFContext *mxf)
         const MXFCodecUL *pix_fmt_ul = NULL;
         AVStream *st;
         AVTimecode tc;
+        enum AVAudioServiceType *ast;
+        int* channel_ordering;
         int flags;
+        int current_channel;
+        bool require_reordering;
 
         if (!(material_track = mxf_resolve_strong_ref(mxf, &material_package->tracks_refs[i], Track))) {
             av_log(mxf->fc, AV_LOG_ERROR, "could not resolve material track strong ref\n");
@@ -2684,6 +2834,189 @@ static int mxf_parse_structural_metadata(MXFContext *mxf)
                 st->internal->need_parsing = AVSTREAM_PARSE_FULL;
             }
             st->codecpar->bits_per_coded_sample = av_get_bits_per_sample(st->codecpar->codec_id);
+
+            current_channel = 0;
+
+            channel_ordering = av_mallocz_array(descriptor->channels, sizeof(int));
+
+            for (j = 0; j < descriptor->channels; ++j) {
+                channel_ordering[j] = j;
+            }
+
+            for (j = 0; j < descriptor->sub_descriptors_count; j++) {
+                MXFMCASubDescriptor *mca_sub_descriptor = mxf_resolve_strong_ref(mxf, &descriptor->sub_descriptors_refs[j], MCASubDescriptor);
+                if (mca_sub_descriptor == NULL) {
+                    continue;
+                }
+
+                // Soundfield group
+                if (IS_KLV_KEY(mca_sub_descriptor->mca_label_dictionnary_id, mxf_soundfield_group)) {
+                    if (IS_KLV_KEY(mca_sub_descriptor->mca_label_dictionnary_id, mxf_soundfield_group_51)) {
+                        st->codecpar->channel_layout = AV_CH_LAYOUT_5POINT1;
+                        continue;
+                    }
+                    if (IS_KLV_KEY(mca_sub_descriptor->mca_label_dictionnary_id, mxf_soundfield_group_71ds)) {
+                        st->codecpar->channel_layout = AV_CH_LAYOUT_7POINT1;
+                        continue;
+                    }
+                    if (IS_KLV_KEY(mca_sub_descriptor->mca_label_dictionnary_id, mxf_soundfield_group_71sds)) {
+                        st->codecpar->channel_layout = AV_CH_LAYOUT_7POINT1_WIDE;
+                        continue;
+                    }
+                    if (IS_KLV_KEY(mca_sub_descriptor->mca_label_dictionnary_id, mxf_soundfield_group_61)) {
+                        st->codecpar->channel_layout = AV_CH_LAYOUT_6POINT1;
+                        continue;
+                    }
+                    if (IS_KLV_KEY(mca_sub_descriptor->mca_label_dictionnary_id, mxf_soundfield_group_10_monoral)) {
+                        st->codecpar->channel_layout = AV_CH_LAYOUT_MONO;
+                        continue;
+                    }
+
+                    if (IS_KLV_KEY(mca_sub_descriptor->mca_label_dictionnary_id, mxf_soundfield_group_smpte_st2067_8_standard_stereo)) {
+                        st->codecpar->channel_layout = AV_CH_LAYOUT_STEREO;
+                        continue;
+                    }
+                    if (IS_KLV_KEY(mca_sub_descriptor->mca_label_dictionnary_id, mxf_soundfield_group_smpte_st2067_8_dual_mono)) {
+                        st->codecpar->channel_layout = AV_CH_LAYOUT_STEREO;
+                        continue;
+                    }
+                    if (IS_KLV_KEY(mca_sub_descriptor->mca_label_dictionnary_id, mxf_soundfield_group_smpte_st2067_8_discrete_numbered_sources)) {
+                        continue;
+                    }
+                    if (IS_KLV_KEY(mca_sub_descriptor->mca_label_dictionnary_id, mxf_soundfield_group_smpte_st2067_8_30)) {
+                        st->codecpar->channel_layout = AV_CH_LAYOUT_SURROUND;
+                        continue;
+                    }
+                    if (IS_KLV_KEY(mca_sub_descriptor->mca_label_dictionnary_id, mxf_soundfield_group_smpte_st2067_8_40)) {
+                        st->codecpar->channel_layout = AV_CH_LAYOUT_4POINT0;
+                        continue;
+                    }
+                    if (IS_KLV_KEY(mca_sub_descriptor->mca_label_dictionnary_id, mxf_soundfield_group_smpte_st2067_8_50)) {
+                        st->codecpar->channel_layout = AV_CH_LAYOUT_5POINT0;
+                        continue;
+                    }
+                    if (IS_KLV_KEY(mca_sub_descriptor->mca_label_dictionnary_id, mxf_soundfield_group_smpte_st2067_8_60)) {
+                        st->codecpar->channel_layout = AV_CH_LAYOUT_6POINT0;
+                        continue;
+                    }
+                    if (IS_KLV_KEY(mca_sub_descriptor->mca_label_dictionnary_id, mxf_soundfield_group_smpte_st2067_8_70_ds)) {
+                        st->codecpar->channel_layout = AV_CH_LAYOUT_7POINT0;
+                        continue;
+                    }
+                    if (IS_KLV_KEY(mca_sub_descriptor->mca_label_dictionnary_id, mxf_soundfield_group_smpte_st2067_8_lt_rt)) {
+                        st->codecpar->channel_layout = AV_CH_LAYOUT_STEREO;
+                        continue;
+                    }
+                    if (IS_KLV_KEY(mca_sub_descriptor->mca_label_dictionnary_id, mxf_soundfield_group_smpte_st2067_8_51ex)) {
+                        st->codecpar->channel_layout = AV_CH_LAYOUT_5POINT1;
+                        continue;
+                    }
+                    if (IS_KLV_KEY(mca_sub_descriptor->mca_label_dictionnary_id, mxf_soundfield_group_smpte_st2067_8_hearing_accessibility)) {
+                        st->codecpar->channel_layout = AV_CH_LAYOUT_MONO;
+                        continue;
+                    }
+                    if (IS_KLV_KEY(mca_sub_descriptor->mca_label_dictionnary_id, mxf_soundfield_group_smpte_st2067_8_visual_accessibility)) {
+                        st->codecpar->channel_layout = AV_CH_LAYOUT_MONO;
+                        continue;
+                    }
+                }
+
+                // Audio channel
+                if (IS_KLV_KEY(mca_sub_descriptor->mca_label_dictionnary_id, mxf_audio_channel)) {
+                    if (IS_KLV_KEY(mca_sub_descriptor->mca_label_dictionnary_id, mxf_left_audio_channel)) {
+                        channel_ordering[current_channel] = 0;
+                        current_channel += 1;
+                    }
+                    if (IS_KLV_KEY(mca_sub_descriptor->mca_label_dictionnary_id, mxf_right_audio_channel)) {
+                        channel_ordering[current_channel] = 1;
+                        current_channel += 1;
+                    }
+                    if (IS_KLV_KEY(mca_sub_descriptor->mca_label_dictionnary_id, mxf_center_audio_channel)) {
+                        channel_ordering[current_channel] = 2;
+                        current_channel += 1;
+                    }
+                    if (IS_KLV_KEY(mca_sub_descriptor->mca_label_dictionnary_id, mxf_left_surround_audio_channel)||
+                        IS_KLV_KEY(mca_sub_descriptor->mca_label_dictionnary_id, mxf_left_side_surround_audio_channel)) {
+                        channel_ordering[current_channel] = 3;
+                        current_channel += 1;
+                    }
+                    if (IS_KLV_KEY(mca_sub_descriptor->mca_label_dictionnary_id, mxf_right_surround_audio_channel) ||
+                        IS_KLV_KEY(mca_sub_descriptor->mca_label_dictionnary_id, mxf_right_side_surround_audio_channel)) {
+                        channel_ordering[current_channel] = 4;
+                        current_channel += 1;
+                    }
+                    if (IS_KLV_KEY(mca_sub_descriptor->mca_label_dictionnary_id, mxf_lfe_audio_channel)) {
+                        channel_ordering[current_channel] = 5;
+                        current_channel += 1;
+                    }
+                    if (IS_KLV_KEY(mca_sub_descriptor->mca_label_dictionnary_id, mxf_left_center_audio_channel) ||
+                        IS_KLV_KEY(mca_sub_descriptor->mca_label_dictionnary_id, mxf_left_rear_surround_audio_channel) ||
+                        IS_KLV_KEY(mca_sub_descriptor->mca_label_dictionnary_id, mxf_center_surround_audio_channel)) {
+                        channel_ordering[current_channel] = 6;
+                        current_channel += 1;
+                    }
+                    if (IS_KLV_KEY(mca_sub_descriptor->mca_label_dictionnary_id, mxf_right_center_audio_channel) ||
+                        IS_KLV_KEY(mca_sub_descriptor->mca_label_dictionnary_id, mxf_right_rear_surround_audio_channel)) {
+                        channel_ordering[current_channel] = 7;
+                        current_channel += 1;
+                    }
+                    if (IS_KLV_KEY(mca_sub_descriptor->mca_label_dictionnary_id, mxf_hearing_impaired_audio_channel)) {
+                        channel_ordering[current_channel] = 0;
+                        current_channel += 1;
+
+                        ast = (enum AVAudioServiceType*)av_stream_new_side_data(st, AV_PKT_DATA_AUDIO_SERVICE_TYPE, sizeof(*ast));
+                        *ast = AV_AUDIO_SERVICE_TYPE_VISUALLY_IMPAIRED;
+                    }
+                    if (IS_KLV_KEY(mca_sub_descriptor->mca_label_dictionnary_id, mxf_visually_impaired_narrative_audio_channel)) {
+                        channel_ordering[current_channel] = 0;
+                        current_channel += 1;
+
+                        ast = (enum AVAudioServiceType*)av_stream_new_side_data(st, AV_PKT_DATA_AUDIO_SERVICE_TYPE, sizeof(*ast));
+                        *ast = AV_AUDIO_SERVICE_TYPE_VISUALLY_IMPAIRED;
+                    }
+
+                    // TODO support other channels
+                    // mxf_smpte_st2067_8_mono_one_audio_channel
+                    // mxf_smpte_st2067_8_mono_two_audio_channel
+                    // mxf_smpte_st2067_8_left_total_audio_channel
+                    // mxf_smpte_st2067_8_right_total_audio_channel
+                    // mxf_smpte_st2067_8_left_surround_total_audio_channel
+                    // mxf_smpte_st2067_8_right_surround_total_audio_channel
+                    // mxf_smpte_st2067_8_surround_audio_channel
+                }
+
+                // set language from MCA spoken language information
+                // av_dict_set(&st->metadata, "language", mca_sub_descriptor->language, 0);
+            }
+
+            // check if the mapping is not required
+            require_reordering = false;
+            for (j = 0; j < descriptor->channels; ++j) {
+                if (channel_ordering[j] != j) {
+                    require_reordering = true;
+                    break;
+                }
+            }
+
+            if (require_reordering && is_pcm(st->codecpar->codec_id)) {
+                current_channel = 0;
+                av_log(mxf->fc, AV_LOG_INFO, "MCA Audio mapping (");
+                for(j = 0; j < descriptor->channels; ++j) {
+                    for(int k = 0; k < descriptor->channels; ++k) {
+                        if(channel_ordering[k] == current_channel) {
+                            av_log(mxf->fc, AV_LOG_INFO, "%d -> %d", channel_ordering[k], k);
+                            if (current_channel != descriptor->channels - 1)
+                                av_log(mxf->fc, AV_LOG_INFO, ", ");
+                            current_channel += 1;
+                        }
+                    }
+                }
+                av_log(mxf->fc, AV_LOG_INFO, ")\n");
+
+                source_track->channel_ordering = channel_ordering;
+            } else {
+                av_free(channel_ordering);
+            }
         } else if (st->codecpar->codec_type == AVMEDIA_TYPE_DATA) {
             enum AVMediaType type;
             container_ul = mxf_get_codec_ul(mxf_data_essence_container_uls, essence_container_ul);
@@ -2884,6 +3217,8 @@ static const MXFMetadataReadTableEntry mxf_metadata_read_table[] = {
     { { 0x06,0x0e,0x2b,0x34,0x02,0x53,0x01,0x01,0x0d,0x01,0x01,0x01,0x01,0x01,0x5c,0x00 }, mxf_read_generic_descriptor, sizeof(MXFDescriptor), Descriptor }, /* VANC/VBI - SMPTE 436M */
     { { 0x06,0x0e,0x2b,0x34,0x02,0x53,0x01,0x01,0x0d,0x01,0x01,0x01,0x01,0x01,0x5e,0x00 }, mxf_read_generic_descriptor, sizeof(MXFDescriptor), Descriptor }, /* MPEG2AudioDescriptor */
     { { 0x06,0x0e,0x2b,0x34,0x02,0x53,0x01,0x01,0x0d,0x01,0x01,0x01,0x01,0x01,0x64,0x00 }, mxf_read_generic_descriptor, sizeof(MXFDescriptor), Descriptor }, /* DC Timed Text Descriptor */
+    { { 0x06,0x0e,0x2b,0x34,0x02,0x53,0x01,0x01,0x0d,0x01,0x01,0x01,0x01,0x01,0x6c,0x00 }, mxf_read_mca_sub_descriptor, sizeof(MXFMCASubDescriptor), MCASubDescriptor }, /* Soundfield Group Label Subdescriptor */
+    { { 0x06,0x0e,0x2b,0x34,0x02,0x53,0x01,0x01,0x0d,0x01,0x01,0x01,0x01,0x01,0x6b,0x00 }, mxf_read_mca_sub_descriptor, sizeof(MXFMCASubDescriptor), MCASubDescriptor }, /* Audio Channel Label Subdescriptor */
     { { 0x06,0x0e,0x2b,0x34,0x02,0x53,0x01,0x01,0x0d,0x01,0x01,0x01,0x01,0x01,0x3A,0x00 }, mxf_read_track, sizeof(MXFTrack), Track }, /* Static Track */
     { { 0x06,0x0e,0x2b,0x34,0x02,0x53,0x01,0x01,0x0d,0x01,0x01,0x01,0x01,0x01,0x3B,0x00 }, mxf_read_track, sizeof(MXFTrack), Track }, /* Generic Track */
     { { 0x06,0x0e,0x2b,0x34,0x02,0x53,0x01,0x01,0x0d,0x01,0x01,0x01,0x01,0x01,0x14,0x00 }, mxf_read_timecode_component, sizeof(MXFTimecodeComponent), TimecodeComponent },
@@ -3181,12 +3516,6 @@ static void mxf_compute_essence_containers(AVFormatContext *s)
             }
         }
     }
-}
-
-static int is_pcm(enum AVCodecID codec_id)
-{
-    /* we only care about "normal" PCM codecs until we get samples */
-    return codec_id >= AV_CODEC_ID_PCM_S16LE && codec_id < AV_CODEC_ID_PCM_S24DAUD;
 }
 
 static MXFIndexTable *mxf_find_index_table(MXFContext *mxf, int index_sid)
@@ -3615,6 +3944,27 @@ static int mxf_set_pts(MXFContext *mxf, AVStream *st, AVPacket *pkt)
     return 0;
 }
 
+static void mxf_audio_remapping(int* channel_ordering, uint8_t* data, int size, int sample_size, int channels)
+{
+    int sample_offset = channels * sample_size;
+    int number_of_samples = size / sample_offset;
+    uint8_t* tmp = av_malloc(sample_offset);
+    uint8_t* data_ptr = data;
+
+    for (int sample = 0; sample < number_of_samples; ++sample) {
+        memcpy(tmp, data_ptr, sample_offset);
+
+        for (int channel = 0; channel < channels; ++channel) {
+            for (int sample_index = 0; sample_index < sample_size; ++sample_index) {
+                data_ptr[sample_size * channel_ordering[channel] + sample_index] = tmp[sample_size * channel + sample_index];
+            }
+        }
+
+        data_ptr += sample_offset;
+    }
+    av_free(tmp);
+}
+
 static int mxf_read_packet(AVFormatContext *s, AVPacket *pkt)
 {
     KLVPacket klv;
@@ -3727,6 +4077,12 @@ static int mxf_read_packet(AVFormatContext *s, AVPacket *pkt)
             if (ret < 0) {
                 mxf->current_klv_data = (KLVPacket){{0}};
                 return ret;
+            }
+
+            // for audio, process audio remapping if MCA label requires it 
+            if (st->codecpar->codec_type == AVMEDIA_TYPE_AUDIO && track->channel_ordering != NULL) {
+                int byte_per_sample = st->codecpar->bits_per_coded_sample / 8;
+                mxf_audio_remapping(track->channel_ordering, pkt->data, pkt->size, byte_per_sample, st->codecpar->channels);
             }
 
             /* seek for truncated packets */
