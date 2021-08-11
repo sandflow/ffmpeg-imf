@@ -2985,11 +2985,17 @@ static int mxf_parse_structural_metadata(MXFContext *mxf)
             }
 
             if (require_reordering && is_pcm(st->codecpar->codec_id)) {
+                current_channel = 0;
                 av_log(mxf->fc, AV_LOG_INFO, "MCA Audio mapping (");
                 for(int i = 0; i < descriptor->channels; ++i) {
-                    av_log(mxf->fc, AV_LOG_INFO, "%d -> %d", channel_ordering[i], i);
-                    if (i != descriptor->channels - 1)
-                        av_log(mxf->fc, AV_LOG_INFO, ", ");
+                    for(int i = 0; i < descriptor->channels; ++i) {
+                        if(channel_ordering[i] == current_channel) {
+                            av_log(mxf->fc, AV_LOG_INFO, "%d -> %d", channel_ordering[i], i);
+                            if (current_channel != descriptor->channels - 1)
+                                av_log(mxf->fc, AV_LOG_INFO, ", ");
+                            current_channel += 1;
+                        }
+                    }
                 }
                 av_log(mxf->fc, AV_LOG_INFO, ")\n");
 
@@ -3936,7 +3942,7 @@ static void mxf_audio_remapping(int* channel_ordering, uint8_t* data, int size, 
 
         for (int channel = 0; channel < channels; ++channel) {
             for (int sample_index = 0; sample_index < sample_size; ++sample_index) {
-                data_ptr[sample_size * channel + sample_index] = tmp[sample_size * channel_ordering[channel] + sample_index];
+                data_ptr[sample_size * channel_ordering[channel] + sample_index] = tmp[sample_size * channel + sample_index];
             }
         }
 
