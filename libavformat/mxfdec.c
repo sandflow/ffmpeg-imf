@@ -52,11 +52,11 @@
 #include "libavutil/mastering_display_metadata.h"
 #include "libavutil/mathematics.h"
 #include "libavcodec/bytestream.h"
+#include "libavutil/channel_layout.h"
 #include "libavutil/intreadwrite.h"
 #include "libavutil/parseutils.h"
 #include "libavutil/timecode.h"
 #include "libavutil/opt.h"
-#include "libswresample/swresample.h"
 #include "avformat.h"
 #include "internal.h"
 #include "mxf.h"
@@ -180,7 +180,6 @@ typedef struct {
     MXFWrappingScheme wrapping;
     int edit_units_per_packet; /* how many edit units to read at a time (PCM, ClipWrapped) */
     int* channel_ordering;
-    SwrContext* channel_reordering_context;
 } MXFTrack;
 
 typedef struct MXFDescriptor {
@@ -438,10 +437,6 @@ static void mxf_free_metadataset(MXFMetadataSet **ctx, int freectx)
         if (((MXFTrack *)*ctx)->channel_ordering) {
             av_freep(&((MXFTrack *)*ctx)->channel_ordering);
             ((MXFTrack *)*ctx)->channel_ordering = NULL;
-        }
-        if (((MXFTrack *)*ctx)->channel_reordering_context != NULL) {
-            swr_free(&((MXFTrack *)*ctx)->channel_reordering_context);
-            ((MXFTrack *)*ctx)->channel_reordering_context = NULL;
         }
         break;
     case IndexTableSegment:
@@ -2990,8 +2985,6 @@ static int mxf_parse_structural_metadata(MXFContext *mxf)
             }
 
             if (require_reordering && is_pcm(st->codecpar->codec_id)) {
-                SwrContext* swr_context = swr_alloc();
-
                 av_log(mxf->fc, AV_LOG_INFO, "MCA Audio mapping (");
                 for(int i = 0; i < descriptor->channels; ++i) {
                     av_log(mxf->fc, AV_LOG_INFO, "%d -> %d", channel_ordering[i], i);
@@ -3000,38 +2993,7 @@ static int mxf_parse_structural_metadata(MXFContext *mxf)
                 }
                 av_log(mxf->fc, AV_LOG_INFO, ")\n");
 
-                swr_set_channel_mapping(swr_context, channel_ordering);
-
-                int64_t channel_layout = av_get_default_channel_layout(descriptor->channels);
-
-                enum AVSampleFormat format = AV_SAMPLE_FMT_NONE;
-                if (st->codecpar->codec_id == AV_CODEC_ID_PCM_S16LE ||
-                    st->codecpar->codec_id == AV_CODEC_ID_PCM_S16BE) {
-                    format = AV_SAMPLE_FMT_S16;
-                }
-
-                if (st->codecpar->codec_id == AV_CODEC_ID_PCM_S24LE ||
-                    st->codecpar->codec_id == AV_CODEC_ID_PCM_S24BE ||
-                    st->codecpar->codec_id == AV_CODEC_ID_PCM_S32LE ||
-                    st->codecpar->codec_id == AV_CODEC_ID_PCM_S32BE) {
-                    format = AV_SAMPLE_FMT_S32;
-                }
-
-                av_opt_set_int(swr_context, "in_channel_count", descriptor->channels, 0);
-                av_opt_set_int(swr_context, "out_channel_count", descriptor->channels, 0);
-                av_opt_set_int(swr_context, "in_channel_layout", channel_layout, 0);
-                av_opt_set_int(swr_context, "out_channel_layout", channel_layout, 0);
-                av_opt_set_int(swr_context, "in_sample_rate", st->codecpar->sample_rate, 0);
-                av_opt_set_int(swr_context, "out_sample_rate", st->codecpar->sample_rate, 0);
-                av_opt_set_sample_fmt(swr_context, "in_sample_fmt", format, 0);
-                av_opt_set_sample_fmt(swr_context, "out_sample_fmt", format, 0);
-
-                if (swr_init(swr_context) < 0) {
-                    av_log(mxf->fc, AV_LOG_ERROR, "Unable to init swresample context\n");
-                }
-
                 source_track->channel_ordering = channel_ordering;
-                source_track->channel_reordering_context = swr_context;
             } else {
                 av_free(channel_ordering);
             }
@@ -3962,6 +3924,26 @@ static int mxf_set_pts(MXFContext *mxf, AVStream *st, AVPacket *pkt)
     return 0;
 }
 
+static void mxf_audio_remapping(int* channel_ordering, uint8_t* data, int size, int sample_size, int channels)
+{
+    int sample_offset = channels * sample_size;
+    int number_of_samples = size / sample_offset;
+    uint8_t tmp[sample_offset];
+    uint8_t* data_ptr = data;
+
+    for (int sample = 0; sample < number_of_samples; ++sample) {
+        memcpy(tmp, data_ptr, sample_offset);
+
+        for (int channel = 0; channel < channels; ++channel) {
+            for (int sample_index = 0; sample_index < sample_size; ++sample_index) {
+                data_ptr[sample_size * channel + sample_index] = tmp[sample_size * channel_ordering[channel] + sample_index];
+            }
+        }
+
+        data_ptr += sample_offset;
+    }
+}
+
 static int mxf_read_packet(AVFormatContext *s, AVPacket *pkt)
 {
     KLVPacket klv;
@@ -4077,10 +4059,9 @@ static int mxf_read_packet(AVFormatContext *s, AVPacket *pkt)
             }
 
             // for audio, process audio remapping if MCA label requires it 
-            if (st->codecpar->codec_type == AVMEDIA_TYPE_AUDIO && track->channel_reordering_context != NULL) {
+            if (st->codecpar->codec_type == AVMEDIA_TYPE_AUDIO && track->channel_ordering != NULL) {
                 int byte_per_sample = st->codecpar->bits_per_coded_sample / 8;
-                int number_of_samples = pkt->size / byte_per_sample / st->codecpar->channels;
-                swr_convert(track->channel_reordering_context, &pkt->data, number_of_samples, (const uint8_t **)&pkt->data, number_of_samples);
+                mxf_audio_remapping(track->channel_ordering, pkt->data, pkt->size, byte_per_sample, st->codecpar->channels);
             }
 
             /* seek for truncated packets */
