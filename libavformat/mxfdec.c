@@ -222,6 +222,7 @@ typedef struct MXFDescriptor {
 } MXFDescriptor;
 
 typedef struct MXFMCASubDescriptor {
+    MXFMetadataSet meta;
     UID uid;
     UID mca_link_id;
     UID mca_group_link_id;
@@ -413,7 +414,7 @@ static void mxf_free_metadataset(MXFMetadataSet **ctx, int freectx)
         av_freep(&((MXFDescriptor *)*ctx)->coll);
         av_freep(&((MXFDescriptor *)*ctx)->sub_descriptors_refs);
         break;
-    case SubDescriptor:
+    case MCASubDescriptor:
         av_freep(&((MXFMCASubDescriptor *)*ctx)->language);
         break;
     case Sequence:
@@ -434,11 +435,14 @@ static void mxf_free_metadataset(MXFMetadataSet **ctx, int freectx)
         break;
     case Track:
         av_freep(&((MXFTrack *)*ctx)->name);
-        if (((MXFTrack *)*ctx)->channel_reordering_context != NULL) {
-            //swr_free(&((MXFTrack *)*ctx)->channel_reordering_context);
-            // ((MXFTrack *)*ctx)->channel_reordering_context = NULL;
+        if (((MXFTrack *)*ctx)->channel_ordering) {
+            av_freep(&((MXFTrack *)*ctx)->channel_ordering);
+            ((MXFTrack *)*ctx)->channel_ordering = NULL;
         }
-        //av_freep(&((MXFTrack *)*ctx)->channel_ordering);
+        if (((MXFTrack *)*ctx)->channel_reordering_context != NULL) {
+            swr_free(&((MXFTrack *)*ctx)->channel_reordering_context);
+            ((MXFTrack *)*ctx)->channel_reordering_context = NULL;
+        }
         break;
     case IndexTableSegment:
         seg = (MXFIndexTableSegment *)*ctx;
@@ -1464,19 +1468,19 @@ static int mxf_read_generic_descriptor(void *arg, AVIOContext *pb, int tag, int 
     return 0;
 }
 
-static int mxf_read_generic_sub_descriptor(void *arg, AVIOContext *pb, int tag, int size, UID uid, int64_t klv_offset)
+static int mxf_read_mca_sub_descriptor(void *arg, AVIOContext *pb, int tag, int size, UID uid, int64_t klv_offset)
 {
-    MXFMCASubDescriptor *sub_descriptor = arg;
+    MXFMCASubDescriptor *mca_sub_descriptor = arg;
 
     if (IS_KLV_KEY(uid, mxf_mca_prefix)) {
         if (IS_KLV_KEY(uid, mxf_mca_label_dictionnary_id)) {
-            avio_read(pb, sub_descriptor->mca_label_dictionnary_id, 16);
+            avio_read(pb, mca_sub_descriptor->mca_label_dictionnary_id, 16);
         }
         if (IS_KLV_KEY(uid, mxf_mca_link_id)) {
-            avio_read(pb, sub_descriptor->mca_link_id, 16);
+            avio_read(pb, mca_sub_descriptor->mca_link_id, 16);
         }
         if (IS_KLV_KEY(uid, mxf_soundfield_group_link_id)) {
-            avio_read(pb, sub_descriptor->mca_group_link_id, 16);
+            avio_read(pb, mca_sub_descriptor->mca_group_link_id, 16);
         }
     }
 
@@ -1487,7 +1491,7 @@ static int mxf_read_generic_sub_descriptor(void *arg, AVIOContext *pb, int tag, 
         if ((ret = mxf_read_us_ascii_string(pb, size, &str)) < 0) \
             return ret;
 
-        sub_descriptor->language = str;
+        mca_sub_descriptor->language = str;
     }
 
     return 0;
@@ -2831,7 +2835,7 @@ static int mxf_parse_structural_metadata(MXFContext *mxf)
             channel_ordering = av_mallocz_array(descriptor->channels, sizeof(int));
 
             for (i = 0; i < descriptor->sub_descriptors_count; i++) {
-                MXFMCASubDescriptor *mca_sub_descriptor = mxf_resolve_strong_ref(mxf, &descriptor->sub_descriptors_refs[i], AnyType);
+                MXFMCASubDescriptor *mca_sub_descriptor = mxf_resolve_strong_ref(mxf, &descriptor->sub_descriptors_refs[i], MCASubDescriptor);
                 if (mca_sub_descriptor == NULL) {
                     continue;
                 }
@@ -3231,8 +3235,8 @@ static const MXFMetadataReadTableEntry mxf_metadata_read_table[] = {
     { { 0x06,0x0e,0x2b,0x34,0x02,0x53,0x01,0x01,0x0d,0x01,0x01,0x01,0x01,0x01,0x5c,0x00 }, mxf_read_generic_descriptor, sizeof(MXFDescriptor), Descriptor }, /* VANC/VBI - SMPTE 436M */
     { { 0x06,0x0e,0x2b,0x34,0x02,0x53,0x01,0x01,0x0d,0x01,0x01,0x01,0x01,0x01,0x5e,0x00 }, mxf_read_generic_descriptor, sizeof(MXFDescriptor), Descriptor }, /* MPEG2AudioDescriptor */
     { { 0x06,0x0e,0x2b,0x34,0x02,0x53,0x01,0x01,0x0d,0x01,0x01,0x01,0x01,0x01,0x64,0x00 }, mxf_read_generic_descriptor, sizeof(MXFDescriptor), Descriptor }, /* DC Timed Text Descriptor */
-    { { 0x06,0x0e,0x2b,0x34,0x02,0x53,0x01,0x01,0x0d,0x01,0x01,0x01,0x01,0x01,0x6c,0x00 }, mxf_read_generic_sub_descriptor, sizeof(MXFMCASubDescriptor), SubDescriptor }, /* Soundfield Group Label Subdescriptor */
-    { { 0x06,0x0e,0x2b,0x34,0x02,0x53,0x01,0x01,0x0d,0x01,0x01,0x01,0x01,0x01,0x6b,0x00 }, mxf_read_generic_sub_descriptor, sizeof(MXFMCASubDescriptor), SubDescriptor }, /* Audio Channel Label Subdescriptor */
+    { { 0x06,0x0e,0x2b,0x34,0x02,0x53,0x01,0x01,0x0d,0x01,0x01,0x01,0x01,0x01,0x6c,0x00 }, mxf_read_mca_sub_descriptor, sizeof(MXFMCASubDescriptor), MCASubDescriptor }, /* Soundfield Group Label Subdescriptor */
+    { { 0x06,0x0e,0x2b,0x34,0x02,0x53,0x01,0x01,0x0d,0x01,0x01,0x01,0x01,0x01,0x6b,0x00 }, mxf_read_mca_sub_descriptor, sizeof(MXFMCASubDescriptor), MCASubDescriptor }, /* Audio Channel Label Subdescriptor */
     { { 0x06,0x0e,0x2b,0x34,0x02,0x53,0x01,0x01,0x0d,0x01,0x01,0x01,0x01,0x01,0x3A,0x00 }, mxf_read_track, sizeof(MXFTrack), Track }, /* Static Track */
     { { 0x06,0x0e,0x2b,0x34,0x02,0x53,0x01,0x01,0x0d,0x01,0x01,0x01,0x01,0x01,0x3B,0x00 }, mxf_read_track, sizeof(MXFTrack), Track }, /* Generic Track */
     { { 0x06,0x0e,0x2b,0x34,0x02,0x53,0x01,0x01,0x0d,0x01,0x01,0x01,0x01,0x01,0x14,0x00 }, mxf_read_timecode_component, sizeof(MXFTimecodeComponent), TimecodeComponent },
