@@ -8,7 +8,7 @@ This project adds support for [IMF Compositions](https://ieeexplore.ieee.org/doc
 
 ## Usage
 
-`./ffmpeg -i <path of CPL> -assetmaps <path of ASSETMAP1>,<path of ASSETMAP2>,...`
+`./ffmpeg -assetmaps <path of ASSETMAP1>,<path of ASSETMAP2>,... -i <path of CPL>`
 
 If `-assetmaps` is not specified, FFMPEG looks for a file called `ASSETMAP.xml` in the same directory as the CPL.
 
@@ -20,7 +20,7 @@ If `-assetmaps` is not specified, FFMPEG looks for a file called `ASSETMAP.xml` 
 
 ### Debug
 
-`./configure --enable-libxml2 --enable-debug --disable-optimizations --prefix=$PWD/dist`
+`./configure --enable-libxml2 --enable-debug --disable-optimizations --disable-stripping`
 
 ## Unit tests
 
