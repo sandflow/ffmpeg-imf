@@ -51,6 +51,7 @@
 #include "mxf.h"
 #include "url.h"
 #include <libxml/parser.h>
+#include <inttypes.h>
 
 #define MAX_BPRINT_READ_SIZE (UINT_MAX - 1)
 #define DEFAULT_ASSETMAP_SIZE 8 * 1024
@@ -326,7 +327,7 @@ static int open_track_resource_context(AVFormatContext *s, IMFVirtualTrackResour
         av_log(s, AV_LOG_DEBUG, "Seek at resource %s entry point: %ld\n", track_resource->locator->absolute_uri, track_resource->resource->base.entry_point);
         ret = avformat_seek_file(track_resource->ctx, -1, entry_point, entry_point, entry_point, 0);
         if (ret < 0) {
-            av_log(s, AV_LOG_ERROR, "Could not seek at %lld on %s: %s\n", entry_point, track_resource->locator->absolute_uri, av_err2str(ret));
+            av_log(s, AV_LOG_ERROR, "Could not seek at %" PRId64 "on %s: %s\n", entry_point, track_resource->locator->absolute_uri, av_err2str(ret));
             goto cleanup;
         }
     }
@@ -576,7 +577,7 @@ static int ff_imf_read_packet(AVFormatContext *s, AVPacket *pkt) {
 
     while (!ff_check_interrupt(c->interrupt_callback) && !ret) {
         ret = av_read_frame(resource_to_read->ctx, pkt);
-        av_log(s, AV_LOG_DEBUG, "Got packet: pts=%lld, dts=%lld, duration=%lld, stream_index=%d, pos=%lld\n", pkt->pts, pkt->dts, pkt->duration, pkt->stream_index, pkt->pos);
+        av_log(s, AV_LOG_DEBUG, "Got packet: pts=%" PRId64 ", dts=%" PRId64 ", duration=%" PRId64 ", stream_index=%d, pos=%" PRId64 "\n", pkt->pts, pkt->dts, pkt->duration, pkt->stream_index, pkt->pos);
         if (ret >= 0) {
             // Update packet info from track
             if (pkt->dts < s->streams[track_to_read->index]->internal->cur_dts && track_to_read->last_pts > 0) {
