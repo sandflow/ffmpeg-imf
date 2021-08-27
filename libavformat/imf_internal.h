@@ -26,9 +26,12 @@
  */
 
 /**
+ * Private header file for the processing of Interoperable Master Format (IMF) packages.
+ * 
+ * @author Pierre-Anthony Lemieux
+ * @author Valentin Noel
  * @file
  * @ingroup lavu_imf
- * IMF unittest
  */
 
 #ifndef AVFORMAT_IMF_INTERNAL_H
