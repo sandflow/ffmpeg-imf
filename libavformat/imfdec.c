@@ -25,14 +25,11 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-/*
+/**
  * Demuxes an IMF Composition
- * @file
- * @author Marc-Antoine Arnaud
- * @author Valentin Noel
  *
  * References
- $ OV 2067-0:2018 - SMPTE Overview Document - Interoperable Master Format
+ * OV 2067-0:2018 - SMPTE Overview Document - Interoperable Master Format
  * ST 2067-2:2020 - SMPTE Standard - Interoperable Master Format — Core Constraints
  * ST 2067-3:2020 - SMPTE Standard - Interoperable Master Format — Composition Playlist
  * ST 2067-5:2020 - SMPTE Standard - Interoperable Master Format — Essence Component
@@ -40,6 +37,11 @@
  * ST 2067-21:2020 - SMPTE Standard - Interoperable Master Format — Application #2 Extended
  * ST 2067-102:2017 - SMPTE Standard - Interoperable Master Format — Common Image Pixel Color Schemes
  * ST 429-9:2007 - SMPTE Standard - D-Cinema Packaging — Asset Mapping and File Segmentation
+ *
+ * @author Marc-Antoine Arnaud
+ * @author Valentin Noel
+ * @file
+ * @ingroup lavu_imf
  */
 
 #include "imf.h"
