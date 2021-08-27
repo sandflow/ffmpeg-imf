@@ -26,10 +26,11 @@
  */
 
 /**
+ * Public header file for the processing of Interoperable Master Format (IMF) packages.
+ * 
+ * @author Pierre-Anthony Lemieux
  * @file
  * @ingroup lavu_imf
- * Public header for processing of Interoperable Master Format (IMF) packages.
- * IMF is specified in the SMPTE ST 2067 family of standards.
  */
 
 #ifndef AVFORMAT_IMF_H
