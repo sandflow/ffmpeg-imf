@@ -26,9 +26,11 @@
  */
 
 /**
+ * Implements IMP CPL processing
+ *
+ * @author Pierre-Anthony Lemieux
  * @file
  * @ingroup lavu_imf
- * Private header for processing of Interoperable Master Format packages
  */
 
 #include "imf.h"
