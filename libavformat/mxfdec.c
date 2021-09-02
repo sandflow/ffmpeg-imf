@@ -52,6 +52,7 @@
 #include "libavutil/mastering_display_metadata.h"
 #include "libavutil/mathematics.h"
 #include "libavcodec/bytestream.h"
+#include "libavcodec/internal.h"
 #include "libavutil/channel_layout.h"
 #include "libavutil/intreadwrite.h"
 #include "libavutil/parseutils.h"
@@ -180,7 +181,8 @@ typedef struct {
     int body_sid;
     MXFWrappingScheme wrapping;
     int edit_units_per_packet; /* how many edit units to read at a time (PCM, ClipWrapped) */
-    int* channel_ordering;
+    bool require_reordering;
+    int channel_ordering[FF_SANE_NB_CHANNELS];
 } MXFTrack;
 
 typedef struct MXFDescriptor {
@@ -395,8 +397,6 @@ static void mxf_free_metadataset(MXFMetadataSet **ctx, int freectx)
         break;
     case Track:
         av_freep(&((MXFTrack *)*ctx)->name);
-        if (((MXFTrack *)*ctx)->channel_ordering)
-            av_freep(&((MXFTrack *)*ctx)->channel_ordering);
         break;
     case IndexTableSegment:
         seg = (MXFIndexTableSegment *)*ctx;
@@ -2491,10 +2491,8 @@ static int mxf_parse_structural_metadata(MXFContext *mxf)
         FFStream *sti;
         AVTimecode tc;
         enum AVAudioServiceType *ast;
-        int* channel_ordering;
         int flags;
         int current_channel;
-        bool require_reordering;
 
         if (!(material_track = mxf_resolve_strong_ref(mxf, &material_package->tracks_refs[i], Track))) {
             av_log(mxf->fc, AV_LOG_ERROR, "could not resolve material track strong ref\n");
@@ -2857,10 +2855,10 @@ static int mxf_parse_structural_metadata(MXFContext *mxf)
 
             current_channel = 0;
 
-            channel_ordering = av_mallocz_array(descriptor->channels, sizeof(int));
 
-            for (j = 0; j < descriptor->channels; ++j) {
-                channel_ordering[j] = j;
+
+            for (j = 0; j < FFMIN(descriptor->channels, FF_SANE_NB_CHANNELS); ++j) {
+                source_track->channel_ordering[j] = j;
             }
 
             for (j = 0; j < descriptor->sub_descriptors_count; j++) {
@@ -2874,7 +2872,7 @@ static int mxf_parse_structural_metadata(MXFContext *mxf)
                     MXFSoundfieldGroupUL* group_ptr = (MXFSoundfieldGroupUL*)&mxf_soundfield_groups[0];
 
                     while (group_ptr->uid[0]) {
-                        if(IS_KLV_KEY(group_ptr->uid, mca_sub_descriptor->mca_label_dictionnary_id)) {
+                        if (IS_KLV_KEY(group_ptr->uid, mca_sub_descriptor->mca_label_dictionnary_id)) {
                             st->codecpar->channel_layout = group_ptr->id;
                             break;
                         }
@@ -2887,8 +2885,12 @@ static int mxf_parse_structural_metadata(MXFContext *mxf)
                     MXFChannelOrderingUL* channel_ordering_ptr = (MXFChannelOrderingUL*)&mxf_channel_ordering[0];
 
                     while (channel_ordering_ptr->uid[0]) {
-                        if(IS_KLV_KEY(channel_ordering_ptr->uid, mca_sub_descriptor->mca_label_dictionnary_id)) {
-                            channel_ordering[current_channel] = channel_ordering_ptr->index;
+                        if (IS_KLV_KEY(channel_ordering_ptr->uid, mca_sub_descriptor->mca_label_dictionnary_id)) {
+                            if (current_channel <= FF_SANE_NB_CHANNELS) {
+                                source_track->channel_ordering[current_channel] = channel_ordering_ptr->index;
+                            } else {
+                                av_log(mxf->fc, AV_LOG_WARNING, "MCA Audio mapping: will not reassign channel ordering, the maximum number of channels supported has been reached");
+                            }
 
                             if(channel_ordering_ptr->service_type != AV_AUDIO_SERVICE_TYPE_NB) {
                                 ast = (enum AVAudioServiceType*)av_stream_new_side_data(st, AV_PKT_DATA_AUDIO_SERVICE_TYPE, sizeof(*ast));
@@ -2909,21 +2911,21 @@ static int mxf_parse_structural_metadata(MXFContext *mxf)
             }
 
             // check if the mapping is not required
-            require_reordering = false;
-            for (j = 0; j < descriptor->channels; ++j) {
-                if (channel_ordering[j] != j) {
-                    require_reordering = true;
+            source_track->require_reordering = false;
+            for (j = 0; j < FFMIN(descriptor->channels, FF_SANE_NB_CHANNELS); ++j) {
+                if (source_track->channel_ordering[j] != j) {
+                    source_track->require_reordering = true;
                     break;
                 }
             }
 
-            if (require_reordering && is_pcm(st->codecpar->codec_id)) {
+            if (source_track->require_reordering && is_pcm(st->codecpar->codec_id)) {
                 current_channel = 0;
                 av_log(mxf->fc, AV_LOG_DEBUG, "MCA Audio mapping (");
                 for(j = 0; j < descriptor->channels; ++j) {
                     for(int k = 0; k < descriptor->channels; ++k) {
-                        if(channel_ordering[k] == current_channel) {
-                            av_log(mxf->fc, AV_LOG_DEBUG, "%d -> %d", channel_ordering[k], k);
+                        if(source_track->channel_ordering[k] == current_channel) {
+                            av_log(mxf->fc, AV_LOG_DEBUG, "%d -> %d", source_track->channel_ordering[k], k);
                             if (current_channel != descriptor->channels - 1)
                                 av_log(mxf->fc, AV_LOG_DEBUG, ", ");
                             current_channel += 1;
@@ -2931,10 +2933,6 @@ static int mxf_parse_structural_metadata(MXFContext *mxf)
                     }
                 }
                 av_log(mxf->fc, AV_LOG_DEBUG, ")\n");
-
-                source_track->channel_ordering = channel_ordering;
-            } else {
-                av_free(channel_ordering);
             }
         } else if (st->codecpar->codec_type == AVMEDIA_TYPE_DATA) {
             enum AVMediaType type;
@@ -3999,7 +3997,7 @@ static int mxf_read_packet(AVFormatContext *s, AVPacket *pkt)
             }
 
             // for audio, process audio remapping if MCA label requires it 
-            if (st->codecpar->codec_type == AVMEDIA_TYPE_AUDIO && track->channel_ordering != NULL) {
+            if (st->codecpar->codec_type == AVMEDIA_TYPE_AUDIO && track->require_reordering) {
                 int byte_per_sample = st->codecpar->bits_per_coded_sample / 8;
                 mxf_audio_remapping(track->channel_ordering, pkt->data, pkt->size, byte_per_sample, st->codecpar->channels);
             }
