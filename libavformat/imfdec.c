@@ -640,4 +640,5 @@ const AVInputFormat ff_imf_demuxer = {
     .read_packet = ff_imf_read_packet,
     .read_close = imf_close,
     .extensions = "xml",
+    .mime_type = "application/xml,text/xml",
 };
