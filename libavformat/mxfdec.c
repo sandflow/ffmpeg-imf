@@ -2855,9 +2855,12 @@ static int mxf_parse_structural_metadata(MXFContext *mxf)
 
             current_channel = 0;
 
+            if (descriptor->channels >= FF_SANE_NB_CHANNELS) {
+                av_log(mxf->fc, AV_LOG_ERROR, "max number of channels %s reached\n", FF_SANE_NB_CHANNELS);
+                return AVERROR_INVALIDDATA;
+            }
 
-
-            for (j = 0; j < FFMIN(descriptor->channels, FF_SANE_NB_CHANNELS); ++j) {
+            for (j = 0; j < descriptor->channels; ++j) {
                 source_track->channel_ordering[j] = j;
             }
 
@@ -2886,11 +2889,7 @@ static int mxf_parse_structural_metadata(MXFContext *mxf)
 
                     while (channel_ordering_ptr->uid[0]) {
                         if (IS_KLV_KEY(channel_ordering_ptr->uid, mca_sub_descriptor->mca_label_dictionnary_id)) {
-                            if (current_channel <= FF_SANE_NB_CHANNELS) {
-                                source_track->channel_ordering[current_channel] = channel_ordering_ptr->index;
-                            } else {
-                                av_log(mxf->fc, AV_LOG_WARNING, "MCA Audio mapping: will not reassign channel ordering, the maximum number of channels supported has been reached");
-                            }
+                            source_track->channel_ordering[current_channel] = channel_ordering_ptr->index;
 
                             if(channel_ordering_ptr->service_type != AV_AUDIO_SERVICE_TYPE_NB) {
                                 ast = (enum AVAudioServiceType*)av_stream_new_side_data(st, AV_PKT_DATA_AUDIO_SERVICE_TYPE, sizeof(*ast));
@@ -2912,7 +2911,7 @@ static int mxf_parse_structural_metadata(MXFContext *mxf)
 
             // check if the mapping is not required
             source_track->require_reordering = false;
-            for (j = 0; j < FFMIN(descriptor->channels, FF_SANE_NB_CHANNELS); ++j) {
+            for (j = 0; j < descriptor->channels; ++j) {
                 if (source_track->channel_ordering[j] != j) {
                     source_track->require_reordering = true;
                     break;
