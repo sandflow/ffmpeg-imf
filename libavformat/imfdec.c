@@ -560,6 +560,7 @@ static int ff_imf_read_packet(AVFormatContext *s, AVPacket *pkt) {
     int ret = 0;
 
     IMFVirtualTrackPlaybackCtx *track_to_read = get_next_track_with_minimum_timestamp(s);
+    FFStream* track_to_read_stream_internal;
 
     if (av_cmp_q(track_to_read->current_timestamp, track_to_read->duration) == 0) {
         return AVERROR_EOF;
@@ -580,10 +581,11 @@ static int ff_imf_read_packet(AVFormatContext *s, AVPacket *pkt) {
     while (!ff_check_interrupt(c->interrupt_callback) && !ret) {
         ret = av_read_frame(resource_to_read->ctx, pkt);
         av_log(s, AV_LOG_DEBUG, "Got packet: pts=%" PRId64 ", dts=%" PRId64 ", duration=%" PRId64 ", stream_index=%d, pos=%" PRId64 "\n", pkt->pts, pkt->dts, pkt->duration, pkt->stream_index, pkt->pos);
+        track_to_read_stream_internal = ffstream(s->streams[track_to_read->index]);
         if (ret >= 0) {
             // Update packet info from track
-            if (pkt->dts < s->streams[track_to_read->index]->internal->cur_dts && track_to_read->last_pts > 0) {
-                pkt->dts = s->streams[track_to_read->index]->internal->cur_dts;
+            if (pkt->dts < track_to_read_stream_internal->cur_dts && track_to_read->last_pts > 0) {
+                pkt->dts = track_to_read_stream_internal->cur_dts;
             }
 
             pkt->pts = track_to_read->last_pts;
