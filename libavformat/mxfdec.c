@@ -1432,15 +1432,14 @@ static int mxf_read_mca_sub_descriptor(void *arg, AVIOContext *pb, int tag, int 
 {
     MXFMCASubDescriptor *mca_sub_descriptor = arg;
 
-    if (IS_KLV_KEY(uid, mxf_mca_label_dictionnary_id)) {
+    if (IS_KLV_KEY(uid, mxf_mca_label_dictionnary_id))
         avio_read(pb, mca_sub_descriptor->mca_label_dictionnary_id, 16);
-    }
-    if (IS_KLV_KEY(uid, mxf_mca_link_id)) {
+    
+    if (IS_KLV_KEY(uid, mxf_mca_link_id))
         avio_read(pb, mca_sub_descriptor->mca_link_id, 16);
-    }
-    if (IS_KLV_KEY(uid, mxf_soundfield_group_link_id)) {
+    
+    if (IS_KLV_KEY(uid, mxf_soundfield_group_link_id))
         avio_read(pb, mca_sub_descriptor->mca_group_link_id, 16);
-    }
 
     if (IS_KLV_KEY(uid, mxf_mca_rfc5646_spoken_language)) {
         char *str = NULL;
