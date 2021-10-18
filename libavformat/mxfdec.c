@@ -306,6 +306,7 @@ typedef struct MXFContext {
     int nb_index_tables;
     MXFIndexTable *index_tables;
     int eia608_extract;
+    int skip_audio_reordering;
 } MXFContext;
 
 /* NOTE: klv_offset is not set (-1) for local keys */
@@ -3992,7 +3993,7 @@ static int mxf_read_packet(AVFormatContext *s, AVPacket *pkt)
             }
 
             // for audio, process audio remapping if MCA label requires it 
-            if (st->codecpar->codec_type == AVMEDIA_TYPE_AUDIO && track->require_reordering) {
+            if (st->codecpar->codec_type == AVMEDIA_TYPE_AUDIO && track->require_reordering && !mxf->skip_audio_reordering) {
                 int byte_per_sample = st->codecpar->bits_per_coded_sample / 8;
                 ret = mxf_audio_remapping(track->channel_ordering, pkt->data, pkt->size, byte_per_sample, st->codecpar->channels);
                 if (ret < 0) {
@@ -4186,6 +4187,9 @@ static int mxf_read_seek(AVFormatContext *s, int stream_index, int64_t sample_ti
 static const AVOption options[] = {
     { "eia608_extract", "extract eia 608 captions from s436m track",
       offsetof(MXFContext, eia608_extract), AV_OPT_TYPE_BOOL, {.i64 = 0}, 0, 1,
+      AV_OPT_FLAG_DECODING_PARAM },
+    { "skip_audio_reordering", "skip audio reordering based on Multi-Channel Audio labelling",
+      offsetof(MXFContext, skip_audio_reordering), AV_OPT_TYPE_BOOL, {.i64 = 0}, 0, 1,
       AV_OPT_FLAG_DECODING_PARAM },
     { NULL },
 };
