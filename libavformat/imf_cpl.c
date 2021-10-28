@@ -325,7 +325,7 @@ static int push_marker_sequence(xmlNodePtr marker_sequence_elem, IMFCPL *cpl) {
         av_log(NULL, AV_LOG_ERROR, "Invalid TrackId element found in Sequence\n");
         return AVERROR_INVALIDDATA;
     }
-    av_log(NULL, AV_LOG_DEBUG, "Processing IMF CPL Marker Sequence for Virtual Track " UUID_FORMAT "\n",  UID_ARG(uuid));
+    av_log(NULL, AV_LOG_DEBUG, "Processing IMF CPL Marker Sequence for Virtual Track " UUID_FORMAT "\n", UID_ARG(uuid));
 
     /* create main marker virtual track if it does not exist */
     if (!cpl->main_markers_track) {
@@ -389,7 +389,7 @@ static int push_main_audio_sequence(xmlNodePtr audio_sequence_elem, IMFCPL *cpl)
         av_log(NULL, AV_LOG_ERROR, "Invalid TrackId element found in audio sequence\n");
         return ret;
     }
-    av_log(NULL, AV_LOG_DEBUG, "Processing IMF CPL Audio Sequence for Virtual Track " UUID_FORMAT "\n",  UID_ARG(uuid));
+    av_log(NULL, AV_LOG_DEBUG, "Processing IMF CPL Audio Sequence for Virtual Track " UUID_FORMAT "\n", UID_ARG(uuid));
 
     /* get the main audio virtual track corresponding to the sequence */
     for (int i = 0; i < cpl->main_audio_track_count; i++)
@@ -465,7 +465,7 @@ static int push_main_image_2d_sequence(xmlNodePtr image_sequence_elem, IMFCPL *c
         av_log(NULL, AV_LOG_ERROR, "Multiple MainImage virtual tracks found\n");
         return AVERROR_INVALIDDATA;
     }
-    av_log(NULL, AV_LOG_DEBUG, "Processing IMF CPL Main Image Sequence for Virtual Track " UUID_FORMAT "\n",  UID_ARG(uuid));
+    av_log(NULL, AV_LOG_DEBUG, "Processing IMF CPL Main Image Sequence for Virtual Track " UUID_FORMAT "\n", UID_ARG(uuid));
 
     /* process resources */
     if (!(resource_list_elem = xml_get_child_element_by_name(image_sequence_elem, "ResourceList")))
@@ -648,7 +648,7 @@ int parse_imf_cpl(AVIOContext *in, IMFCPL **cpl) {
             av_log(NULL, AV_LOG_ERROR, "Cannot parse IMF CPL\n");
         } else {
             av_log(NULL, AV_LOG_INFO, "IMF CPL ContentTitle: %s\n", (*cpl)->content_title_utf8);
-            av_log(NULL, AV_LOG_INFO, "IMF CPL Id: " UUID_FORMAT "\n",  UID_ARG((*cpl)->id_uuid));
+            av_log(NULL, AV_LOG_INFO, "IMF CPL Id: " UUID_FORMAT "\n", UID_ARG((*cpl)->id_uuid));
         }
         xmlFreeDoc(doc);
         xmlCleanupParser();

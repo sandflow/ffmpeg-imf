@@ -47,13 +47,13 @@
 #include "imf.h"
 #include "imf_internal.h"
 #include "internal.h"
-#include "libavutil/opt.h"
-#include "libavutil/bprint.h"
 #include "libavutil/avstring.h"
+#include "libavutil/bprint.h"
+#include "libavutil/opt.h"
 #include "mxf.h"
 #include "url.h"
-#include <libxml/parser.h>
 #include <inttypes.h>
+#include <libxml/parser.h>
 
 #define MAX_BPRINT_READ_SIZE (UINT_MAX - 1)
 #define DEFAULT_ASSETMAP_SIZE 8 * 1024
@@ -176,14 +176,10 @@ int parse_imf_asset_map_from_xml_dom(AVFormatContext *s, xmlDocPtr doc, IMFAsset
         }
 
         uri = xmlNodeGetContent(xml_get_child_element_by_name(node, "Path"));
-
-        if (!is_url(uri) && !is_unix_absolute_path(uri) && !is_dos_absolute_path(uri)) {
+        if (!is_url(uri) && !is_unix_absolute_path(uri) && !is_dos_absolute_path(uri))
             asset->absolute_uri = av_append_path_component(base_url, uri);
-        } else {
+        else
             asset->absolute_uri = av_strdup(uri);
-        }
-
-        
         xmlFree(uri);
 
         av_log(s, AV_LOG_DEBUG, "Found asset absolute URI: %s\n", asset->absolute_uri);
@@ -563,7 +559,7 @@ static int ff_imf_read_packet(AVFormatContext *s, AVPacket *pkt) {
     int ret = 0;
 
     IMFVirtualTrackPlaybackCtx *track_to_read = get_next_track_with_minimum_timestamp(s);
-    FFStream* track_to_read_stream_internal;
+    FFStream *track_to_read_stream_internal;
 
     if (av_cmp_q(track_to_read->current_timestamp, track_to_read->duration) == 0) {
         return AVERROR_EOF;
