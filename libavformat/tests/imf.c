@@ -435,17 +435,17 @@ static int test_path_type_functions(void) {
     PathTypeTestStruct path_type;
     for (int i = 0; i < 11; ++i) {
         path_type = PATH_TYPE_TEST_STRUCTS[i];
-        if (is_url(path_type.path) != path_type.is_url) {
+        if (imf_uri_is_url(path_type.path) != path_type.is_url) {
             fprintf(stderr, "URL comparison test failed for '%s', got %d instead of expected %d\n", path_type.path, path_type.is_url, !path_type.is_url);
             goto fail;
         }
 
-        if (is_unix_absolute_path(path_type.path) != path_type.is_unix_absolute_path) {
+        if (imf_uri_is_unix_abs_path(path_type.path) != path_type.is_unix_absolute_path) {
             fprintf(stderr, "Unix absolute path comparison test failed for '%s', got %d instead of expected %d\n", path_type.path, path_type.is_unix_absolute_path, !path_type.is_unix_absolute_path);
             goto fail;
         }
 
-        if (is_dos_absolute_path(path_type.path) != path_type.is_dos_absolute_path) {
+        if (imf_uri_is_dos_abs_path(path_type.path) != path_type.is_dos_absolute_path) {
             fprintf(stderr, "DOS absolute path comparison test failed for '%s', got %d instead of expected %d\n", path_type.path, path_type.is_dos_absolute_path, !path_type.is_dos_absolute_path);
             goto fail;
         }
