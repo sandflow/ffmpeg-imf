@@ -178,11 +178,13 @@ int parse_imf_asset_map_from_xml_dom(AVFormatContext *s, xmlDocPtr doc, IMFAsset
         uri = xmlNodeGetContent(xml_get_child_element_by_name(node, "Path"));
 
         if (!is_url(uri) && !is_unix_absolute_path(uri) && !is_dos_absolute_path(uri)) {
-            uri = av_append_path_component(base_url, uri);
+            asset->absolute_uri = av_append_path_component(base_url, uri);
+        } else {
+            asset->absolute_uri = av_strdup(uri);
         }
 
-        asset->absolute_uri = strdup(uri);
-        av_free(uri);
+        
+        xmlFree(uri);
 
         av_log(s, AV_LOG_DEBUG, "Found asset absolute URI: %s\n", asset->absolute_uri);
 
@@ -213,6 +215,7 @@ void imf_asset_locator_map_free(IMFAssetLocatorMap *asset_map) {
     }
 
     for (int i = 0; i < asset_map->asset_count; ++i) {
+        av_free(asset_map->assets[i]->absolute_uri);
         av_free(asset_map->assets[i]);
     }
 

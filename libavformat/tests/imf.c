@@ -279,6 +279,7 @@ static int test_cpl_parsing(void) {
     }
 
     ret = parse_imf_cpl_from_xml_dom(doc, &cpl);
+    xmlFreeDoc(doc);
     if (ret) {
         printf("CPL parsing failed.\n");
         return 1;
@@ -331,6 +332,7 @@ static int test_bad_cpl_parsing(void) {
     }
 
     ret = parse_imf_cpl_from_xml_dom(doc, &cpl);
+    xmlFreeDoc(doc);
     if (ret) {
         printf("CPL parsing failed.\n");
         return ret;
@@ -358,7 +360,10 @@ static int check_asset_locator_attributes(IMFAssetLocator *asset, IMFAssetLocato
     return 0;
 }
 
-static const IMFAssetLocator ASSET_MAP_EXPECTED_LOCATORS[5] = {
+static const struct {
+    UUID uuid;
+    const char *absolute_uri;
+} ASSET_MAP_EXPECTED_LOCATORS[5] = {
     [0] = {.uuid = {0xb5, 0xd6, 0x74, 0xb8, 0xc6, 0xce, 0x4b, 0xce, 0x3b, 0xdf, 0xbe, 0x04, 0x5d, 0xfd, 0xb2, 0xd0}, .absolute_uri = "IMF_TEST_ASSET_MAP_video.mxf"},
     [1] = {.uuid = {0xec, 0x34, 0x67, 0xec, 0xab, 0x2a, 0x4f, 0x49, 0xc8, 0xcb, 0x89, 0xca, 0xa3, 0x76, 0x1f, 0x4a}, .absolute_uri = "IMF_TEST_ASSET_MAP_video_1.mxf"},
     [2] = {.uuid = {0x5c, 0xf5, 0xb5, 0xa7, 0x8b, 0xb3, 0x4f, 0x08, 0xea, 0xa6, 0x35, 0x33, 0xd4, 0xb7, 0x7f, 0xa6}, .absolute_uri = "IMF_TEST_ASSET_MAP_audio.mxf"},
@@ -368,6 +373,7 @@ static const IMFAssetLocator ASSET_MAP_EXPECTED_LOCATORS[5] = {
 
 static int test_asset_map_parsing(void) {
     IMFAssetLocatorMap *asset_locator_map;
+    IMFAssetLocator expected_locator;
     xmlDoc *doc;
     int ret;
 
@@ -396,7 +402,9 @@ static int test_asset_map_parsing(void) {
 
     for (int i = 0; i < asset_locator_map->asset_count; ++i) {
         printf("For asset: %d:\n", i);
-        ret = check_asset_locator_attributes(asset_locator_map->assets[i], ASSET_MAP_EXPECTED_LOCATORS[i]);
+        memcpy(expected_locator.uuid, ASSET_MAP_EXPECTED_LOCATORS[i].uuid, sizeof(expected_locator.uuid));
+        expected_locator.absolute_uri = (char*) ASSET_MAP_EXPECTED_LOCATORS[i].absolute_uri;
+        ret = check_asset_locator_attributes(asset_locator_map->assets[i], expected_locator);
         if (ret > 0) {
             goto cleanup;
         }

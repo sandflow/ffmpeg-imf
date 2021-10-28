@@ -50,7 +50,7 @@
  */
 typedef struct IMFAssetLocator {
     UUID uuid;
-    const char *absolute_uri;
+    char *absolute_uri;
 } IMFAssetLocator;
 
 /**

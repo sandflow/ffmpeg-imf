@@ -298,7 +298,7 @@ static int fill_marker_resource(xmlNodePtr marker_resource_elem, IMFMarkerResour
             marker_resource->markers = av_realloc(marker_resource->markers, (++marker_resource->marker_count) * sizeof(IMFMarker));
             if (!marker_resource->markers) {
                 av_log(NULL, AV_LOG_PANIC, "Cannot allocate Marker\n");
-                exit(1);
+                return AVERROR_EXIT;
             }
             imf_marker_init(&marker_resource->markers[marker_resource->marker_count - 1]);
             fill_marker(element, &marker_resource->markers[marker_resource->marker_count - 1]);
@@ -332,7 +332,7 @@ static int push_marker_sequence(xmlNodePtr marker_sequence_elem, IMFCPL *cpl) {
         cpl->main_markers_track = av_malloc(sizeof(IMFMarkerVirtualTrack));
         if (!cpl->main_markers_track) {
             av_log(NULL, AV_LOG_PANIC, "Cannot allocate Marker Virtual Track\n");
-            exit(1);
+            return AVERROR_EXIT;
         }
         imf_marker_virtual_track_init(cpl->main_markers_track);
         memcpy(cpl->main_markers_track->base.id_uuid, uuid, sizeof(uuid));
@@ -350,7 +350,7 @@ static int push_marker_sequence(xmlNodePtr marker_sequence_elem, IMFCPL *cpl) {
         cpl->main_markers_track->resources = av_realloc(cpl->main_markers_track->resources, (++cpl->main_markers_track->resource_count) * sizeof(IMFMarkerResource));
         if (!cpl->main_markers_track->resources) {
             av_log(NULL, AV_LOG_PANIC, "Cannot allocate Resource\n");
-            exit(1);
+            return AVERROR_EXIT;
         }
         imf_marker_resource_init(&cpl->main_markers_track->resources[cpl->main_markers_track->resource_count - 1]);
         fill_marker_resource(resource_elem, &cpl->main_markers_track->resources[cpl->main_markers_track->resource_count - 1], cpl);
@@ -403,7 +403,7 @@ static int push_main_audio_sequence(xmlNodePtr audio_sequence_elem, IMFCPL *cpl)
         cpl->main_audio_tracks = av_realloc(cpl->main_audio_tracks, sizeof(IMFTrackFileVirtualTrack) * (++cpl->main_audio_track_count));
         if (!cpl->main_audio_tracks) {
             av_log(NULL, AV_LOG_PANIC, "Cannot allocate MainAudio virtual track\n");
-            exit(1);
+            return AVERROR_EXIT;
         }
         vt = &cpl->main_audio_tracks[cpl->main_audio_track_count - 1];
         imf_trackfile_virtual_track_init(vt);
@@ -419,7 +419,7 @@ static int push_main_audio_sequence(xmlNodePtr audio_sequence_elem, IMFCPL *cpl)
         vt->resources = av_realloc(vt->resources, (++vt->resource_count) * sizeof(IMFTrackFileResource));
         if (!vt->resources) {
             av_log(NULL, AV_LOG_PANIC, "Cannot allocate Resource\n");
-            exit(1);
+            return AVERROR_EXIT;
         }
         imf_trackfile_resource_init(&vt->resources[vt->resource_count - 1]);
         fill_trackfile_resource(resource_elem, &vt->resources[vt->resource_count - 1], cpl);
@@ -457,7 +457,7 @@ static int push_main_image_2d_sequence(xmlNodePtr image_sequence_elem, IMFCPL *c
         cpl->main_image_2d_track = av_malloc(sizeof(IMFTrackFileVirtualTrack));
         if (!cpl->main_image_2d_track) {
             av_log(NULL, AV_LOG_PANIC, "Cannot allocate MainImage virtual track\n");
-            exit(1);
+            return AVERROR_EXIT;
         }
         imf_trackfile_virtual_track_init(cpl->main_image_2d_track);
         memcpy(cpl->main_image_2d_track->base.id_uuid, uuid, sizeof(uuid));
@@ -475,7 +475,7 @@ static int push_main_image_2d_sequence(xmlNodePtr image_sequence_elem, IMFCPL *c
         cpl->main_image_2d_track->resources = av_realloc(cpl->main_image_2d_track->resources, (++cpl->main_image_2d_track->resource_count) * sizeof(IMFTrackFileResource));
         if (!cpl->main_image_2d_track->resources) {
             av_log(NULL, AV_LOG_PANIC, "Cannot allocate Resource\n");
-            exit(1);
+            return AVERROR_EXIT;
         }
         imf_trackfile_resource_init(&cpl->main_image_2d_track->resources[cpl->main_image_2d_track->resource_count - 1]);
         fill_trackfile_resource(resource_elem, &cpl->main_image_2d_track->resources[cpl->main_image_2d_track->resource_count - 1], cpl);
@@ -609,9 +609,15 @@ void imf_cpl_free(IMFCPL *cpl) {
     if (cpl) {
         xmlFree(cpl->content_title_utf8);
         imf_marker_virtual_track_free(cpl->main_markers_track);
+        if (cpl->main_markers_track)
+            av_free(cpl->main_markers_track);
         imf_trackfile_virtual_track_free(cpl->main_image_2d_track);
+        if (cpl->main_image_2d_track)
+            av_free(cpl->main_image_2d_track);
         for (unsigned long i = 0; i < cpl->main_audio_track_count; i++)
             imf_trackfile_virtual_track_free(&cpl->main_audio_tracks[i]);
+        if (cpl->main_audio_tracks)
+            av_free(cpl->main_audio_tracks);
     }
     av_free(cpl);
     cpl = NULL;
