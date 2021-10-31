@@ -316,7 +316,7 @@ static int fill_marker_resource(xmlNodePtr marker_resource_elem, IMFMarkerResour
             marker_resource->markers = av_realloc(marker_resource->markers, (++marker_resource->marker_count) * sizeof(IMFMarker));
             if (!marker_resource->markers) {
                 av_log(NULL, AV_LOG_PANIC, "Cannot allocate Marker\n");
-                return AVERROR_EXIT;
+                return AVERROR(ENOMEM);
             }
             imf_marker_init(&marker_resource->markers[marker_resource->marker_count - 1]);
             fill_marker(element, &marker_resource->markers[marker_resource->marker_count - 1]);
@@ -351,7 +351,7 @@ static int push_marker_sequence(xmlNodePtr marker_sequence_elem, IMFCPL *cpl)
         cpl->main_markers_track = av_malloc(sizeof(IMFMarkerVirtualTrack));
         if (!cpl->main_markers_track) {
             av_log(NULL, AV_LOG_PANIC, "Cannot allocate Marker Virtual Track\n");
-            return AVERROR_EXIT;
+            return AVERROR(ENOMEM);
         }
         imf_marker_virtual_track_init(cpl->main_markers_track);
         memcpy(cpl->main_markers_track->base.id_uuid, uuid, sizeof(uuid));
@@ -369,10 +369,11 @@ static int push_marker_sequence(xmlNodePtr marker_sequence_elem, IMFCPL *cpl)
         cpl->main_markers_track->resources = av_realloc(cpl->main_markers_track->resources, (++cpl->main_markers_track->resource_count) * sizeof(IMFMarkerResource));
         if (!cpl->main_markers_track->resources) {
             av_log(NULL, AV_LOG_PANIC, "Cannot allocate Resource\n");
-            return AVERROR_EXIT;
+            return AVERROR(ENOMEM);
         }
         imf_marker_resource_init(&cpl->main_markers_track->resources[cpl->main_markers_track->resource_count - 1]);
-        fill_marker_resource(resource_elem, &cpl->main_markers_track->resources[cpl->main_markers_track->resource_count - 1], cpl);
+        if (ret = fill_marker_resource(resource_elem, &cpl->main_markers_track->resources[cpl->main_markers_track->resource_count - 1], cpl))
+            return ret;
         resource_elem = xmlNextElementSibling(resource_elem);
     }
 
@@ -424,7 +425,7 @@ static int push_main_audio_sequence(xmlNodePtr audio_sequence_elem, IMFCPL *cpl)
         cpl->main_audio_tracks = av_realloc(cpl->main_audio_tracks, sizeof(IMFTrackFileVirtualTrack) * (++cpl->main_audio_track_count));
         if (!cpl->main_audio_tracks) {
             av_log(NULL, AV_LOG_PANIC, "Cannot allocate MainAudio virtual track\n");
-            return AVERROR_EXIT;
+            return AVERROR(ENOMEM);
         }
         vt = &cpl->main_audio_tracks[cpl->main_audio_track_count - 1];
         imf_trackfile_virtual_track_init(vt);
@@ -440,7 +441,7 @@ static int push_main_audio_sequence(xmlNodePtr audio_sequence_elem, IMFCPL *cpl)
         vt->resources = av_realloc(vt->resources, (++vt->resource_count) * sizeof(IMFTrackFileResource));
         if (!vt->resources) {
             av_log(NULL, AV_LOG_PANIC, "Cannot allocate Resource\n");
-            return AVERROR_EXIT;
+            return AVERROR(ENOMEM);
         }
         imf_trackfile_resource_init(&vt->resources[vt->resource_count - 1]);
         fill_trackfile_resource(resource_elem, &vt->resources[vt->resource_count - 1], cpl);
@@ -479,7 +480,7 @@ static int push_main_image_2d_sequence(xmlNodePtr image_sequence_elem, IMFCPL *c
         cpl->main_image_2d_track = av_malloc(sizeof(IMFTrackFileVirtualTrack));
         if (!cpl->main_image_2d_track) {
             av_log(NULL, AV_LOG_PANIC, "Cannot allocate MainImage virtual track\n");
-            return AVERROR_EXIT;
+            return AVERROR(ENOMEM);
         }
         imf_trackfile_virtual_track_init(cpl->main_image_2d_track);
         memcpy(cpl->main_image_2d_track->base.id_uuid, uuid, sizeof(uuid));
@@ -497,7 +498,7 @@ static int push_main_image_2d_sequence(xmlNodePtr image_sequence_elem, IMFCPL *c
         cpl->main_image_2d_track->resources = av_realloc(cpl->main_image_2d_track->resources, (++cpl->main_image_2d_track->resource_count) * sizeof(IMFTrackFileResource));
         if (!cpl->main_image_2d_track->resources) {
             av_log(NULL, AV_LOG_PANIC, "Cannot allocate Resource\n");
-            return AVERROR_EXIT;
+            return AVERROR(ENOMEM);
         }
         imf_trackfile_resource_init(&cpl->main_image_2d_track->resources[cpl->main_image_2d_track->resource_count - 1]);
         fill_trackfile_resource(resource_elem, &cpl->main_image_2d_track->resources[cpl->main_image_2d_track->resource_count - 1], cpl);
@@ -529,15 +530,17 @@ static int fill_virtual_tracks(xmlNodePtr cpl_element, IMFCPL *cpl)
             continue;
         sequence_elem = xmlFirstElementChild(sequence_list_elem);
         while (sequence_elem) {
-            if (xmlStrcmp(sequence_elem->name, "MarkerSequence") == 0)
-                push_marker_sequence(sequence_elem, cpl);
-            else if (xmlStrcmp(sequence_elem->name, "MainImageSequence") == 0)
-                push_main_image_2d_sequence(sequence_elem, cpl);
-            else if (xmlStrcmp(sequence_elem->name, "MainAudioSequence") == 0)
-                push_main_audio_sequence(sequence_elem, cpl);
-            else {
+            if (xmlStrcmp(sequence_elem->name, "MarkerSequence") == 0) {
+                if (ret = push_marker_sequence(sequence_elem, cpl))
+                    return ret;
+            } else if (xmlStrcmp(sequence_elem->name, "MainImageSequence") == 0) {
+                if (ret = push_main_image_2d_sequence(sequence_elem, cpl))
+                    return ret;
+            } else if (xmlStrcmp(sequence_elem->name, "MainAudioSequence") == 0) {
+                if (ret = push_main_audio_sequence(sequence_elem, cpl))
+                    return ret;
+            } else
                 av_log(NULL, AV_LOG_INFO, "The following Sequence is not supported and is ignored: %s\n", sequence_elem->name);
-            }
             sequence_elem = xmlNextElementSibling(sequence_elem);
         }
         segment_elem = xmlNextElementSibling(segment_elem);
@@ -554,7 +557,7 @@ int parse_imf_cpl_from_xml_dom(xmlDocPtr doc, IMFCPL **cpl)
     *cpl = imf_cpl_alloc();
     if (!*cpl) {
         av_log(NULL, AV_LOG_FATAL, "Cannot allocate CPL\n");
-        ret = AVERROR_BUG;
+        ret = AVERROR(ENOMEM);
         goto cleanup;
     }
     cpl_element = xmlDocGetRootElement(doc);
