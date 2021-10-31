@@ -287,7 +287,7 @@ static int test_cpl_parsing(void)
     }
 
     printf("%s\n", cpl->content_title_utf8);
-    printf(UUID_FORMAT "\n", UID_ARG(cpl->id_uuid));
+    printf(IMF_UUID_FORMAT "\n", UID_ARG(cpl->id_uuid));
     printf("%i %i\n", cpl->edit_rate.num, cpl->edit_rate.den);
 
     printf("Marker resource count: %lu\n", cpl->main_markers_track->resource_count);
@@ -303,7 +303,7 @@ static int test_cpl_parsing(void)
     printf("Main image resource count: %lu\n", cpl->main_image_2d_track->resource_count);
     for (unsigned long i = 0; i < cpl->main_image_2d_track->resource_count; i++) {
         printf("Track file resource %lu\n", i);
-        printf("  " UUID_FORMAT "\n", UID_ARG(cpl->main_image_2d_track->resources[i].track_file_uuid));
+        printf("  " IMF_UUID_FORMAT "\n", UID_ARG(cpl->main_image_2d_track->resources[i].track_file_uuid));
     }
 
     printf("Main audio track count: %lu\n", cpl->main_audio_track_count);
@@ -312,7 +312,7 @@ static int test_cpl_parsing(void)
         printf("  Main audio resource count: %lu\n", cpl->main_audio_tracks[i].resource_count);
         for (unsigned long j = 0; j < cpl->main_audio_tracks[i].resource_count; j++) {
             printf("  Track file resource %lu\n", j);
-            printf("    " UUID_FORMAT "\n", UID_ARG(cpl->main_audio_tracks[i].resources[j].track_file_uuid));
+            printf("    " IMF_UUID_FORMAT "\n", UID_ARG(cpl->main_audio_tracks[i].resources[j].track_file_uuid));
         }
     }
 
@@ -346,10 +346,10 @@ static int test_bad_cpl_parsing(void)
 static int check_asset_locator_attributes(IMFAssetLocator *asset, IMFAssetLocator expected_asset)
 {
 
-    printf("\tCompare " UUID_FORMAT " to " UUID_FORMAT ".\n", UID_ARG(asset->uuid), UID_ARG(expected_asset.uuid));
+    printf("\tCompare " IMF_UUID_FORMAT " to " IMF_UUID_FORMAT ".\n", UID_ARG(asset->uuid), UID_ARG(expected_asset.uuid));
     for (int i = 0; i < 16; ++i) {
         if (asset->uuid[i] != expected_asset.uuid[i]) {
-            printf("Invalid asset locator UUID: found " UUID_FORMAT " instead of " UUID_FORMAT " expected.\n", UID_ARG(asset->uuid), UID_ARG(expected_asset.uuid));
+            printf("Invalid asset locator UUID: found " IMF_UUID_FORMAT " instead of " IMF_UUID_FORMAT " expected.\n", UID_ARG(asset->uuid), UID_ARG(expected_asset.uuid));
             return 1;
         }
     }

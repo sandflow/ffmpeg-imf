@@ -41,9 +41,9 @@
 #include "libavutil/rational.h"
 #include <libxml/tree.h>
 
-#define UUID_FORMAT "urn:uuid:%02hhx%02hhx%02hhx%02hhx-%02hhx%02hhx-%02hhx%02hhx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx"
-#define AVRATIONAL_FORMAT "%d/%d"
-#define AVRATIONAL_ARG(rational) rational.num, rational.den
+#define IMF_UUID_FORMAT "urn:uuid:%02hhx%02hhx%02hhx%02hhx-%02hhx%02hhx-%02hhx%02hhx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx"
+#define IMF_AVRATIONAL_FORMAT "%d/%d"
+#define IMF_AVRATIONAL_ARG(rational) rational.num, rational.den
 
 /**
  * IMF Asset locator
@@ -62,13 +62,13 @@ typedef struct IMFAssetLocatorMap {
     IMFAssetLocator **assets;
 } IMFAssetLocatorMap;
 
-int xml_read_ulong(xmlNodePtr element, unsigned long *number);
+int imf_xml_read_ulong(xmlNodePtr element, unsigned long *number);
 
-int xml_read_rational(xmlNodePtr element, AVRational *rational);
+int imf_xml_read_rational(xmlNodePtr element, AVRational *rational);
 
-int xml_read_UUID(xmlNodePtr element, uint8_t uuid[16]);
+int imf_xml_read_UUID(xmlNodePtr element, uint8_t uuid[16]);
 
-xmlNodePtr xml_get_child_element_by_name(xmlNodePtr parent, const char *name_utf8);
+xmlNodePtr imf_xml_get_child_element_by_name(xmlNodePtr parent, const char *name_utf8);
 
 /**
  * Parse a ASSETMAP XML file to extract the UUID-URI mapping of assets.
