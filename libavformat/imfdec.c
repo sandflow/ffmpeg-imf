@@ -90,31 +90,32 @@ typedef struct IMFContext {
     IMFVirtualTrackPlaybackCtx **tracks;
 } IMFContext;
 
-int imf_uri_is_url(const char *string) {
+int imf_uri_is_url(const char *string)
+{
     char *substr = strstr(string, "://");
     return substr != NULL;
 }
 
-int imf_uri_is_unix_abs_path(const char *string) {
+int imf_uri_is_unix_abs_path(const char *string)
+{
     char *substr = strstr(string, "/");
     int index = (int)(substr - string);
     return index == 0;
 }
 
-int imf_uri_is_dos_abs_path(const char *string) {
+int imf_uri_is_dos_abs_path(const char *string)
+{
     // Absolute path case: `C:\path\to\somwhere`
     char *substr = strstr(string, ":\\");
     int index = (int)(substr - string);
-    if (index == 1) {
+    if (index == 1)
         return 1;
-    }
 
     // Absolute path case: `C:/path/to/somwhere`
     substr = strstr(string, ":/");
     index = (int)(substr - string);
-    if (index == 1) {
+    if (index == 1)
         return 1;
-    }
 
     // Network path case: `\\path\to\somwhere`
     substr = strstr(string, "\\\\");
@@ -122,7 +123,8 @@ int imf_uri_is_dos_abs_path(const char *string) {
     return index == 0;
 }
 
-int parse_imf_asset_map_from_xml_dom(AVFormatContext *s, xmlDocPtr doc, IMFAssetLocatorMap **asset_map, const char *base_url) {
+int parse_imf_asset_map_from_xml_dom(AVFormatContext *s, xmlDocPtr doc, IMFAssetLocatorMap **asset_map, const char *base_url)
+{
     xmlNodePtr asset_map_element = NULL;
     xmlNodePtr node = NULL;
     char *uri;
@@ -201,7 +203,8 @@ int parse_imf_asset_map_from_xml_dom(AVFormatContext *s, xmlDocPtr doc, IMFAsset
     return ret;
 }
 
-IMFAssetLocatorMap *imf_asset_locator_map_alloc(void) {
+IMFAssetLocatorMap *imf_asset_locator_map_alloc(void)
+{
     IMFAssetLocatorMap *asset_map;
 
     asset_map = av_malloc(sizeof(IMFAssetLocatorMap));
@@ -213,7 +216,8 @@ IMFAssetLocatorMap *imf_asset_locator_map_alloc(void) {
     return asset_map;
 }
 
-void imf_asset_locator_map_free(IMFAssetLocatorMap *asset_map) {
+void imf_asset_locator_map_free(IMFAssetLocatorMap *asset_map)
+{
     if (asset_map == NULL) {
         return;
     }
@@ -227,7 +231,8 @@ void imf_asset_locator_map_free(IMFAssetLocatorMap *asset_map) {
     av_freep(&asset_map);
 }
 
-static int parse_assetmap(AVFormatContext *s, const char *url, AVIOContext *in) {
+static int parse_assetmap(AVFormatContext *s, const char *url, AVIOContext *in)
+{
     IMFContext *c = s->priv_data;
     struct AVBPrint buf;
     AVDictionary *opts = NULL;
@@ -289,7 +294,8 @@ static int parse_assetmap(AVFormatContext *s, const char *url, AVIOContext *in) 
     return ret;
 }
 
-static IMFAssetLocator *find_asset_map_locator(IMFAssetLocatorMap *asset_map, UUID uuid) {
+static IMFAssetLocator *find_asset_map_locator(IMFAssetLocatorMap *asset_map, UUID uuid)
+{
     IMFAssetLocator *asset_locator;
     for (int i = 0; i < asset_map->asset_count; ++i) {
         asset_locator = asset_map->assets[i];
@@ -300,7 +306,8 @@ static IMFAssetLocator *find_asset_map_locator(IMFAssetLocatorMap *asset_map, UU
     return NULL;
 }
 
-static int open_track_resource_context(AVFormatContext *s, IMFVirtualTrackResourcePlaybackCtx *track_resource) {
+static int open_track_resource_context(AVFormatContext *s, IMFVirtualTrackResourcePlaybackCtx *track_resource)
+{
     int ret = 0;
     int64_t entry_point;
 
@@ -347,7 +354,8 @@ cleanup:
     return ret;
 }
 
-static int open_track_file_resource(AVFormatContext *s, IMFTrackFileResource *track_file_resource, IMFVirtualTrackPlaybackCtx *track) {
+static int open_track_file_resource(AVFormatContext *s, IMFTrackFileResource *track_file_resource, IMFVirtualTrackPlaybackCtx *track)
+{
     IMFContext *c = s->priv_data;
     IMFVirtualTrackResourcePlaybackCtx *track_resource;
     IMFAssetLocator *asset_locator;
@@ -382,7 +390,8 @@ static int open_track_file_resource(AVFormatContext *s, IMFTrackFileResource *tr
     return ret;
 }
 
-static int open_virtual_track(AVFormatContext *s, IMFTrackFileVirtualTrack *virtual_track, int32_t track_index) {
+static int open_virtual_track(AVFormatContext *s, IMFTrackFileVirtualTrack *virtual_track, int32_t track_index)
+{
     IMFContext *c = s->priv_data;
     IMFVirtualTrackPlaybackCtx *track;
     int ret = 0;
@@ -411,7 +420,8 @@ static int open_virtual_track(AVFormatContext *s, IMFTrackFileVirtualTrack *virt
     return ret;
 }
 
-static void imf_virtual_track_playback_context_free(IMFVirtualTrackPlaybackCtx *track) {
+static void imf_virtual_track_playback_context_free(IMFVirtualTrackPlaybackCtx *track)
+{
     if (!track) {
         return;
     }
@@ -428,7 +438,8 @@ static void imf_virtual_track_playback_context_free(IMFVirtualTrackPlaybackCtx *
     }
 }
 
-static int set_context_streams_from_tracks(AVFormatContext *s) {
+static int set_context_streams_from_tracks(AVFormatContext *s)
+{
     IMFContext *c = s->priv_data;
 
     AVStream *asset_stream;
@@ -456,7 +467,8 @@ static int set_context_streams_from_tracks(AVFormatContext *s) {
     return ret;
 }
 
-static int open_cpl_tracks(AVFormatContext *s) {
+static int open_cpl_tracks(AVFormatContext *s)
+{
     IMFContext *c = s->priv_data;
     int32_t track_index = 0;
     int ret;
@@ -480,7 +492,8 @@ static int open_cpl_tracks(AVFormatContext *s) {
 
 static int imf_close(AVFormatContext *s);
 
-static int imf_read_header(AVFormatContext *s) {
+static int imf_read_header(AVFormatContext *s)
+{
     IMFContext *c = s->priv_data;
     char *asset_map_path;
     int ret;
@@ -523,7 +536,8 @@ fail:
     return ret;
 }
 
-static IMFVirtualTrackPlaybackCtx *get_next_track_with_minimum_timestamp(AVFormatContext *s) {
+static IMFVirtualTrackPlaybackCtx *get_next_track_with_minimum_timestamp(AVFormatContext *s)
+{
     IMFContext *c = s->priv_data;
     IMFVirtualTrackPlaybackCtx *track;
 
@@ -540,7 +554,8 @@ static IMFVirtualTrackPlaybackCtx *get_next_track_with_minimum_timestamp(AVForma
     return track;
 }
 
-static IMFVirtualTrackResourcePlaybackCtx *get_resource_context_for_timestamp(AVFormatContext *s, IMFVirtualTrackPlaybackCtx *track) {
+static IMFVirtualTrackResourcePlaybackCtx *get_resource_context_for_timestamp(AVFormatContext *s, IMFVirtualTrackPlaybackCtx *track)
+{
     AVRational edit_unit_duration = av_inv_q(track->resources[0]->resource->base.edit_rate);
     AVRational cumulated_duration = av_make_q(0, edit_unit_duration.den);
 
@@ -567,7 +582,8 @@ static IMFVirtualTrackResourcePlaybackCtx *get_resource_context_for_timestamp(AV
     return NULL;
 }
 
-static int ff_imf_read_packet(AVFormatContext *s, AVPacket *pkt) {
+static int ff_imf_read_packet(AVFormatContext *s, AVPacket *pkt)
+{
     IMFContext *c = s->priv_data;
 
     IMFVirtualTrackResourcePlaybackCtx *resource_to_read = NULL;
@@ -621,7 +637,8 @@ static int ff_imf_read_packet(AVFormatContext *s, AVPacket *pkt) {
     return AVERROR_EOF;
 }
 
-static int imf_close(AVFormatContext *s) {
+static int imf_close(AVFormatContext *s)
+{
     IMFContext *c = s->priv_data;
 
     av_log(s, AV_LOG_DEBUG, "Close IMF package\n");

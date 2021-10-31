@@ -267,7 +267,8 @@ const char *asset_map_doc =
     "</am:AssetList>"
     "</am:AssetMap>";
 
-static int test_cpl_parsing(void) {
+static int test_cpl_parsing(void)
+{
     xmlDocPtr doc;
     IMFCPL *cpl;
     int ret;
@@ -320,7 +321,8 @@ static int test_cpl_parsing(void) {
     return 0;
 }
 
-static int test_bad_cpl_parsing(void) {
+static int test_bad_cpl_parsing(void)
+{
     xmlDocPtr doc;
     IMFCPL *cpl;
     int ret;
@@ -341,7 +343,8 @@ static int test_bad_cpl_parsing(void) {
     return 0;
 }
 
-static int check_asset_locator_attributes(IMFAssetLocator *asset, IMFAssetLocator expected_asset) {
+static int check_asset_locator_attributes(IMFAssetLocator *asset, IMFAssetLocator expected_asset)
+{
 
     printf("\tCompare " UUID_FORMAT " to " UUID_FORMAT ".\n", UID_ARG(asset->uuid), UID_ARG(expected_asset.uuid));
     for (int i = 0; i < 16; ++i) {
@@ -368,7 +371,8 @@ static IMFAssetLocator ASSET_MAP_EXPECTED_LOCATORS[5] = {
     [4] = {.uuid = {0xdd, 0x04, 0x52, 0x8d, 0x9b, 0x80, 0x45, 0x2a, 0x7a, 0x13, 0x80, 0x5b, 0x08, 0x27, 0x8b, 0x3d}, .absolute_uri = (char *)"PKL_IMF_TEST_ASSET_MAP.xml"},
 };
 
-static int test_asset_map_parsing(void) {
+static int test_asset_map_parsing(void)
+{
     IMFAssetLocatorMap *asset_locator_map;
     xmlDoc *doc;
     int ret;
@@ -431,7 +435,8 @@ static const PathTypeTestStruct PATH_TYPE_TEST_STRUCTS[11] = {
     [10] = {.path = "path\\to\\somewhere", .is_url = 0, .is_unix_absolute_path = 0, .is_dos_absolute_path = 0},
 };
 
-static int test_path_type_functions(void) {
+static int test_path_type_functions(void)
+{
     PathTypeTestStruct path_type;
     for (int i = 0; i < 11; ++i) {
         path_type = PATH_TYPE_TEST_STRUCTS[i];
@@ -457,7 +462,8 @@ fail:
     return 1;
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[])
+{
     int ret = 0;
 
     if (test_cpl_parsing() != 0)
