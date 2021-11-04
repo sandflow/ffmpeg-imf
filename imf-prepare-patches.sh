@@ -99,9 +99,6 @@ git notes add -m "Implements the IMF demuxer."
 git commit -m "${PATCH_NAME}: Tests" -- $PATCHES_IMF_TESTS
 git notes add -m "Tests for the public API of the IMF demuxer."
 
-git commit -m "${PATCH_NAME}: Build system" -- $PATCHES_MISC
-git notes add -m "Modify the FFMPEG build system to add support for an IMF demuxer."
-
 mkdir -p $PATCHES_DIR
 
 git format-patch -o $PATCHES_DIR -v $PATCH_VERSION --notes -s $BASE_BRANCH
