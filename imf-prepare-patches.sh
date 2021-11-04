@@ -8,7 +8,7 @@ WORKING_BRANCH="origin/develop"
 
 PATCHES_DIR="build/patches"
 
-PATCHES_IMF_HEADERS="libavformat/imf_internal.h libavformat/imf.h"
+PATCHES_IMF_HEADERS="libavformat/imf.h"
 PATCHES_IMF_DEC="libavformat/imfdec.c"
 PATCHES_IMF_CPL="libavformat/imf_cpl.c"
 PATCHES_IMF_TESTS="libavformat/tests/imf.c"
@@ -50,7 +50,7 @@ sed -i "s/^ \* POSSIBILITY OF SUCH DAMAGE\./$AUGMENTED/" $PATCHES_IMF_HEADERS $P
 
 git add -- $PATCHES_ALL
 
-git commit -m "avformat/imf: Headers" -- $PATCHES_IMF_HEADERS
+git commit -m "[IMF demuxer] Headers and build files" -- $PATCHES_MISC $PATCHES_IMF_HEADERS
 git notes add -m "The IMF demuxer accepts as input an IMF CPL. The assets referenced by the CPL can be
 contained in multiple deliveries, each defined by an ASSETMAP file:
 
@@ -70,14 +70,16 @@ The location of the Track Files referenced by the Composition Playlist is stored
 in one or more XML documents called Asset Maps. More details at https://www.imfug.com/explainer.
 The IMF standard was first introduced in 2013 and is managed by the SMPTE.
 
-Public and private header files. The functions and constants
-in imf.h are intended to be useable by other modules.
+Header and build files.
 
 CHANGE NOTES:
 
 - fixed patchwork warnings
 - updated patch notes
-- added LGPL license"
+- added LGPL license
+- removed imf_internal.h
+- Improve error handling, including removing exit()
+- Fix code style"
 
 # git commit -m "[IMF demuxer] MCA improvements to MXF decoder" -- $PATCHES_MXF
 # git notes add -m "Add support for SMPTE ST 377-4 (Multichannel Audio Labeling -- MCA) \
