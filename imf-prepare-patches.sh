@@ -8,7 +8,6 @@ PATCH_NAME="avformat/imf"
 
 BASE_BRANCH="upstream/master"
 PATCH_BRANCH="rd/patches"
-WORKING_BRANCH="origin/develop"
 
 PATCHES_DIR="build/patches"
 
@@ -23,7 +22,7 @@ PATCHES_ALL="$PATCHES_IMF_HEADERS $PATCHES_IMF_DEC $PATCHES_IMF_CPL $PATCHES_IMF
 
 git fetch --all
 
-git branch -f $PATCH_BRANCH $WORKING_BRANCH
+git branch -f $PATCH_BRANCH
 
 git checkout $PATCH_BRANCH
 
