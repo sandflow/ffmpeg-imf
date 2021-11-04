@@ -184,7 +184,7 @@ static int parse_imf_asset_map_from_xml_dom(AVFormatContext *s, xmlDocPtr doc, I
         }
 
         asset = av_malloc(sizeof(IMFAssetLocator));
-        if (! asset)
+        if (!asset)
             return AVERROR(ENOMEM);
 
         if (imf_xml_read_UUID(imf_xml_get_child_element_by_name(node, "Id"), asset->uuid)) {
@@ -436,7 +436,7 @@ static int open_virtual_track(AVFormatContext *s, IMFTrackFileVirtualTrack *virt
     int ret = 0;
 
     track = av_mallocz(sizeof(IMFVirtualTrackPlaybackCtx));
-    if (! track) {
+    if (!track) {
         av_log(NULL, AV_LOG_PANIC, "Cannot allocate IMF Virtual Track Playback context\n");
         return AVERROR(ENOMEM);
     }
