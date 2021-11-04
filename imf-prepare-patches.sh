@@ -2,6 +2,10 @@
 
 set -e
 
+PATCH_VERSION="2"
+
+PATCH_NAME="avformat/imf"
+
 BASE_BRANCH="upstream/master"
 PATCH_BRANCH="rd/patches"
 WORKING_BRANCH="origin/develop"
@@ -50,7 +54,7 @@ sed -i "s/^ \* POSSIBILITY OF SUCH DAMAGE\./$AUGMENTED/" $PATCHES_IMF_HEADERS $P
 
 git add -- $PATCHES_ALL
 
-git commit -m "[IMF demuxer] Headers and build files" -- $PATCHES_MISC $PATCHES_IMF_HEADERS
+git commit -m "${PATCH_NAME}: Headers and build files" -- $PATCHES_MISC $PATCHES_IMF_HEADERS
 git notes add -m "The IMF demuxer accepts as input an IMF CPL. The assets referenced by the CPL can be
 contained in multiple deliveries, each defined by an ASSETMAP file:
 
@@ -86,18 +90,18 @@ CHANGE NOTES:
 # to the MXF decoder. MCA allows arbitrary audio channel configurations \
 # in MXF files."
 
-git commit -m "avformat/imf: CPL processor" -- $PATCHES_IMF_CPL
+git commit -m "${PATCH_NAME}: CPL processor" -- $PATCHES_IMF_CPL
 git notes add -m "Implements IMF Composition Playlist (CPL) parsing."
 
-git commit -m "avformat/imf: Demuxer implementation" -- $PATCHES_IMF_DEC
+git commit -m "${PATCH_NAME}: Demuxer implementation" -- $PATCHES_IMF_DEC
 git notes add -m "Implements the IMF demuxer."
 
-git commit -m "avformat/imf: Tests" -- $PATCHES_IMF_TESTS
+git commit -m "${PATCH_NAME}: Tests" -- $PATCHES_IMF_TESTS
 git notes add -m "Tests for the public API of the IMF demuxer."
 
-git commit -m "avformat/imf: Build system" -- $PATCHES_MISC
+git commit -m "${PATCH_NAME}: Build system" -- $PATCHES_MISC
 git notes add -m "Modify the FFMPEG build system to add support for an IMF demuxer."
 
 mkdir -p $PATCHES_DIR
 
-git format-patch -o $PATCHES_DIR --notes -s $BASE_BRANCH
+git format-patch -o $PATCHES_DIR -v $PATCH_VERSION --notes -s $BASE_BRANCH
