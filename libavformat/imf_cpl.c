@@ -530,16 +530,16 @@ static int fill_virtual_tracks(xmlNodePtr cpl_element, IMFCPL *cpl)
         sequence_elem = xmlFirstElementChild(sequence_list_elem);
         while (sequence_elem) {
             if (xmlStrcmp(sequence_elem->name, "MarkerSequence") == 0) {
-                if (ret = push_marker_sequence(sequence_elem, cpl))
-                    return ret;
+                ret = push_marker_sequence(sequence_elem, cpl);
             } else if (xmlStrcmp(sequence_elem->name, "MainImageSequence") == 0) {
-                if (ret = push_main_image_2d_sequence(sequence_elem, cpl))
-                    return ret;
+                ret = push_main_image_2d_sequence(sequence_elem, cpl);
             } else if (xmlStrcmp(sequence_elem->name, "MainAudioSequence") == 0) {
-                if (ret = push_main_audio_sequence(sequence_elem, cpl))
-                    return ret;
+                ret = push_main_audio_sequence(sequence_elem, cpl);
             } else
                 av_log(NULL, AV_LOG_INFO, "The following Sequence is not supported and is ignored: %s\n", sequence_elem->name);
+            if (ret == AVERROR(ENOMEM))
+                /* abort parsing only if memory error occurred */
+                return ret;
             sequence_elem = xmlNextElementSibling(sequence_elem);
         }
         segment_elem = xmlNextElementSibling(segment_elem);
