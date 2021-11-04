@@ -56,6 +56,8 @@
 
 #define MAX_BPRINT_READ_SIZE (UINT_MAX - 1)
 #define DEFAULT_ASSETMAP_SIZE 8 * 1024
+#define IMF_AVRATIONAL_FORMAT "%d/%d"
+#define IMF_AVRATIONAL_ARG(rational) rational.num, rational.den
 
 /**
  * IMF Asset locator

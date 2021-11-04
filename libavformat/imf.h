@@ -43,8 +43,6 @@
 #include <libxml/tree.h>
 
 #define IMF_UUID_FORMAT "urn:uuid:%02hhx%02hhx%02hhx%02hhx-%02hhx%02hhx-%02hhx%02hhx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx"
-#define IMF_AVRATIONAL_FORMAT "%d/%d"
-#define IMF_AVRATIONAL_ARG(rational) rational.num, rational.den
 
 /**
  * UUID as defined in IETF RFC 422
