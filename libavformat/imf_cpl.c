@@ -34,7 +34,6 @@
  */
 
 #include "imf.h"
-#include "imf_internal.h"
 #include "libavformat/mxf.h"
 #include "libavutil/bprint.h"
 #include "libavutil/error.h"

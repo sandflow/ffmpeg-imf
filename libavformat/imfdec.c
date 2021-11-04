@@ -45,7 +45,6 @@
  */
 
 #include "imf.h"
-#include "imf_internal.h"
 #include "internal.h"
 #include "libavutil/avstring.h"
 #include "libavutil/bprint.h"
@@ -57,6 +56,23 @@
 
 #define MAX_BPRINT_READ_SIZE (UINT_MAX - 1)
 #define DEFAULT_ASSETMAP_SIZE 8 * 1024
+
+/**
+ * IMF Asset locator
+ */
+typedef struct IMFAssetLocator {
+    UUID uuid;
+    char *absolute_uri;
+} IMFAssetLocator;
+
+/**
+ * IMF Asset locator map
+ * Results from the parsing of one or more ASSETMAP XML files
+ */
+typedef struct IMFAssetLocatorMap {
+    uint8_t asset_count;
+    IMFAssetLocator **assets;
+} IMFAssetLocatorMap;
 
 typedef struct IMFVirtualTrackResourcePlaybackCtx {
     IMFAssetLocator *locator;
@@ -90,20 +106,20 @@ typedef struct IMFContext {
     IMFVirtualTrackPlaybackCtx **tracks;
 } IMFContext;
 
-int imf_uri_is_url(const char *string)
+static int imf_uri_is_url(const char *string)
 {
     char *substr = strstr(string, "://");
     return substr != NULL;
 }
 
-int imf_uri_is_unix_abs_path(const char *string)
+static int imf_uri_is_unix_abs_path(const char *string)
 {
     char *substr = strstr(string, "/");
     int index = (int)(substr - string);
     return index == 0;
 }
 
-int imf_uri_is_dos_abs_path(const char *string)
+static int imf_uri_is_dos_abs_path(const char *string)
 {
     // Absolute path case: `C:\path\to\somwhere`
     char *substr = strstr(string, ":\\");
@@ -123,7 +139,15 @@ int imf_uri_is_dos_abs_path(const char *string)
     return index == 0;
 }
 
-int parse_imf_asset_map_from_xml_dom(AVFormatContext *s, xmlDocPtr doc, IMFAssetLocatorMap **asset_map, const char *base_url)
+/**
+ * Parse a ASSETMAP XML file to extract the UUID-URI mapping of assets.
+ * @param s the current format context, if any (can be NULL).
+ * @param doc the XML document to be parsed.
+ * @param asset_map pointer on the IMFAssetLocatorMap pointer to fill.
+ * @param base_url the url of the asset map XML file, if any (can be NULL).
+ * @return a negative value in case of error, 0 otherwise.
+ */
+static int parse_imf_asset_map_from_xml_dom(AVFormatContext *s, xmlDocPtr doc, IMFAssetLocatorMap **asset_map, const char *base_url)
 {
     xmlNodePtr asset_map_element = NULL;
     xmlNodePtr node = NULL;
@@ -205,7 +229,11 @@ int parse_imf_asset_map_from_xml_dom(AVFormatContext *s, xmlDocPtr doc, IMFAsset
     return ret;
 }
 
-IMFAssetLocatorMap *imf_asset_locator_map_alloc(void)
+/**
+ * Allocate a IMFAssetLocatorMap pointer and return it.
+ * @return the allocated IMFAssetLocatorMap pointer.
+ */
+static IMFAssetLocatorMap *imf_asset_locator_map_alloc(void)
 {
     IMFAssetLocatorMap *asset_map;
 
@@ -218,7 +246,10 @@ IMFAssetLocatorMap *imf_asset_locator_map_alloc(void)
     return asset_map;
 }
 
-void imf_asset_locator_map_free(IMFAssetLocatorMap *asset_map)
+/**
+ * Free a IMFAssetLocatorMap pointer.
+ */
+static void imf_asset_locator_map_free(IMFAssetLocatorMap *asset_map)
 {
     if (asset_map == NULL) {
         return;

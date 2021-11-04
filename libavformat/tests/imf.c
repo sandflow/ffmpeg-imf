@@ -34,8 +34,8 @@
  * @ingroup lavu_imf
  */
 
-#include "libavformat/imf.h"
-#include "libavformat/imf_internal.h"
+#include "libavformat/imf_cpl.c"
+#include "libavformat/imfdec.c"
 #include "libavformat/mxf.h"
 
 #include <stdio.h>
