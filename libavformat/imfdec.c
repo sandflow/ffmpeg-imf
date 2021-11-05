@@ -40,6 +40,7 @@
  *
  * @author Marc-Antoine Arnaud
  * @author Valentin Noel
+ * @author Nicholas Vanderzwet
  * @file
  * @ingroup lavu_imf
  */
