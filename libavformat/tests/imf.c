@@ -34,8 +34,8 @@
  * @ingroup lavu_imf
  */
 
-#include "libavformat/imf.h"
-#include "libavformat/imf_internal.h"
+#include "libavformat/imf_cpl.c"
+#include "libavformat/imfdec.c"
 #include "libavformat/mxf.h"
 
 #include <stdio.h>
@@ -267,7 +267,8 @@ const char *asset_map_doc =
     "</am:AssetList>"
     "</am:AssetMap>";
 
-static int test_cpl_parsing(void) {
+static int test_cpl_parsing(void)
+{
     xmlDocPtr doc;
     IMFCPL *cpl;
     int ret;
@@ -279,13 +280,14 @@ static int test_cpl_parsing(void) {
     }
 
     ret = parse_imf_cpl_from_xml_dom(doc, &cpl);
+    xmlFreeDoc(doc);
     if (ret) {
         printf("CPL parsing failed.\n");
         return 1;
     }
 
     printf("%s\n", cpl->content_title_utf8);
-    printf(UUID_FORMAT "\n", UID_ARG(cpl->id_uuid));
+    printf(IMF_UUID_FORMAT "\n", UID_ARG(cpl->id_uuid));
     printf("%i %i\n", cpl->edit_rate.num, cpl->edit_rate.den);
 
     printf("Marker resource count: %lu\n", cpl->main_markers_track->resource_count);
@@ -301,7 +303,7 @@ static int test_cpl_parsing(void) {
     printf("Main image resource count: %lu\n", cpl->main_image_2d_track->resource_count);
     for (unsigned long i = 0; i < cpl->main_image_2d_track->resource_count; i++) {
         printf("Track file resource %lu\n", i);
-        printf("  " UUID_FORMAT "\n", UID_ARG(cpl->main_image_2d_track->resources[i].track_file_uuid));
+        printf("  " IMF_UUID_FORMAT "\n", UID_ARG(cpl->main_image_2d_track->resources[i].track_file_uuid));
     }
 
     printf("Main audio track count: %lu\n", cpl->main_audio_track_count);
@@ -310,7 +312,7 @@ static int test_cpl_parsing(void) {
         printf("  Main audio resource count: %lu\n", cpl->main_audio_tracks[i].resource_count);
         for (unsigned long j = 0; j < cpl->main_audio_tracks[i].resource_count; j++) {
             printf("  Track file resource %lu\n", j);
-            printf("    " UUID_FORMAT "\n", UID_ARG(cpl->main_audio_tracks[i].resources[j].track_file_uuid));
+            printf("    " IMF_UUID_FORMAT "\n", UID_ARG(cpl->main_audio_tracks[i].resources[j].track_file_uuid));
         }
     }
 
@@ -319,7 +321,8 @@ static int test_cpl_parsing(void) {
     return 0;
 }
 
-static int test_bad_cpl_parsing(void) {
+static int test_bad_cpl_parsing(void)
+{
     xmlDocPtr doc;
     IMFCPL *cpl;
     int ret;
@@ -331,6 +334,7 @@ static int test_bad_cpl_parsing(void) {
     }
 
     ret = parse_imf_cpl_from_xml_dom(doc, &cpl);
+    xmlFreeDoc(doc);
     if (ret) {
         printf("CPL parsing failed.\n");
         return ret;
@@ -339,12 +343,13 @@ static int test_bad_cpl_parsing(void) {
     return 0;
 }
 
-static int check_asset_locator_attributes(IMFAssetLocator *asset, IMFAssetLocator expected_asset) {
+static int check_asset_locator_attributes(IMFAssetLocator *asset, IMFAssetLocator expected_asset)
+{
 
-    printf("\tCompare " UUID_FORMAT " to " UUID_FORMAT ".\n", UID_ARG(asset->uuid), UID_ARG(expected_asset.uuid));
+    printf("\tCompare " IMF_UUID_FORMAT " to " IMF_UUID_FORMAT ".\n", UID_ARG(asset->uuid), UID_ARG(expected_asset.uuid));
     for (int i = 0; i < 16; ++i) {
         if (asset->uuid[i] != expected_asset.uuid[i]) {
-            printf("Invalid asset locator UUID: found " UUID_FORMAT " instead of " UUID_FORMAT " expected.\n", UID_ARG(asset->uuid), UID_ARG(expected_asset.uuid));
+            printf("Invalid asset locator UUID: found " IMF_UUID_FORMAT " instead of " IMF_UUID_FORMAT " expected.\n", UID_ARG(asset->uuid), UID_ARG(expected_asset.uuid));
             return 1;
         }
     }
@@ -358,15 +363,16 @@ static int check_asset_locator_attributes(IMFAssetLocator *asset, IMFAssetLocato
     return 0;
 }
 
-static const IMFAssetLocator ASSET_MAP_EXPECTED_LOCATORS[5] = {
-    [0] = {.uuid = {0xb5, 0xd6, 0x74, 0xb8, 0xc6, 0xce, 0x4b, 0xce, 0x3b, 0xdf, 0xbe, 0x04, 0x5d, 0xfd, 0xb2, 0xd0}, .absolute_uri = "IMF_TEST_ASSET_MAP_video.mxf"},
-    [1] = {.uuid = {0xec, 0x34, 0x67, 0xec, 0xab, 0x2a, 0x4f, 0x49, 0xc8, 0xcb, 0x89, 0xca, 0xa3, 0x76, 0x1f, 0x4a}, .absolute_uri = "IMF_TEST_ASSET_MAP_video_1.mxf"},
-    [2] = {.uuid = {0x5c, 0xf5, 0xb5, 0xa7, 0x8b, 0xb3, 0x4f, 0x08, 0xea, 0xa6, 0x35, 0x33, 0xd4, 0xb7, 0x7f, 0xa6}, .absolute_uri = "IMF_TEST_ASSET_MAP_audio.mxf"},
-    [3] = {.uuid = {0x55, 0x97, 0x77, 0xd6, 0xec, 0x29, 0x43, 0x75, 0xf9, 0x0d, 0x30, 0x0b, 0x0b, 0xf7, 0x36, 0x86}, .absolute_uri = "CPL_IMF_TEST_ASSET_MAP.xml"},
-    [4] = {.uuid = {0xdd, 0x04, 0x52, 0x8d, 0x9b, 0x80, 0x45, 0x2a, 0x7a, 0x13, 0x80, 0x5b, 0x08, 0x27, 0x8b, 0x3d}, .absolute_uri = "PKL_IMF_TEST_ASSET_MAP.xml"},
+static IMFAssetLocator ASSET_MAP_EXPECTED_LOCATORS[5] = {
+    [0] = {.uuid = {0xb5, 0xd6, 0x74, 0xb8, 0xc6, 0xce, 0x4b, 0xce, 0x3b, 0xdf, 0xbe, 0x04, 0x5d, 0xfd, 0xb2, 0xd0}, .absolute_uri = (char *)"IMF_TEST_ASSET_MAP_video.mxf"},
+    [1] = {.uuid = {0xec, 0x34, 0x67, 0xec, 0xab, 0x2a, 0x4f, 0x49, 0xc8, 0xcb, 0x89, 0xca, 0xa3, 0x76, 0x1f, 0x4a}, .absolute_uri = (char *)"IMF_TEST_ASSET_MAP_video_1.mxf"},
+    [2] = {.uuid = {0x5c, 0xf5, 0xb5, 0xa7, 0x8b, 0xb3, 0x4f, 0x08, 0xea, 0xa6, 0x35, 0x33, 0xd4, 0xb7, 0x7f, 0xa6}, .absolute_uri = (char *)"IMF_TEST_ASSET_MAP_audio.mxf"},
+    [3] = {.uuid = {0x55, 0x97, 0x77, 0xd6, 0xec, 0x29, 0x43, 0x75, 0xf9, 0x0d, 0x30, 0x0b, 0x0b, 0xf7, 0x36, 0x86}, .absolute_uri = (char *)"CPL_IMF_TEST_ASSET_MAP.xml"},
+    [4] = {.uuid = {0xdd, 0x04, 0x52, 0x8d, 0x9b, 0x80, 0x45, 0x2a, 0x7a, 0x13, 0x80, 0x5b, 0x08, 0x27, 0x8b, 0x3d}, .absolute_uri = (char *)"PKL_IMF_TEST_ASSET_MAP.xml"},
 };
 
-static int test_asset_map_parsing(void) {
+static int test_asset_map_parsing(void)
+{
     IMFAssetLocatorMap *asset_locator_map;
     xmlDoc *doc;
     int ret;
@@ -429,21 +435,22 @@ static const PathTypeTestStruct PATH_TYPE_TEST_STRUCTS[11] = {
     [10] = {.path = "path\\to\\somewhere", .is_url = 0, .is_unix_absolute_path = 0, .is_dos_absolute_path = 0},
 };
 
-static int test_path_type_functions(void) {
+static int test_path_type_functions(void)
+{
     PathTypeTestStruct path_type;
     for (int i = 0; i < 11; ++i) {
         path_type = PATH_TYPE_TEST_STRUCTS[i];
-        if (is_url(path_type.path) != path_type.is_url) {
+        if (imf_uri_is_url(path_type.path) != path_type.is_url) {
             fprintf(stderr, "URL comparison test failed for '%s', got %d instead of expected %d\n", path_type.path, path_type.is_url, !path_type.is_url);
             goto fail;
         }
 
-        if (is_unix_absolute_path(path_type.path) != path_type.is_unix_absolute_path) {
+        if (imf_uri_is_unix_abs_path(path_type.path) != path_type.is_unix_absolute_path) {
             fprintf(stderr, "Unix absolute path comparison test failed for '%s', got %d instead of expected %d\n", path_type.path, path_type.is_unix_absolute_path, !path_type.is_unix_absolute_path);
             goto fail;
         }
 
-        if (is_dos_absolute_path(path_type.path) != path_type.is_dos_absolute_path) {
+        if (imf_uri_is_dos_abs_path(path_type.path) != path_type.is_dos_absolute_path) {
             fprintf(stderr, "DOS absolute path comparison test failed for '%s', got %d instead of expected %d\n", path_type.path, path_type.is_dos_absolute_path, !path_type.is_dos_absolute_path);
             goto fail;
         }
@@ -455,7 +462,8 @@ fail:
     return 1;
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[])
+{
     int ret = 0;
 
     if (test_cpl_parsing() != 0)
