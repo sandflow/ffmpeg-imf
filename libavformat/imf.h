@@ -29,6 +29,7 @@
  * Public header file for the processing of Interoperable Master Format (IMF) packages.
  * 
  * @author Pierre-Anthony Lemieux
+ * @author Valentin Noel
  * @file
  * @ingroup lavu_imf
  */
@@ -40,6 +41,8 @@
 #include "libavformat/avio.h"
 #include "libavutil/rational.h"
 #include <libxml/tree.h>
+
+#define IMF_UUID_FORMAT "urn:uuid:%02hhx%02hhx%02hhx%02hhx-%02hhx%02hhx-%02hhx%02hhx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx"
 
 /**
  * UUID as defined in IETF RFC 422
@@ -152,5 +155,29 @@ IMFCPL *imf_cpl_alloc(void);
  * @param[in] cpl The IMFCPL structure to delete.
  */
 void imf_cpl_free(IMFCPL *cpl);
+
+/**
+ * Reads an unsigned long from an XML element
+ * @return 0 on success, < 0 AVERROR code on error.
+ */
+int imf_xml_read_ulong(xmlNodePtr element, unsigned long *number);
+
+/**
+ * Reads an AVRational from an XML element
+ * @return 0 on success, < 0 AVERROR code on error.
+ */
+int imf_xml_read_rational(xmlNodePtr element, AVRational *rational);
+
+/**
+ * Reads a UUID from an XML element
+ * @return 0 on success, < 0 AVERROR code on error.
+ */
+int imf_xml_read_UUID(xmlNodePtr element, uint8_t uuid[16]);
+
+/**
+ * Returns the first child element with the specified local name
+ * @return A pointer to the child element, or NULL if no such child element exists.
+ */
+xmlNodePtr imf_xml_get_child_element_by_name(xmlNodePtr parent, const char *name_utf8);
 
 #endif
