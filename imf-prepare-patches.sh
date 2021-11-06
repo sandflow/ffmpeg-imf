@@ -2,7 +2,7 @@
 
 set -e
 
-PATCH_VERSION="2"
+PATCH_VERSION="3"
 
 PATCH_NAME="avformat/imf"
 
@@ -53,7 +53,7 @@ sed -i "s/^ \* POSSIBILITY OF SUCH DAMAGE\./$AUGMENTED/" $PATCHES_IMF_HEADERS $P
 
 git add -- $PATCHES_ALL
 
-git commit -m "${PATCH_NAME}: Headers and build files" -- $PATCHES_MISC $PATCHES_IMF_HEADERS
+git commit -m "${PATCH_NAME}: Headers" -- $PATCHES_IMF_HEADERS
 git notes add -m "The IMF demuxer accepts as input an IMF CPL. The assets referenced by the CPL can be
 contained in multiple deliveries, each defined by an ASSETMAP file:
 
@@ -82,7 +82,8 @@ CHANGE NOTES:
 - added LGPL license
 - removed imf_internal.h
 - Improve error handling, including removing exit()
-- Fix code style"
+- Fix code style
+- Allow custom I/O for all files (following DASH and HLS template)"
 
 # git commit -m "[IMF demuxer] MCA improvements to MXF decoder" -- $PATCHES_MXF
 # git notes add -m "Add support for SMPTE ST 377-4 (Multichannel Audio Labeling -- MCA) \
@@ -95,8 +96,8 @@ git notes add -m "Implements IMF Composition Playlist (CPL) parsing."
 git commit -m "${PATCH_NAME}: Demuxer implementation" -- $PATCHES_IMF_DEC
 git notes add -m "Implements the IMF demuxer."
 
-git commit -m "${PATCH_NAME}: Tests" -- $PATCHES_IMF_TESTS
-git notes add -m "Tests for the public API of the IMF demuxer."
+git commit -m "${PATCH_NAME}: Tests and build files" -- $PATCHES_IMF_TESTS $PATCHES_MISC 
+git notes add -m "Tests and build files for the IMF demuxer."
 
 mkdir -p $PATCHES_DIR
 
