@@ -40,6 +40,7 @@
  *
  * @author Marc-Antoine Arnaud
  * @author Valentin Noel
+ * @author Nicholas Vanderzwet
  * @file
  * @ingroup lavu_imf
  */
@@ -293,7 +294,7 @@ static int parse_assetmap(AVFormatContext *s, const char *url, AVIOContext *in)
         close_in = 1;
 
         av_dict_copy(&opts, c->avio_opts, 0);
-        ret = avio_open2(&in, url, AVIO_FLAG_READ, c->interrupt_callback, &opts);
+        ret = s->io_open(s, &in, url, AVIO_FLAG_READ, &opts);
         av_dict_free(&opts);
         if (ret < 0)
             return ret;
@@ -343,8 +344,10 @@ static IMFAssetLocator *find_asset_map_locator(IMFAssetLocatorMap *asset_map, UU
 
 static int open_track_resource_context(AVFormatContext *s, IMFVirtualTrackResourcePlaybackCtx *track_resource)
 {
+    IMFContext *c = s->priv_data;
     int ret = 0;
     int64_t entry_point;
+    AVDictionary *opts = NULL;
 
     if (!track_resource->ctx) {
         track_resource->ctx = avformat_alloc_context();
@@ -359,7 +362,17 @@ static int open_track_resource_context(AVFormatContext *s, IMFVirtualTrackResour
         return ret;
     }
 
-    ret = avformat_open_input(&track_resource->ctx, track_resource->locator->absolute_uri, NULL, NULL);
+    track_resource->ctx->io_open = s->io_open;
+    track_resource->ctx->io_close = s->io_close;
+    track_resource->ctx->flags |= s->flags & ~AVFMT_FLAG_CUSTOM_IO;
+
+    if ((ret = ff_copy_whiteblacklists(track_resource->ctx, s)) < 0) {
+        goto cleanup;
+    }
+
+    av_dict_copy(&opts, c->avio_opts, 0);
+    ret = avformat_open_input(&track_resource->ctx, track_resource->locator->absolute_uri, NULL, &opts);
+    av_dict_free(&opts);
     if (ret < 0) {
         av_log(s, AV_LOG_ERROR, "Could not open %s input context: %s\n", track_resource->locator->absolute_uri, av_err2str(ret));
         goto cleanup;
@@ -510,6 +523,28 @@ static int set_context_streams_from_tracks(AVFormatContext *s)
     return ret;
 }
 
+static int save_avio_options(AVFormatContext *s)
+{
+    IMFContext *c = s->priv_data;
+    static const char * const opts[] = {
+        "headers", "http_proxy", "user_agent", "cookies", "referer", "rw_timeout", "icy", NULL };
+    const char * const * opt = opts;
+    uint8_t *buf;
+    int ret = 0;
+
+    while (*opt) {
+        if (av_opt_get(s->pb, *opt, AV_OPT_SEARCH_CHILDREN | AV_OPT_ALLOW_NULL, &buf) >= 0) {
+            ret = av_dict_set(&c->avio_opts, *opt, buf,
+                              AV_DICT_DONT_STRDUP_VAL);
+            if (ret < 0)
+                return ret;
+        }
+        opt++;
+    }
+
+    return ret;
+}
+
 static int open_cpl_tracks(AVFormatContext *s)
 {
     IMFContext *c = s->priv_data;
@@ -541,7 +576,10 @@ static int imf_read_header(AVFormatContext *s)
     char *asset_map_path;
     int ret;
 
+    c->interrupt_callback = &s->interrupt_callback;
     c->base_url = av_dirname(av_strdup(s->url));
+    if ((ret = save_avio_options(s)) < 0)
+        goto fail;
 
     av_log(s, AV_LOG_DEBUG, "start parsing IMF CPL: %s\n", s->url);
 
