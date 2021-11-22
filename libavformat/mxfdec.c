@@ -3870,7 +3870,9 @@ static int mxf_audio_remapping(int* channel_ordering, uint8_t* data, int size, i
         memcpy(tmp, data_ptr, sample_offset);
 
         for (int channel = 0; channel < channels; ++channel) {
-            memcpy(data_ptr[sample_size * channel_ordering[channel]], tmp[sample_size * channel],  sample_size);
+            for (int sample_index = 0; sample_index < sample_size; ++sample_index) {
+                data_ptr[sample_size * channel_ordering[channel] + sample_index] = tmp[sample_size * channel + sample_index];
+            }
         }
 
         data_ptr += sample_offset;
