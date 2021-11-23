@@ -2879,6 +2879,14 @@ static int mxf_parse_structural_metadata(MXFContext *mxf)
 
                     while (channel_ordering_ptr->uid[0]) {
                         if (IS_KLV_KEY(channel_ordering_ptr->uid, mca_sub_descriptor->mca_label_dictionary_id)) {
+                            if (current_channel >= FF_SANE_NB_CHANNELS) {
+                                av_log(mxf->fc, AV_LOG_ERROR, "max number of channels %d reached\n", FF_SANE_NB_CHANNELS);
+                                return AVERROR_INVALIDDATA;
+                            }
+                            if (channel_ordering_ptr->index >= FF_SANE_NB_CHANNELS) {
+                                av_log(mxf->fc, AV_LOG_ERROR, "mapping to channel index %d out of range, maximum is %d\n", channel_ordering_ptr->index, FF_SANE_NB_CHANNELS);
+                                return AVERROR_INVALIDDATA;
+                            }
                             source_track->channel_ordering[current_channel] = channel_ordering_ptr->index;
 
                             if(channel_ordering_ptr->service_type != AV_AUDIO_SERVICE_TYPE_NB) {
@@ -2906,7 +2914,12 @@ static int mxf_parse_structural_metadata(MXFContext *mxf)
             source_track->require_reordering = 0;
             for (j = 0; j < descriptor->channels; ++j) {
                 if (source_track->channel_ordering[j] != j) {
-                    source_track->require_reordering = 1;
+                    if (!is_pcm(st->codecpar->codec_id) || mxf->skip_audio_reordering) {
+                        av_log(mxf->fc, AV_LOG_WARNING, "Skipping channel reordering!\n");
+                        st->codecpar->channel_layout = 0;
+                    } else {
+                        source_track->require_reordering = 1;
+                    }
                     break;
                 }
             }
@@ -3990,8 +4003,8 @@ static int mxf_read_packet(AVFormatContext *s, AVPacket *pkt)
                 return ret;
             }
 
-            // for audio, process audio remapping if MCA label requires it 
-            if (st->codecpar->codec_type == AVMEDIA_TYPE_AUDIO && track->require_reordering && !mxf->skip_audio_reordering) {
+            // for audio, process audio remapping if MCA label requires it
+            if (st->codecpar->codec_type == AVMEDIA_TYPE_AUDIO && track->require_reordering) {
                 int byte_per_sample = st->codecpar->bits_per_coded_sample / 8;
                 ret = mxf_audio_remapping(track->channel_ordering, pkt->data, pkt->size, byte_per_sample, st->codecpar->channels);
                 if (ret < 0) {
