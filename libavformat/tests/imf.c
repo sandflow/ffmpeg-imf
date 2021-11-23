@@ -387,7 +387,7 @@ static int test_asset_map_parsing(void)
     asset_locator_map = imf_asset_locator_map_alloc();
 
     printf("Parse asset map XML document\n");
-    ret = parse_imf_asset_map_from_xml_dom(NULL, doc, &asset_locator_map, doc->name);
+    ret = parse_imf_asset_map_from_xml_dom(NULL, doc, asset_locator_map, doc->name);
     if (ret) {
         printf("Asset map parsing failed.\n");
         goto cleanup;
