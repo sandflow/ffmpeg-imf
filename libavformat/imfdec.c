@@ -154,7 +154,6 @@ static int parse_imf_asset_map_from_xml_dom(AVFormatContext *s, xmlDocPtr doc, I
 {
     xmlNodePtr asset_map_element = NULL;
     xmlNodePtr node = NULL;
-    void *temp_ptr = NULL;
     char *uri;
     int ret = 0;
     IMFAssetLocator *asset = NULL;
@@ -223,13 +222,12 @@ static int parse_imf_asset_map_from_xml_dom(AVFormatContext *s, xmlDocPtr doc, I
 
         node = xmlNextElementSibling(node->parent->parent);
 
-        temp_ptr = av_realloc(asset_map->assets, (asset_map->asset_count + 1) * sizeof(IMFAssetLocator));
-        if (!temp_ptr) {
+        asset_map->assets = av_realloc_f(asset_map->assets, asset_map->asset_count + 1, sizeof(IMFAssetLocator));
+        if (!asset_map->assets) {
             av_log(NULL, AV_LOG_PANIC, "Cannot allocate IMF asset locators\n");
             ret = AVERROR(ENOMEM);
             goto clean_up_asset;
         }
-        asset_map->assets = temp_ptr;
         asset_map->assets[asset_map->asset_count++] = asset;
         continue;
 
@@ -428,7 +426,6 @@ static int open_track_file_resource(AVFormatContext *s, IMFTrackFileResource *tr
     IMFContext *c = s->priv_data;
     IMFAssetLocator *asset_locator;
     IMFVirtualTrackResourcePlaybackCtx track_resource;
-    void *tmp_ptr;
     int ret;
 
     if (!(asset_locator = find_asset_map_locator(c->asset_locator_map, track_file_resource->track_file_uuid))) {
@@ -439,8 +436,8 @@ static int open_track_file_resource(AVFormatContext *s, IMFTrackFileResource *tr
     av_log(s, AV_LOG_DEBUG, "Found locator for " IMF_UUID_FORMAT ": %s\n", UID_ARG(asset_locator->uuid), asset_locator->absolute_uri);
 
     for (int repetition = 0; repetition < track_file_resource->base.repeat_count; ++repetition) {
-        tmp_ptr = av_realloc(track->resources, (track->resource_count + 1) * sizeof(IMFVirtualTrackResourcePlaybackCtx));
-        if (!tmp_ptr) {
+        track->resources = av_realloc_f(track->resources, track->resource_count + 1, sizeof(IMFVirtualTrackResourcePlaybackCtx));
+        if (!track->resources) {
             av_log(NULL, AV_LOG_PANIC, "Cannot allocate Virtual Track playback context\n");
             return AVERROR(ENOMEM);
         }
@@ -450,7 +447,6 @@ static int open_track_file_resource(AVFormatContext *s, IMFTrackFileResource *tr
         if ((ret = open_track_resource_context(s, &track_resource)) != 0) {
             return ret;
         }
-        track->resources = tmp_ptr;
         track->resources[track->resource_count++] = track_resource;
         track->duration = av_add_q(track->duration, av_make_q((int)track_file_resource->base.duration * track_file_resource->base.edit_rate.den, track_file_resource->base.edit_rate.num));
     }
@@ -462,7 +458,6 @@ static int open_virtual_track(AVFormatContext *s, IMFTrackFileVirtualTrack *virt
 {
     IMFContext *c = s->priv_data;
     IMFVirtualTrackPlaybackCtx *track;
-    void *tmp_ptr;
     int ret = 0;
 
     track = av_mallocz(sizeof(IMFVirtualTrackPlaybackCtx));
@@ -483,12 +478,11 @@ static int open_virtual_track(AVFormatContext *s, IMFTrackFileVirtualTrack *virt
 
     track->current_timestamp = av_make_q(0, track->duration.den);
 
-    tmp_ptr = av_realloc(c->tracks, (c->track_count + 1) * sizeof(IMFVirtualTrackPlaybackCtx));
-    if (!tmp_ptr) {
+    c->tracks = av_realloc_f(c->tracks, c->track_count + 1, sizeof(IMFVirtualTrackPlaybackCtx));
+    if (!c->tracks) {
         av_log(NULL, AV_LOG_PANIC, "Cannot allocate Virtual Track playback context\n");
         return AVERROR(ENOMEM);
     }
-    c->tracks = tmp_ptr;
     c->tracks[c->track_count++] = track;
 
     return ret;
