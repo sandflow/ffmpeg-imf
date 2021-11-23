@@ -303,7 +303,6 @@ static int fill_trackfile_resource(xmlNodePtr tf_resource_elem, IMFTrackFileReso
 static int fill_marker_resource(xmlNodePtr marker_resource_elem, IMFMarkerResource *marker_resource, IMFCPL *cpl)
 {
     xmlNodePtr element = NULL;
-    void *tmp_ptr;
     int ret = 0;
 
     if (ret = fill_base_resource(marker_resource_elem, (IMFBaseResource *)marker_resource, cpl))
@@ -313,12 +312,11 @@ static int fill_marker_resource(xmlNodePtr marker_resource_elem, IMFMarkerResour
     element = xmlFirstElementChild(marker_resource_elem);
     while (element) {
         if (xmlStrcmp(element->name, "Marker") == 0) {
-            tmp_ptr = av_realloc(marker_resource->markers, (++marker_resource->marker_count) * sizeof(IMFMarker));
-            if (!tmp_ptr) {
+            marker_resource->markers = av_realloc_f(marker_resource->markers, ++marker_resource->marker_count, sizeof(IMFMarker));
+            if (!marker_resource->markers) {
                 av_log(NULL, AV_LOG_PANIC, "Cannot allocate Marker\n");
                 return AVERROR(ENOMEM);
             }
-            marker_resource->markers = tmp_ptr;
             imf_marker_init(&marker_resource->markers[marker_resource->marker_count - 1]);
             fill_marker(element, &marker_resource->markers[marker_resource->marker_count - 1]);
         }
@@ -332,7 +330,6 @@ static int push_marker_sequence(xmlNodePtr marker_sequence_elem, IMFCPL *cpl)
 {
     int ret = 0;
     uint8_t uuid[16];
-    void *tmp_ptr;
     xmlNodePtr resource_list_elem = NULL;
     xmlNodePtr resource_elem = NULL;
     xmlNodePtr track_id_elem = NULL;
@@ -368,12 +365,11 @@ static int push_marker_sequence(xmlNodePtr marker_sequence_elem, IMFCPL *cpl)
         return 0;
     resource_elem = xmlFirstElementChild(resource_list_elem);
     while (resource_elem) {
-        tmp_ptr = av_realloc(cpl->main_markers_track->resources, (++cpl->main_markers_track->resource_count) * sizeof(IMFMarkerResource));
-        if (!tmp_ptr) {
+        cpl->main_markers_track->resources = av_realloc_f(cpl->main_markers_track->resources, ++cpl->main_markers_track->resource_count, sizeof(IMFMarkerResource));
+        if (!cpl->main_markers_track->resources) {
             av_log(NULL, AV_LOG_PANIC, "Cannot allocate Resource\n");
             return AVERROR(ENOMEM);
         }
-        cpl->main_markers_track->resources = tmp_ptr;
         imf_marker_resource_init(&cpl->main_markers_track->resources[cpl->main_markers_track->resource_count - 1]);
         if (ret = fill_marker_resource(resource_elem, &cpl->main_markers_track->resources[cpl->main_markers_track->resource_count - 1], cpl))
             return ret;
@@ -403,7 +399,6 @@ static int push_main_audio_sequence(xmlNodePtr audio_sequence_elem, IMFCPL *cpl)
     xmlNodePtr resource_list_elem = NULL;
     xmlNodePtr resource_elem = NULL;
     xmlNodePtr track_id_elem = NULL;
-    void *tmp_ptr;
     IMFTrackFileVirtualTrack *vt = NULL;
 
     /* read TrackID element */
@@ -426,12 +421,11 @@ static int push_main_audio_sequence(xmlNodePtr audio_sequence_elem, IMFCPL *cpl)
 
     /* create a main audio virtual track if none exists for the sequence */
     if (!vt) {
-        tmp_ptr = av_realloc(cpl->main_audio_tracks, sizeof(IMFTrackFileVirtualTrack) * (++cpl->main_audio_track_count));
-        if (!tmp_ptr) {
+        cpl->main_audio_tracks = av_realloc_f(cpl->main_audio_tracks, ++cpl->main_audio_track_count, sizeof(IMFTrackFileVirtualTrack));
+        if (!cpl->main_audio_tracks) {
             av_log(NULL, AV_LOG_PANIC, "Cannot allocate MainAudio virtual track\n");
             return AVERROR(ENOMEM);
         }
-        cpl->main_audio_tracks = tmp_ptr;
         vt = &cpl->main_audio_tracks[cpl->main_audio_track_count - 1];
         imf_trackfile_virtual_track_init(vt);
         memcpy(vt->base.id_uuid, uuid, sizeof(uuid));
@@ -443,12 +437,11 @@ static int push_main_audio_sequence(xmlNodePtr audio_sequence_elem, IMFCPL *cpl)
         return 0;
     resource_elem = xmlFirstElementChild(resource_list_elem);
     while (resource_elem) {
-        tmp_ptr = av_realloc(vt->resources, (++vt->resource_count) * sizeof(IMFTrackFileResource));
-        if (!tmp_ptr) {
+        vt->resources = av_realloc_f(vt->resources, ++vt->resource_count, sizeof(IMFTrackFileResource));
+        if (!vt->resources) {
             av_log(NULL, AV_LOG_PANIC, "Cannot allocate Resource\n");
             return AVERROR(ENOMEM);
         }
-        vt->resources = tmp_ptr;
         imf_trackfile_resource_init(&vt->resources[vt->resource_count - 1]);
         fill_trackfile_resource(resource_elem, &vt->resources[vt->resource_count - 1], cpl);
         resource_elem = xmlNextElementSibling(resource_elem);
@@ -461,7 +454,6 @@ static int push_main_image_2d_sequence(xmlNodePtr image_sequence_elem, IMFCPL *c
 {
     int ret = 0;
     uint8_t uuid[16];
-    void *tmp_ptr;
     xmlNodePtr resource_list_elem = NULL;
     xmlNodePtr resource_elem = NULL;
     xmlNodePtr track_id_elem = NULL;
@@ -502,12 +494,11 @@ static int push_main_image_2d_sequence(xmlNodePtr image_sequence_elem, IMFCPL *c
         return 0;
     resource_elem = xmlFirstElementChild(resource_list_elem);
     while (resource_elem) {
-        tmp_ptr = av_realloc(cpl->main_image_2d_track->resources, (++cpl->main_image_2d_track->resource_count) * sizeof(IMFTrackFileResource));
-        if (!tmp_ptr) {
+        cpl->main_image_2d_track->resources = av_realloc_f(cpl->main_image_2d_track->resources, ++cpl->main_image_2d_track->resource_count, sizeof(IMFTrackFileResource));
+        if (!cpl->main_image_2d_track->resources) {
             av_log(NULL, AV_LOG_PANIC, "Cannot allocate Resource\n");
             return AVERROR(ENOMEM);
         }
-        cpl->main_image_2d_track->resources = tmp_ptr;
         imf_trackfile_resource_init(&cpl->main_image_2d_track->resources[cpl->main_image_2d_track->resource_count - 1]);
         fill_trackfile_resource(resource_elem, &cpl->main_image_2d_track->resources[cpl->main_image_2d_track->resource_count - 1], cpl);
         resource_elem = xmlNextElementSibling(resource_elem);

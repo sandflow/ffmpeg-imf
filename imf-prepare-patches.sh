@@ -2,7 +2,7 @@
 
 set -e
 
-PATCH_VERSION="4"
+PATCH_VERSION="5"
 
 PATCH_NAME="avformat/imf"
 
@@ -84,7 +84,7 @@ CHANGE NOTES:
 - Improve error handling, including removing exit()
 - Fix code style
 - Allow custom I/O for all files (following DASH and HLS template)
-- fix realloc memory leak"
+- replace realloc with av_realloc_f to fix leaks"
 
 # git commit -m "[IMF demuxer] MCA improvements to MXF decoder" -- $PATCHES_MXF
 # git notes add -m "Add support for SMPTE ST 377-4 (Multichannel Audio Labeling -- MCA) \
