@@ -30,23 +30,18 @@ jobs:
     - name: Build
       run: make -j 8
 
-    - name: Basic unit tests
+    - name: Basic tests
       if: github.ref != 'refs/heads/develop'
       run: |
         ./imf-unit-tests.sh
 
     - name: Cache FATE
-      if: github.ref == 'refs/heads/develop'
       uses: actions/cache@v2
       with:
         path: ./fate-suite
         key: fate
-        
-    - name: Update FATE
-      if: github.ref == 'refs/heads/develop'
-      run: make fate-rsync SAMPLES=fate-suite/
 
-    - name: Run Fate
-      if: github.ref == 'refs/heads/develop'
+    - name: Update and run Fate
       run: |
-        FATE_SAMPLES=fate-suite/ make fate
+        make fate-rsync SAMPLES=fate-suite/
+        make fate SAMPLES=fate-suite/
