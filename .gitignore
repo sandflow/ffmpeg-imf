@@ -48,3 +48,5 @@
 /dist
 /fate-suite
 /build
+libavcodec/tests/avcodec
+tools/scale_slice_test
