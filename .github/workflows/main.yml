@@ -19,17 +19,7 @@ jobs:
 
     - name: Checkout
       uses: actions/checkout@v2
-
-    - name: Checkout Fate
-      uses: actions/checkout@v2
-      if: github.ref == 'refs/heads/develop'
-      with:
-        repository: sandflow/ffmpeg-imf-fate
-        path: ./fate-suite
-        token: ${{ secrets.GITHUBPAT }}
-        persist-credentials: true
-        ref: 6482e3fb12fe9fbfe4ceb8ecdb1774ac853408c5
-
+    
     - name: Check code style
       run: |
         ./imf-check-style.sh
@@ -44,6 +34,17 @@ jobs:
       if: github.ref != 'refs/heads/develop'
       run: |
         ./imf-unit-tests.sh
+
+    - name: Cache FATE
+      if: github.ref == 'refs/heads/develop'
+      uses: actions/cache@v2
+      with:
+        path: ./fate-suite
+        key: fate
+        
+    - name: Update FATE
+      if: github.ref == 'refs/heads/develop'
+      run: make fate-rsync SAMPLES=fate-suite/
 
     - name: Run Fate
       if: github.ref == 'refs/heads/develop'
