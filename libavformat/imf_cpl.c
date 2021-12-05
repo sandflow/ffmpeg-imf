@@ -222,9 +222,8 @@ static int fill_marker(xmlNodePtr marker_elem, FFIMFMarker *marker)
         av_log(NULL, AV_LOG_ERROR, "Empty Label element found in a Marker\n");
         return AVERROR_INVALIDDATA;
     }
-    if (!(marker->scope_utf8 = xmlGetNoNsProp(element, "scope"))) {
+    if (!(marker->scope_utf8 = xmlGetNoNsProp(element, "scope")))
         marker->scope_utf8 = xmlCharStrdup("http://www.smpte-ra.org/schemas/2067-3/2013#standard-markers");
-    }
 
     return ret;
 }
@@ -248,8 +247,9 @@ static int fill_base_resource(xmlNodePtr resource_elem, FFIMFBaseResource *resou
             av_log(NULL, AV_LOG_ERROR, "Invalid EntryPoint element found in a Resource\n");
             return ret;
         }
-    } else
+    } else {
         resource->entry_point = 0;
+    }
 
     /* read IntrinsicDuration */
     if (!(element = ff_xml_get_child_element_by_name(resource_elem, "IntrinsicDuration"))) {
@@ -271,9 +271,8 @@ static int fill_base_resource(xmlNodePtr resource_elem, FFIMFBaseResource *resou
     }
 
     /* read RepeatCount */
-    if (element = ff_xml_get_child_element_by_name(resource_elem, "RepeatCount")) {
+    if (element = ff_xml_get_child_element_by_name(resource_elem, "RepeatCount"))
         ret = ff_xml_read_ulong(element, &resource->repeat_count);
-    }
 
     return ret;
 }
@@ -529,13 +528,13 @@ static int fill_virtual_tracks(xmlNodePtr cpl_element, FFIMFCPL *cpl)
             continue;
         sequence_elem = xmlFirstElementChild(sequence_list_elem);
         while (sequence_elem) {
-            if (xmlStrcmp(sequence_elem->name, "MarkerSequence") == 0) {
+            if (xmlStrcmp(sequence_elem->name, "MarkerSequence") == 0)
                 ret = push_marker_sequence(sequence_elem, cpl);
-            } else if (xmlStrcmp(sequence_elem->name, "MainImageSequence") == 0) {
+            else if (xmlStrcmp(sequence_elem->name, "MainImageSequence") == 0)
                 ret = push_main_image_2d_sequence(sequence_elem, cpl);
-            } else if (xmlStrcmp(sequence_elem->name, "MainAudioSequence") == 0) {
+            else if (xmlStrcmp(sequence_elem->name, "MainAudioSequence") == 0)
                 ret = push_main_audio_sequence(sequence_elem, cpl);
-            } else
+            else
                 av_log(NULL, AV_LOG_INFO, "The following Sequence is not supported and is ignored: %s\n", sequence_elem->name);
             if (ret == AVERROR(ENOMEM))
                 /* abort parsing only if memory error occurred */

@@ -403,9 +403,8 @@ static int test_asset_map_parsing(void)
     for (int i = 0; i < asset_locator_map->asset_count; ++i) {
         printf("For asset: %d:\n", i);
         ret = check_asset_locator_attributes(asset_locator_map->assets[i], ASSET_MAP_EXPECTED_LOCATORS[i]);
-        if (ret > 0) {
+        if (ret > 0)
             goto cleanup;
-        }
     }
 
 cleanup:
