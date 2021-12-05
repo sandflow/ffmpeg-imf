@@ -53,9 +53,9 @@ typedef uint8_t FFUUID[16];
  * IMF Composition Playlist Base Resource
  */
 typedef struct FFIMFBaseResource {
-    AVRational edit_rate; /**< BaseResourceType/EditRate */
-    unsigned long entry_point; /**< BaseResourceType/EntryPoint */
-    unsigned long duration; /**< BaseResourceType/Duration */
+    AVRational edit_rate;       /**< BaseResourceType/EditRate */
+    unsigned long entry_point;  /**< BaseResourceType/EntryPoint */
+    unsigned long duration;     /**< BaseResourceType/Duration */
     unsigned long repeat_count; /**< BaseResourceType/RepeatCount */
 } FFIMFBaseResource;
 
@@ -71,8 +71,8 @@ typedef struct FFIMFTrackFileResource {
  * IMF Marker
  */
 typedef struct FFIMFMarker {
-    xmlChar *label_utf8; /**< Marker/Label */
-    xmlChar *scope_utf8; /**< Marker/Label/\@scope */
+    xmlChar *label_utf8;  /**< Marker/Label */
+    xmlChar *scope_utf8;  /**< Marker/Label/\@scope */
     unsigned long offset; /**< Marker/Offset */
 } FFIMFMarker;
 
@@ -82,7 +82,7 @@ typedef struct FFIMFMarker {
 typedef struct FFIMFMarkerResource {
     FFIMFBaseResource base;
     unsigned long marker_count; /**< Number of Marker elements */
-    FFIMFMarker *markers; /**< Marker elements */
+    FFIMFMarker *markers;       /**< Marker elements */
 } FFIMFMarkerResource;
 
 /**
@@ -97,7 +97,7 @@ typedef struct FFIMFBaseVirtualTrack {
  */
 typedef struct FFIMFTrackFileVirtualTrack {
     FFIMFBaseVirtualTrack base;
-    unsigned long resource_count; /**< Number of Resource elements present in the Virtual Track */
+    unsigned long resource_count;      /**< Number of Resource elements present in the Virtual Track */
     FFIMFTrackFileResource *resources; /**< Resource elements of the Virtual Track */
 } FFIMFTrackFileVirtualTrack;
 
@@ -106,7 +106,7 @@ typedef struct FFIMFTrackFileVirtualTrack {
  */
 typedef struct FFIMFMarkerVirtualTrack {
     FFIMFBaseVirtualTrack base;
-    unsigned long resource_count; /**< Number of Resource elements present in the Virtual Track */
+    unsigned long resource_count;   /**< Number of Resource elements present in the Virtual Track */
     FFIMFMarkerResource *resources; /**< Resource elements of the Virtual Track */
 } FFIMFMarkerVirtualTrack;
 
@@ -114,13 +114,13 @@ typedef struct FFIMFMarkerVirtualTrack {
  * IMF Composition Playlist
  */
 typedef struct FFIMFCPL {
-    FFUUID id_uuid; /**< CompositionPlaylist/Id element */
-    xmlChar *content_title_utf8; /**< CompositionPlaylist/ContentTitle element */
-    AVRational edit_rate; /**< CompositionPlaylist/EditRate element */
-    FFIMFMarkerVirtualTrack *main_markers_track; /**< Main Marker Virtual Track */
+    FFUUID id_uuid;                                  /**< CompositionPlaylist/Id element */
+    xmlChar *content_title_utf8;                     /**< CompositionPlaylist/ContentTitle element */
+    AVRational edit_rate;                            /**< CompositionPlaylist/EditRate element */
+    FFIMFMarkerVirtualTrack *main_markers_track;     /**< Main Marker Virtual Track */
     FFIMFTrackFileVirtualTrack *main_image_2d_track; /**< Main Image Virtual Track */
-    unsigned long main_audio_track_count; /**< Number of Main Audio Virtual Tracks */
-    FFIMFTrackFileVirtualTrack *main_audio_tracks; /**< Main Audio Virtual Tracks */
+    unsigned long main_audio_track_count;            /**< Number of Main Audio Virtual Tracks */
+    FFIMFTrackFileVirtualTrack *main_audio_tracks;   /**< Main Audio Virtual Tracks */
 } FFIMFCPL;
 
 /**
