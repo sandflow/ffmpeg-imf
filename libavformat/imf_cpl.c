@@ -132,6 +132,7 @@ static void imf_trackfile_virtual_track_init(FFIMFTrackFileVirtualTrack *track)
 {
     imf_base_virtual_track_init((FFIMFBaseVirtualTrack *)track);
     track->resource_count = 0;
+    track->resources_alloc_sz = 0;
     track->resources = NULL;
 }
 
@@ -414,6 +415,7 @@ static int push_main_audio_sequence(xmlNodePtr audio_sequence_elem, FFIMFCPL *cp
     xmlNodePtr resource_list_elem = NULL;
     xmlNodePtr resource_elem = NULL;
     xmlNodePtr track_id_elem = NULL;
+    unsigned long resource_elem_count;
     FFIMFTrackFileVirtualTrack *vt = NULL;
 
     /* read TrackID element */
@@ -455,17 +457,25 @@ static int push_main_audio_sequence(xmlNodePtr audio_sequence_elem, FFIMFCPL *cp
     resource_list_elem = ff_xml_get_child_element_by_name(audio_sequence_elem, "ResourceList");
     if (!resource_list_elem)
         return 0;
+    resource_elem_count = xmlChildElementCount(resource_list_elem);
+    vt->resources = av_fast_realloc(vt->resources,
+        &vt->resources_alloc_sz,
+        (vt->resource_count + resource_elem_count) * sizeof(FFIMFTrackFileResource));
+    if (!vt->resources) {
+        av_log(NULL, AV_LOG_PANIC, "Cannot allocate Main Audio Resources\n");
+        return AVERROR(ENOMEM);
+    }
     resource_elem = xmlFirstElementChild(resource_list_elem);
     while (resource_elem) {
-        vt->resources = av_realloc_f(vt->resources,
-            ++vt->resource_count,
-            sizeof(FFIMFTrackFileResource));
-        if (!vt->resources) {
-            av_log(NULL, AV_LOG_PANIC, "Cannot allocate Resource\n");
-            return AVERROR(ENOMEM);
+        imf_trackfile_resource_init(&vt->resources[vt->resource_count]);
+        ret = fill_trackfile_resource(resource_elem,
+            &vt->resources[vt->resource_count],
+            cpl);
+        if (ret) {
+            av_log(NULL, AV_LOG_ERROR, "Invalid Resource\n");
+            continue;
         }
-        imf_trackfile_resource_init(&vt->resources[vt->resource_count - 1]);
-        fill_trackfile_resource(resource_elem, &vt->resources[vt->resource_count - 1], cpl);
+        vt->resource_count++;
         resource_elem = xmlNextElementSibling(resource_elem);
     }
 
@@ -479,6 +489,7 @@ static int push_main_image_2d_sequence(xmlNodePtr image_sequence_elem, FFIMFCPL 
     xmlNodePtr resource_list_elem = NULL;
     xmlNodePtr resource_elem = NULL;
     xmlNodePtr track_id_elem = NULL;
+    unsigned long resource_elem_count;
 
     /* skip stereoscopic resources */
     if (has_stereo_resources(image_sequence_elem)) {
@@ -515,22 +526,29 @@ static int push_main_image_2d_sequence(xmlNodePtr image_sequence_elem, FFIMFCPL 
         UID_ARG(uuid));
 
     /* process resources */
-    if (!(resource_list_elem = ff_xml_get_child_element_by_name(image_sequence_elem, "ResourceList")))
+    resource_list_elem = ff_xml_get_child_element_by_name(image_sequence_elem, "ResourceList");
+    if (!resource_list_elem)
         return 0;
+    resource_elem_count = xmlChildElementCount(resource_list_elem);
+    cpl->main_image_2d_track->resources = av_fast_realloc(cpl->main_image_2d_track->resources,
+        &cpl->main_image_2d_track->resources_alloc_sz,
+        (cpl->main_image_2d_track->resource_count + resource_elem_count) * sizeof(FFIMFTrackFileResource));
+    if (!cpl->main_image_2d_track->resources) {
+        av_log(NULL, AV_LOG_PANIC, "Cannot allocate Main Image Resource\n");
+        return AVERROR(ENOMEM);
+    }
     resource_elem = xmlFirstElementChild(resource_list_elem);
     while (resource_elem) {
-        cpl->main_image_2d_track->resources = av_realloc_f(cpl->main_image_2d_track->resources,
-            ++cpl->main_image_2d_track->resource_count,
-            sizeof(FFIMFTrackFileResource));
-        if (!cpl->main_image_2d_track->resources) {
-            av_log(NULL, AV_LOG_PANIC, "Cannot allocate Resource\n");
-            return AVERROR(ENOMEM);
-        }
         imf_trackfile_resource_init(
-            &cpl->main_image_2d_track->resources[cpl->main_image_2d_track->resource_count - 1]);
-        fill_trackfile_resource(resource_elem,
-            &cpl->main_image_2d_track->resources[cpl->main_image_2d_track->resource_count - 1],
+            &cpl->main_image_2d_track->resources[cpl->main_image_2d_track->resource_count]);
+        ret = fill_trackfile_resource(resource_elem,
+            &cpl->main_image_2d_track->resources[cpl->main_image_2d_track->resource_count],
             cpl);
+        if (ret) {
+            av_log(NULL, AV_LOG_ERROR, "Invalid Resource\n");
+            continue;
+        }
+        cpl->main_image_2d_track->resource_count++;
         resource_elem = xmlNextElementSibling(resource_elem);
     }
 

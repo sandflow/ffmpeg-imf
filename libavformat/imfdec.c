@@ -91,6 +91,7 @@ typedef struct IMFVirtualTrackPlaybackCtx {
     AVRational duration;
     // Resources
     unsigned int resource_count;
+    unsigned int resources_alloc_sz;
     IMFVirtualTrackResourcePlaybackCtx *resources;
     // Decoding cursors
     uint32_t current_resource_index;
@@ -469,7 +470,7 @@ static int open_track_file_resource(AVFormatContext *s,
 {
     IMFContext *c = s->priv_data;
     IMFAssetLocator *asset_locator;
-    IMFVirtualTrackResourcePlaybackCtx track_resource;
+    IMFVirtualTrackResourcePlaybackCtx vt_ctx;
     int ret;
 
     asset_locator = find_asset_map_locator(c->asset_locator_map, track_file_resource->track_file_uuid);
@@ -484,20 +485,22 @@ static int open_track_file_resource(AVFormatContext *s,
         UID_ARG(asset_locator->uuid),
         asset_locator->absolute_uri);
 
-    for (int repetition = 0; repetition < track_file_resource->base.repeat_count; ++repetition) {
-        track->resources = av_realloc_f(track->resources,
-            track->resource_count + 1,
-            sizeof(IMFVirtualTrackResourcePlaybackCtx));
-        if (!track->resources) {
-            av_log(NULL, AV_LOG_PANIC, "Cannot allocate Virtual Track playback context\n");
-            return AVERROR(ENOMEM);
-        }
-        track_resource.locator = asset_locator;
-        track_resource.resource = track_file_resource;
-        track_resource.ctx = NULL;
-        if ((ret = open_track_resource_context(s, &track_resource)) != 0)
+    track->resources = av_fast_realloc(track->resources,
+        &track->resources_alloc_sz,
+        (track->resource_count + track_file_resource->base.repeat_count)
+            * sizeof(IMFVirtualTrackResourcePlaybackCtx));
+    if (!track->resources) {
+        av_log(NULL, AV_LOG_PANIC, "Cannot allocate Virtual Track playback context\n");
+        return AVERROR(ENOMEM);
+    }
+
+    for (int i = 0; i < track_file_resource->base.repeat_count; ++i) {
+        vt_ctx.locator = asset_locator;
+        vt_ctx.resource = track_file_resource;
+        vt_ctx.ctx = NULL;
+        if ((ret = open_track_resource_context(s, &vt_ctx)) != 0)
             return ret;
-        track->resources[track->resource_count++] = track_resource;
+        track->resources[track->resource_count++] = vt_ctx;
         track->duration = av_add_q(track->duration,
             av_make_q((int)track_file_resource->base.duration * track_file_resource->base.edit_rate.den,
                 track_file_resource->base.edit_rate.num));

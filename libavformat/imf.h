@@ -26,8 +26,9 @@
  */
 
 /**
- * Public header file for the processing of Interoperable Master Format (IMF) packages.
- * 
+ * Public header file for the processing of Interoperable Master Format (IMF)
+ * packages.
+ *
  * @author Pierre-Anthony Lemieux
  * @author Valentin Noel
  * @file
@@ -99,6 +100,7 @@ typedef struct FFIMFTrackFileVirtualTrack {
     FFIMFBaseVirtualTrack base;
     unsigned long resource_count;      /**< Number of Resource elements present in the Virtual Track */
     FFIMFTrackFileResource *resources; /**< Resource elements of the Virtual Track */
+    unsigned int resources_alloc_sz;   /**< Size of the resources buffer */
 } FFIMFTrackFileVirtualTrack;
 
 /**
@@ -126,9 +128,10 @@ typedef struct FFIMFCPL {
 /**
  * Parse an IMF CompositionPlaylist element into the FFIMFCPL data structure.
  * @param[in] doc An XML document from which the CPL is read.
- * @param[out] cpl Pointer to a memory area (allocated by the client), where the function writes a pointer to the newly constructed
- * FFIMFCPL structure (or NULL if the CPL could not be parsed). The client is responsible for freeing the FFIMFCPL structure using
- * ff_imf_cpl_free().
+ * @param[out] cpl Pointer to a memory area (allocated by the client), where the
+ *  function writes a pointer to the newly constructed FFIMFCPL structure (or
+ *  NULL if the CPL could not be parsed). The client is responsible for freeing
+ *  the FFIMFCPL structure using ff_imf_cpl_free().
  * @return A non-zero value in case of an error.
  */
 int ff_parse_imf_cpl_from_xml_dom(xmlDocPtr doc, FFIMFCPL **cpl);
@@ -136,17 +139,19 @@ int ff_parse_imf_cpl_from_xml_dom(xmlDocPtr doc, FFIMFCPL **cpl);
 /**
  * Parse an IMF Composition Playlist document into the FFIMFCPL data structure.
  * @param[in] in The context from which the CPL is read.
- * @param[out] cpl Pointer to a memory area (allocated by the client), where the function writes a pointer to the newly constructed
- * FFIMFCPL structure (or NULL if the CPL could not be parsed). The client is responsible for freeing the FFIMFCPL structure using
- * ff_imf_cpl_free().
+ * @param[out] cpl Pointer to a memory area (allocated by the client), where the
+ * function writes a pointer to the newly constructed FFIMFCPL structure (or
+ * NULL if the CPL could not be parsed). The client is responsible for freeing
+ * the FFIMFCPL structure using ff_imf_cpl_free().
  * @return A non-zero value in case of an error.
  */
 int ff_parse_imf_cpl(AVIOContext *in, FFIMFCPL **cpl);
 
 /**
  * Allocates and initializes an FFIMFCPL data structure.
- * @return A pointer to the newly constructed FFIMFCPL structure (or NULL if the structure could not be constructed). The client is
- * responsible for freeing the FFIMFCPL structure using ff_imf_cpl_free().
+ * @return A pointer to the newly constructed FFIMFCPL structure (or NULL if the
+ * structure could not be constructed). The client is responsible for freeing
+ * the FFIMFCPL structure using ff_imf_cpl_free().
  */
 FFIMFCPL *ff_imf_cpl_alloc(void);
 
