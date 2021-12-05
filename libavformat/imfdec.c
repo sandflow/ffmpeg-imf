@@ -64,7 +64,7 @@
  * IMF Asset locator
  */
 typedef struct IMFAssetLocator {
-    UUID uuid;
+    FFUUID uuid;
     char *absolute_uri;
 } IMFAssetLocator;
 
@@ -79,7 +79,7 @@ typedef struct IMFAssetLocatorMap {
 
 typedef struct IMFVirtualTrackResourcePlaybackCtx {
     IMFAssetLocator *locator;
-    IMFTrackFileResource *resource;
+    FFIMFTrackFileResource *resource;
     AVFormatContext *ctx;
 } IMFVirtualTrackResourcePlaybackCtx;
 
@@ -103,7 +103,7 @@ typedef struct IMFContext {
     char *asset_map_paths;
     AVIOInterruptCB *interrupt_callback;
     AVDictionary *avio_opts;
-    IMFCPL *cpl;
+    FFIMFCPL *cpl;
     IMFAssetLocatorMap *asset_locator_map;
     unsigned int track_count;
     IMFVirtualTrackPlaybackCtx **tracks;
@@ -172,7 +172,7 @@ static int parse_imf_asset_map_from_xml_dom(AVFormatContext *s, xmlDocPtr doc, I
 
     // parse asset locators
 
-    if (!(node = imf_xml_get_child_element_by_name(asset_map_element, "AssetList"))) {
+    if (!(node = ff_xml_get_child_element_by_name(asset_map_element, "AssetList"))) {
         av_log(s, AV_LOG_ERROR, "Unable to parse asset map XML - missing AssetList node\n");
         return AVERROR_INVALIDDATA;
     }
@@ -186,27 +186,27 @@ static int parse_imf_asset_map_from_xml_dom(AVFormatContext *s, xmlDocPtr doc, I
         if (!asset)
             return AVERROR(ENOMEM);
 
-        if (imf_xml_read_UUID(imf_xml_get_child_element_by_name(node, "Id"), asset->uuid)) {
+        if (ff_xml_read_UUID(ff_xml_get_child_element_by_name(node, "Id"), asset->uuid)) {
             av_log(s, AV_LOG_ERROR, "Could not parse UUID from asset in asset map.\n");
             ret = AVERROR_INVALIDDATA;
             goto clean_up_asset;
         }
 
-        av_log(s, AV_LOG_DEBUG, "Found asset id: " IMF_UUID_FORMAT "\n", UID_ARG(asset->uuid));
+        av_log(s, AV_LOG_DEBUG, "Found asset id: " FF_UUID_FORMAT "\n", UID_ARG(asset->uuid));
 
-        if (!(node = imf_xml_get_child_element_by_name(node, "ChunkList"))) {
+        if (!(node = ff_xml_get_child_element_by_name(node, "ChunkList"))) {
             av_log(s, AV_LOG_ERROR, "Unable to parse asset map XML - missing ChunkList node\n");
             ret = AVERROR_INVALIDDATA;
             goto clean_up_asset;
         }
 
-        if (!(node = imf_xml_get_child_element_by_name(node, "Chunk"))) {
+        if (!(node = ff_xml_get_child_element_by_name(node, "Chunk"))) {
             av_log(s, AV_LOG_ERROR, "Unable to parse asset map XML - missing Chunk node\n");
             ret = AVERROR_INVALIDDATA;
             goto clean_up_asset;
         }
 
-        uri = xmlNodeGetContent(imf_xml_get_child_element_by_name(node, "Path"));
+        uri = xmlNodeGetContent(ff_xml_get_child_element_by_name(node, "Path"));
         if (!imf_uri_is_url(uri) && !imf_uri_is_unix_abs_path(uri) && !imf_uri_is_dos_abs_path(uri))
             asset->absolute_uri = av_append_path_component(base_url, uri);
         else
@@ -345,7 +345,7 @@ clean_up:
     return ret;
 }
 
-static IMFAssetLocator *find_asset_map_locator(IMFAssetLocatorMap *asset_map, UUID uuid)
+static IMFAssetLocator *find_asset_map_locator(IMFAssetLocatorMap *asset_map, FFUUID uuid)
 {
     IMFAssetLocator *asset_locator;
     for (int i = 0; i < asset_map->asset_count; ++i) {
@@ -421,7 +421,7 @@ cleanup:
     return ret;
 }
 
-static int open_track_file_resource(AVFormatContext *s, IMFTrackFileResource *track_file_resource, IMFVirtualTrackPlaybackCtx *track)
+static int open_track_file_resource(AVFormatContext *s, FFIMFTrackFileResource *track_file_resource, IMFVirtualTrackPlaybackCtx *track)
 {
     IMFContext *c = s->priv_data;
     IMFAssetLocator *asset_locator;
@@ -429,11 +429,11 @@ static int open_track_file_resource(AVFormatContext *s, IMFTrackFileResource *tr
     int ret;
 
     if (!(asset_locator = find_asset_map_locator(c->asset_locator_map, track_file_resource->track_file_uuid))) {
-        av_log(s, AV_LOG_ERROR, "Could not find asset locator for UUID: " IMF_UUID_FORMAT "\n", UID_ARG(track_file_resource->track_file_uuid));
+        av_log(s, AV_LOG_ERROR, "Could not find asset locator for UUID: " FF_UUID_FORMAT "\n", UID_ARG(track_file_resource->track_file_uuid));
         return AVERROR_INVALIDDATA;
     }
 
-    av_log(s, AV_LOG_DEBUG, "Found locator for " IMF_UUID_FORMAT ": %s\n", UID_ARG(asset_locator->uuid), asset_locator->absolute_uri);
+    av_log(s, AV_LOG_DEBUG, "Found locator for " FF_UUID_FORMAT ": %s\n", UID_ARG(asset_locator->uuid), asset_locator->absolute_uri);
 
     for (int repetition = 0; repetition < track_file_resource->base.repeat_count; ++repetition) {
         track->resources = av_realloc_f(track->resources, track->resource_count + 1, sizeof(IMFVirtualTrackResourcePlaybackCtx));
@@ -454,7 +454,7 @@ static int open_track_file_resource(AVFormatContext *s, IMFTrackFileResource *tr
     return ret;
 }
 
-static int open_virtual_track(AVFormatContext *s, IMFTrackFileVirtualTrack *virtual_track, int32_t track_index)
+static int open_virtual_track(AVFormatContext *s, FFIMFTrackFileVirtualTrack *virtual_track, int32_t track_index)
 {
     IMFContext *c = s->priv_data;
     IMFVirtualTrackPlaybackCtx *track;
@@ -469,9 +469,9 @@ static int open_virtual_track(AVFormatContext *s, IMFTrackFileVirtualTrack *virt
     track->duration = av_make_q(0, INT32_MAX);
 
     for (int i = 0; i < virtual_track->resource_count; i++) {
-        av_log(s, AV_LOG_DEBUG, "Open stream from file " IMF_UUID_FORMAT ", stream %d\n", UID_ARG(virtual_track->resources[i].track_file_uuid), i);
+        av_log(s, AV_LOG_DEBUG, "Open stream from file " FF_UUID_FORMAT ", stream %d\n", UID_ARG(virtual_track->resources[i].track_file_uuid), i);
         if ((ret = open_track_file_resource(s, &virtual_track->resources[i], track)) != 0) {
-            av_log(s, AV_LOG_ERROR, "Could not open image track resource " IMF_UUID_FORMAT "\n", UID_ARG(virtual_track->resources[i].track_file_uuid));
+            av_log(s, AV_LOG_ERROR, "Could not open image track resource " FF_UUID_FORMAT "\n", UID_ARG(virtual_track->resources[i].track_file_uuid));
             return ret;
         }
     }
@@ -563,14 +563,14 @@ static int open_cpl_tracks(AVFormatContext *s)
 
     if (c->cpl->main_image_2d_track) {
         if ((ret = open_virtual_track(s, c->cpl->main_image_2d_track, track_index++)) != 0) {
-            av_log(s, AV_LOG_ERROR, "Could not open image track " IMF_UUID_FORMAT "\n", UID_ARG(c->cpl->main_image_2d_track->base.id_uuid));
+            av_log(s, AV_LOG_ERROR, "Could not open image track " FF_UUID_FORMAT "\n", UID_ARG(c->cpl->main_image_2d_track->base.id_uuid));
             return ret;
         }
     }
 
     for (int audio_track_index = 0; audio_track_index < c->cpl->main_audio_track_count; ++audio_track_index) {
         if ((ret = open_virtual_track(s, &c->cpl->main_audio_tracks[audio_track_index], track_index++)) != 0) {
-            av_log(s, AV_LOG_ERROR, "Could not open audio track " IMF_UUID_FORMAT "\n", UID_ARG(c->cpl->main_audio_tracks[audio_track_index].base.id_uuid));
+            av_log(s, AV_LOG_ERROR, "Could not open audio track " FF_UUID_FORMAT "\n", UID_ARG(c->cpl->main_audio_tracks[audio_track_index].base.id_uuid));
             return ret;
         }
     }
@@ -593,10 +593,10 @@ static int imf_read_header(AVFormatContext *s)
 
     av_log(s, AV_LOG_DEBUG, "start parsing IMF CPL: %s\n", s->url);
 
-    if ((ret = parse_imf_cpl(s->pb, &c->cpl)) < 0)
+    if ((ret = ff_parse_imf_cpl(s->pb, &c->cpl)) < 0)
         goto fail;
 
-    av_log(s, AV_LOG_DEBUG, "parsed IMF CPL: " IMF_UUID_FORMAT "\n", UID_ARG(c->cpl->id_uuid));
+    av_log(s, AV_LOG_DEBUG, "parsed IMF CPL: " FF_UUID_FORMAT "\n", UID_ARG(c->cpl->id_uuid));
 
     if (!c->asset_map_paths) {
         c->asset_map_paths = av_append_path_component(c->base_url, "ASSETMAP.xml");
@@ -751,7 +751,7 @@ static int imf_close(AVFormatContext *s)
     av_dict_free(&c->avio_opts);
     av_freep(&c->base_url);
     imf_asset_locator_map_free(c->asset_locator_map);
-    imf_cpl_free(c->cpl);
+    ff_imf_cpl_free(c->cpl);
 
     for (int i = 0; i < c->track_count; ++i) {
         imf_virtual_track_playback_context_free(c->tracks[i]);
