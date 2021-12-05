@@ -82,6 +82,7 @@ CHANGE NOTES:
 - fixed rational initialization
 - removed extraneous call to xmlCleanupParser()
 - fix if/for single line braces
+- replace av_realloc_f with av_fast_realloc when allocating CPL Resources
 "
 
 # add tests back to the Makefile
