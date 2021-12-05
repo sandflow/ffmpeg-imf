@@ -86,8 +86,8 @@ CHANGE NOTES:
 
 # add tests back to the Makefile
 sed -i "/^TESTPROGS-\$(CONFIG_SRTP)/a TESTPROGS-\$(CONFIG_IMF_DEMUXER)          += imf" $PATCHES_MAKEFILE
-git add -- $PATCHES_IMF_TESTS $PATCHES_MAKEFILE
-git commit -m "${PATCH_NAME}: Tests" -- $PATCHES_IMF_TESTS $PATCHES_MAKEFILE
+git add -- $PATCHES_TESTS $PATCHES_MAKEFILE
+git commit -m "${PATCH_NAME}: Tests" -- $PATCHES_TESTS $PATCHES_MAKEFILE
 git notes add -m "Tests for the IMF demuxer."
 
 mkdir -p $PATCHES_DIR
