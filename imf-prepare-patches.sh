@@ -30,9 +30,7 @@ git rebase $BASE_BRANCH
 
 git reset $BASE_BRANCH
 
-AUGMENTED=" * POSSIBILITY OF SUCH DAMAGE.\n\
- *\n\
- * This file is part of FFmpeg.\n\
+AUGMENTED=" * This file is part of FFmpeg.\n\
  *\n\
  * FFmpeg is free software; you can redistribute it and\/or\n\
  * modify it under the terms of the GNU Lesser General Public\n\
@@ -46,10 +44,12 @@ AUGMENTED=" * POSSIBILITY OF SUCH DAMAGE.\n\
  *\n\
  * You should have received a copy of the GNU Lesser General Public\n\
  * License along with FFmpeg; if not, write to the Free Software\n\
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA"
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA\n\
+ *\\/\n\
+\n\
+\\/*"
 
-sed -i "/^ \* This file is part of FFmpeg\./,+1 d" $PATCHES_IMF_HEADERS $PATCHES_IMF_DEC $PATCHES_IMF_CPL $PATCHES_IMF_TESTS 
-sed -i "s/^ \* POSSIBILITY OF SUCH DAMAGE\./$AUGMENTED/" $PATCHES_IMF_HEADERS $PATCHES_IMF_DEC $PATCHES_IMF_CPL $PATCHES_IMF_TESTS
+sed -i "s/^ \* This file is part of FFmpeg\./$AUGMENTED/" $PATCHES_IMF_HEADERS $PATCHES_IMF_DEC $PATCHES_IMF_CPL $PATCHES_IMF_TESTS
 
 git add -- $PATCHES_ALL
 
