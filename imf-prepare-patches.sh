@@ -85,7 +85,7 @@ CHANGE NOTES:
 "
 
 # reset the makefile
-git checkout $PATCHES_MAKEFILE
+git checkout -f $PATCH_BRANCH -- $PATCHES_MAKEFILE
 
 git add -- $PATCHES_IMF_TESTS $PATCHES_MAKEFILE
 git commit -m "${PATCH_NAME}: Tests" -- $PATCHES_IMF_TESTS $PATCHES_MAKEFILE
