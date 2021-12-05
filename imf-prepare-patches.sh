@@ -51,7 +51,7 @@ GPLCC=" * This file is part of FFmpeg.\n\
 sed -i "s/^ \* This file is part of FFmpeg\./$GPLCC/" $PATCHES_SRC
 
 # remove tests from Makefile
-sed -i "/^TESTPROGS-$(CONFIG_IMF_DEMUXER)/,+1 d" $PATCHES_MAKEFILE
+sed -i "/^TESTPROGS-\$\(CONFIG_IMF_DEMUXER\)/,+1 d" $PATCHES_MAKEFILE
 
 git add -- $PATCHES_SRC $PATCHES_MISC $PATCHES_MAKEFILE
 git commit -m "${PATCH_NAME}: Demuxer" -- $PATCHES_SRC $PATCHES_MISC $PATCHES_MAKEFILE
