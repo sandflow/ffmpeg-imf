@@ -73,7 +73,7 @@ typedef struct IMFAssetLocator {
  * Results from the parsing of one or more ASSETMAP XML files
  */
 typedef struct IMFAssetLocatorMap {
-    uint8_t asset_count;
+    uint32_t asset_count;
     IMFAssetLocator *assets;
 } IMFAssetLocatorMap;
 
@@ -158,6 +158,7 @@ static int parse_imf_asset_map_from_xml_dom(AVFormatContext *s,
 {
     xmlNodePtr asset_map_element = NULL;
     xmlNodePtr node = NULL;
+    xmlNodePtr asset_element = NULL;
     char *uri;
     int ret = 0;
     IMFAssetLocator *asset = NULL;
@@ -192,21 +193,21 @@ static int parse_imf_asset_map_from_xml_dom(AVFormatContext *s,
         return AVERROR(ENOMEM);
     }
     asset_map->asset_count = 0;
-    node = xmlFirstElementChild(node);
-    while (node) {
-        if (av_strcasecmp(node->name, "Asset") != 0)
+    asset_element = xmlFirstElementChild(node);
+    while (asset_element) {
+        if (av_strcasecmp(asset_element->name, "Asset") != 0)
             continue;
 
         asset = &(asset_map->assets[asset_map->asset_count]);
 
-        if (ff_xml_read_UUID(ff_xml_get_child_element_by_name(node, "Id"), asset->uuid)) {
+        if (ff_xml_read_UUID(ff_xml_get_child_element_by_name(asset_element, "Id"), asset->uuid)) {
             av_log(s, AV_LOG_ERROR, "Could not parse UUID from asset in asset map.\n");
             return AVERROR_INVALIDDATA;
         }
 
         av_log(s, AV_LOG_DEBUG, "Found asset id: " FF_UUID_FORMAT "\n", UID_ARG(asset->uuid));
 
-        if (!(node = ff_xml_get_child_element_by_name(node, "ChunkList"))) {
+        if (!(node = ff_xml_get_child_element_by_name(asset_element, "ChunkList"))) {
             av_log(s, AV_LOG_ERROR, "Unable to parse asset map XML - missing ChunkList node\n");
             return AVERROR_INVALIDDATA;
         }
@@ -230,7 +231,7 @@ static int parse_imf_asset_map_from_xml_dom(AVFormatContext *s,
         av_log(s, AV_LOG_DEBUG, "Found asset absolute URI: %s\n", asset->absolute_uri);
 
         asset_map->asset_count++;
-        node = xmlNextElementSibling(node);
+        asset_element = xmlNextElementSibling(asset_element);
     }
 
     return ret;
