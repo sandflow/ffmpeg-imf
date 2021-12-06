@@ -90,8 +90,8 @@ typedef struct IMFVirtualTrackPlaybackCtx {
     AVRational current_timestamp;
     AVRational duration;
     // Resources
-    unsigned int resource_count;
-    unsigned int resources_alloc_sz;
+    uint32_t resource_count;
+    uint32_t resources_alloc_sz;
     IMFVirtualTrackResourcePlaybackCtx *resources;
     // Decoding cursors
     uint32_t current_resource_index;
@@ -106,7 +106,7 @@ typedef struct IMFContext {
     AVDictionary *avio_opts;
     FFIMFCPL *cpl;
     IMFAssetLocatorMap *asset_locator_map;
-    unsigned int track_count;
+    uint32_t track_count;
     IMFVirtualTrackPlaybackCtx **tracks;
 } IMFContext;
 
@@ -200,7 +200,7 @@ static int parse_imf_asset_map_from_xml_dom(AVFormatContext *s,
 
         asset = &(asset_map->assets[asset_map->asset_count]);
 
-        if (ff_xml_read_UUID(ff_xml_get_child_element_by_name(asset_element, "Id"), asset->uuid)) {
+        if (ff_xml_read_uuid(ff_xml_get_child_element_by_name(asset_element, "Id"), asset->uuid)) {
             av_log(s, AV_LOG_ERROR, "Could not parse UUID from asset in asset map.\n");
             return AVERROR_INVALIDDATA;
         }
@@ -262,8 +262,8 @@ static void imf_asset_locator_map_free(IMFAssetLocatorMap *asset_map)
     if (!asset_map)
         return;
 
-    for (int i = 0; i < asset_map->asset_count; ++i) {
-        av_free(asset_map->assets[i].absolute_uri);
+    for(uint32_t i = 0; i < asset_map->asset_count; ++i) {
+        av_freep(&asset_map->assets[i].absolute_uri);
     }
 
     av_freep(&asset_map->assets);
@@ -307,7 +307,7 @@ static int parse_assetmap(AVFormatContext *s, const char *url, AVIOContext *in)
     } else {
         LIBXML_TEST_VERSION
 
-        tmp_str = strdup(url);
+        tmp_str = av_strdup(url);
         if (!tmp_str) {
             av_log(s, AV_LOG_PANIC, "Unable to duplicate string\n");
             ret = AVERROR(ENOMEM);
@@ -337,7 +337,7 @@ static int parse_assetmap(AVFormatContext *s, const char *url, AVIOContext *in)
 
 clean_up:
     if (tmp_str)
-        free(tmp_str);
+        av_freep(&tmp_str);
     if (close_in)
         avio_close(in);
     av_bprint_finalize(&buf, NULL);
@@ -347,7 +347,7 @@ clean_up:
 
 static IMFAssetLocator *find_asset_map_locator(IMFAssetLocatorMap *asset_map, FFUUID uuid)
 {
-    for (int i = 0; i < asset_map->asset_count; ++i)
+    for(uint32_t i = 0; i < asset_map->asset_count; ++i)
         if (memcmp(asset_map->assets[i].uuid, uuid, 16) == 0)
             return &(asset_map->assets[i]);
     return NULL;
@@ -427,7 +427,7 @@ static int open_track_resource_context(AVFormatContext *s,
     if (entry_point) {
         av_log(s,
             AV_LOG_DEBUG,
-            "Seek at resource %s entry point: %ld\n",
+            "Seek at resource %s entry point: %" PRIu32 "\n",
             track_resource->locator->absolute_uri,
             track_resource->resource->base.entry_point);
         ret = avformat_seek_file(track_resource->ctx, -1, entry_point, entry_point, entry_point, 0);
@@ -481,7 +481,7 @@ static int open_track_file_resource(AVFormatContext *s,
         return AVERROR(ENOMEM);
     }
 
-    for (int i = 0; i < track_file_resource->base.repeat_count; ++i) {
+    for(uint32_t i = 0; i < track_file_resource->base.repeat_count; ++i) {
         vt_ctx.locator = asset_locator;
         vt_ctx.resource = track_file_resource;
         vt_ctx.ctx = NULL;
@@ -512,7 +512,7 @@ static int open_virtual_track(AVFormatContext *s,
     track->index = track_index;
     track->duration = av_make_q(0, 1);
 
-    for (int i = 0; i < virtual_track->resource_count; i++) {
+    for (uint32_t i = 0; i < virtual_track->resource_count; i++) {
         av_log(s,
             AV_LOG_DEBUG,
             "Open stream from file " FF_UUID_FORMAT ", stream %d\n",
@@ -544,7 +544,7 @@ static void imf_virtual_track_playback_context_free(IMFVirtualTrackPlaybackCtx *
     if (!track)
         return;
 
-    for (int i = 0; i < track->resource_count; ++i)
+    for(uint32_t i = 0; i < track->resource_count; ++i)
         if (track->resources[i].ctx && track->resources[i].ctx->iformat) {
             avformat_close_input(&(track->resources[i].ctx));
             track->resources[i].ctx = NULL;
@@ -562,7 +562,7 @@ static int set_context_streams_from_tracks(AVFormatContext *s)
 
     int ret = 0;
 
-    for (int i = 0; i < c->track_count; ++i) {
+    for(uint32_t i = 0; i < c->track_count; ++i) {
         // Open the first resource of the track to get stream information
         first_resource_stream = c->tracks[i]->resources[0].ctx->streams[0];
 
@@ -623,7 +623,7 @@ static int open_cpl_tracks(AVFormatContext *s)
             return ret;
         }
 
-    for (int i = 0; i < c->cpl->main_audio_track_count; ++i)
+    for(uint32_t i = 0; i < c->cpl->main_audio_track_count; ++i)
         if ((ret = open_virtual_track(s, &c->cpl->main_audio_tracks[i], track_index++)) != 0) {
             av_log(s,
                 AV_LOG_ERROR,
@@ -641,10 +641,16 @@ static int imf_read_header(AVFormatContext *s)
 {
     IMFContext *c = s->priv_data;
     char *asset_map_path;
+    char *tmp_str;
     int ret;
 
     c->interrupt_callback = &s->interrupt_callback;
-    c->base_url = av_dirname(av_strdup(s->url));
+    tmp_str = av_strdup(s->url);
+    if (!tmp_str) {
+        ret = AVERROR(ENOMEM);
+        goto fail;
+    }
+    c->base_url = av_dirname(tmp_str);
     if ((ret = save_avio_options(s)) < 0)
         goto fail;
 
@@ -658,18 +664,24 @@ static int imf_read_header(AVFormatContext *s)
         "parsed IMF CPL: " FF_UUID_FORMAT "\n",
         UID_ARG(c->cpl->id_uuid));
 
-    if (!c->asset_map_paths)
+    if (!c->asset_map_paths) {
         c->asset_map_paths = av_append_path_component(c->base_url, "ASSETMAP.xml");
+        if (!c->asset_map_paths) {
+            av_log(NULL, AV_LOG_PANIC, "Cannot allocate asset map paths\n");
+            ret = AVERROR(ENOMEM);
+            goto fail;
+        }
+    }
 
     // Parse each asset map XML file
-    asset_map_path = strtok(c->asset_map_paths, ",");
+    asset_map_path = av_strtok(c->asset_map_paths, ",", &tmp_str);
     while (asset_map_path != NULL) {
         av_log(s, AV_LOG_DEBUG, "start parsing IMF Asset Map: %s\n", asset_map_path);
 
         if ((ret = parse_assetmap(s, asset_map_path, NULL)) < 0)
             goto fail;
 
-        asset_map_path = strtok(NULL, ",");
+        asset_map_path = av_strtok(NULL, ",", &tmp_str);
     }
 
     av_log(s, AV_LOG_DEBUG, "parsed IMF Asset Maps\n");
@@ -691,7 +703,7 @@ static IMFVirtualTrackPlaybackCtx *get_next_track_with_minimum_timestamp(AVForma
     IMFVirtualTrackPlaybackCtx *track;
 
     AVRational minimum_timestamp = av_make_q(INT32_MAX, 1);
-    for (int i = 0; i < c->track_count; ++i) {
+    for(uint32_t i = 0; i < c->track_count; ++i) {
         av_log(
             s,
             AV_LOG_DEBUG,
@@ -730,7 +742,7 @@ static IMFVirtualTrackResourcePlaybackCtx *get_resource_context_for_timestamp(AV
         track->index,
         av_q2d(track->current_timestamp),
         av_q2d(track->duration));
-    for (int i = 0; i < track->resource_count; ++i) {
+    for(uint32_t i = 0; i < track->resource_count; ++i) {
         cumulated_duration = av_add_q(cumulated_duration,
             av_make_q((int)track->resources[i].resource->base.duration * edit_unit_duration.num,
                 edit_unit_duration.den));
@@ -739,7 +751,9 @@ static IMFVirtualTrackResourcePlaybackCtx *get_resource_context_for_timestamp(AV
             av_log(s,
                 AV_LOG_DEBUG,
                 "Found resource %d in track %d to read for timestamp %lf "
-                "(on cumulated=%lf): entry=%ld, duration=%lu, editrate=" AVRATIONAL_FORMAT
+                "(on cumulated=%lf): entry=%" PRIu32
+                ", duration=%" PRIu32
+                ", editrate=" AVRATIONAL_FORMAT
                 " | edit_unit_duration=%lf\n",
                 i,
                 track->index,
@@ -848,12 +862,12 @@ static int imf_close(AVFormatContext *s)
     imf_asset_locator_map_free(c->asset_locator_map);
     ff_imf_cpl_free(c->cpl);
 
-    for (int i = 0; i < c->track_count; ++i) {
+    for(uint32_t i = 0; i < c->track_count; ++i) {
         imf_virtual_track_playback_context_free(c->tracks[i]);
-        av_freep(&(c->tracks[i]));
+        av_freep(&c->tracks[i]);
     }
 
-    av_freep(&(c->tracks));
+    av_freep(&c->tracks);
 
     return 0;
 }

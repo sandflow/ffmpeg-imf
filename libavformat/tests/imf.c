@@ -290,28 +290,28 @@ static int test_cpl_parsing(void)
     printf(FF_UUID_FORMAT "\n", UID_ARG(cpl->id_uuid));
     printf("%i %i\n", cpl->edit_rate.num, cpl->edit_rate.den);
 
-    printf("Marker resource count: %lu\n", cpl->main_markers_track->resource_count);
-    for (unsigned long i = 0; i < cpl->main_markers_track->resource_count; i++) {
-        printf("Marker resource %lu\n", i);
-        for (unsigned long j = 0; j < cpl->main_markers_track->resources[i].marker_count; j++) {
-            printf("  Marker %lu\n", j);
+    printf("Marker resource count: %" PRIu32 "\n", cpl->main_markers_track->resource_count);
+    for (uint32_t i = 0; i < cpl->main_markers_track->resource_count; i++) {
+        printf("Marker resource %" PRIu32 "\n", i);
+        for (uint32_t j = 0; j < cpl->main_markers_track->resources[i].marker_count; j++) {
+            printf("  Marker %" PRIu32 "\n", j);
             printf("    Label %s\n", cpl->main_markers_track->resources[i].markers[j].label_utf8);
-            printf("    Offset %lu\n", cpl->main_markers_track->resources[i].markers[j].offset);
+            printf("    Offset %" PRIu32 "\n", cpl->main_markers_track->resources[i].markers[j].offset);
         }
     }
 
-    printf("Main image resource count: %lu\n", cpl->main_image_2d_track->resource_count);
-    for (unsigned long i = 0; i < cpl->main_image_2d_track->resource_count; i++) {
-        printf("Track file resource %lu\n", i);
+    printf("Main image resource count: %" PRIu32 "\n", cpl->main_image_2d_track->resource_count);
+    for (uint32_t i = 0; i < cpl->main_image_2d_track->resource_count; i++) {
+        printf("Track file resource %" PRIu32 "\n", i);
         printf("  " FF_UUID_FORMAT "\n", UID_ARG(cpl->main_image_2d_track->resources[i].track_file_uuid));
     }
 
-    printf("Main audio track count: %lu\n", cpl->main_audio_track_count);
-    for (unsigned long i = 0; i < cpl->main_audio_track_count; i++) {
-        printf("  Main audio virtual track %lu\n", i);
-        printf("  Main audio resource count: %lu\n", cpl->main_audio_tracks[i].resource_count);
-        for (unsigned long j = 0; j < cpl->main_audio_tracks[i].resource_count; j++) {
-            printf("  Track file resource %lu\n", j);
+    printf("Main audio track count: %" PRIu32 "\n", cpl->main_audio_track_count);
+    for (uint32_t i = 0; i < cpl->main_audio_track_count; i++) {
+        printf("  Main audio virtual track %" PRIu32 "\n", i);
+        printf("  Main audio resource count: %" PRIu32 "\n", cpl->main_audio_tracks[i].resource_count);
+        for (uint32_t j = 0; j < cpl->main_audio_tracks[i].resource_count; j++) {
+            printf("  Track file resource %" PRIu32 "\n", j);
             printf("    " FF_UUID_FORMAT "\n", UID_ARG(cpl->main_audio_tracks[i].resources[j].track_file_uuid));
         }
     }
@@ -349,7 +349,7 @@ static int check_asset_locator_attributes(IMFAssetLocator *asset, IMFAssetLocato
     printf("\tCompare " FF_UUID_FORMAT " to " FF_UUID_FORMAT ".\n",
         UID_ARG(asset->uuid),
         UID_ARG(expected_asset->uuid));
-    for (int i = 0; i < 16; ++i) {
+    for(uint32_t i = 0; i < 16; ++i) {
         if (asset->uuid[i] != expected_asset->uuid[i]) {
             printf("Invalid asset locator UUID: found " FF_UUID_FORMAT " instead of " FF_UUID_FORMAT " expected.\n",
                 UID_ARG(asset->uuid),
@@ -412,7 +412,7 @@ static int test_asset_map_parsing(void)
         goto cleanup;
     }
 
-    for (int i = 0; i < asset_locator_map->asset_count; ++i) {
+    for(uint32_t i = 0; i < asset_locator_map->asset_count; ++i) {
         printf("For asset: %d:\n", i);
         ret = check_asset_locator_attributes(&(asset_locator_map->assets[i]),
             &(ASSET_MAP_EXPECTED_LOCATORS[i]));
@@ -450,7 +450,7 @@ static const PathTypeTestStruct PATH_TYPE_TEST_STRUCTS[11] = {
 static int test_path_type_functions(void)
 {
     PathTypeTestStruct path_type;
-    for (int i = 0; i < 11; ++i) {
+    for(uint32_t i = 0; i < 11; ++i) {
         path_type = PATH_TYPE_TEST_STRUCTS[i];
         if (imf_uri_is_url(path_type.path) != path_type.is_url) {
             fprintf(stderr,

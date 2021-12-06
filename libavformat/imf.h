@@ -43,8 +43,9 @@
 #include "libavutil/rational.h"
 #include <libxml/tree.h>
 
-#define FF_UUID_FORMAT "urn:uuid:%02hhx%02hhx%02hhx%02hhx-%02hhx%02hhx-"\
-                       "%02hhx%02hhx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx"
+#define FF_UUID_FORMAT                                \
+    "urn:uuid:%02hhx%02hhx%02hhx%02hhx-%02hhx%02hhx-" \
+    "%02hhx%02hhx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx"
 
 /**
  * UUID as defined in IETF RFC 422
@@ -55,10 +56,10 @@ typedef uint8_t FFUUID[16];
  * IMF Composition Playlist Base Resource
  */
 typedef struct FFIMFBaseResource {
-    AVRational edit_rate;       /**< BaseResourceType/EditRate */
-    unsigned long entry_point;  /**< BaseResourceType/EntryPoint */
-    unsigned long duration;     /**< BaseResourceType/Duration */
-    unsigned long repeat_count; /**< BaseResourceType/RepeatCount */
+    AVRational edit_rate;  /**< BaseResourceType/EditRate */
+    uint32_t entry_point;  /**< BaseResourceType/EntryPoint */
+    uint32_t duration;     /**< BaseResourceType/Duration */
+    uint32_t repeat_count; /**< BaseResourceType/RepeatCount */
 } FFIMFBaseResource;
 
 /**
@@ -73,9 +74,9 @@ typedef struct FFIMFTrackFileResource {
  * IMF Marker
  */
 typedef struct FFIMFMarker {
-    xmlChar *label_utf8;  /**< Marker/Label */
-    xmlChar *scope_utf8;  /**< Marker/Label/\@scope */
-    unsigned long offset; /**< Marker/Offset */
+    xmlChar *label_utf8; /**< Marker/Label */
+    xmlChar *scope_utf8; /**< Marker/Label/\@scope */
+    uint32_t offset;     /**< Marker/Offset */
 } FFIMFMarker;
 
 /**
@@ -83,8 +84,8 @@ typedef struct FFIMFMarker {
  */
 typedef struct FFIMFMarkerResource {
     FFIMFBaseResource base;
-    unsigned long marker_count; /**< Number of Marker elements */
-    FFIMFMarker *markers;       /**< Marker elements */
+    uint32_t marker_count; /**< Number of Marker elements */
+    FFIMFMarker *markers;  /**< Marker elements */
 } FFIMFMarkerResource;
 
 /**
@@ -99,9 +100,9 @@ typedef struct FFIMFBaseVirtualTrack {
  */
 typedef struct FFIMFTrackFileVirtualTrack {
     FFIMFBaseVirtualTrack base;
-    unsigned long resource_count;      /**< Number of Resource elements present in the Virtual Track */
+    uint32_t resource_count;           /**< Number of Resource elements present in the Virtual Track */
     FFIMFTrackFileResource *resources; /**< Resource elements of the Virtual Track */
-    unsigned int resources_alloc_sz;   /**< Size of the resources buffer */
+    uint32_t resources_alloc_sz;       /**< Size of the resources buffer */
 } FFIMFTrackFileVirtualTrack;
 
 /**
@@ -109,7 +110,7 @@ typedef struct FFIMFTrackFileVirtualTrack {
  */
 typedef struct FFIMFMarkerVirtualTrack {
     FFIMFBaseVirtualTrack base;
-    unsigned long resource_count;   /**< Number of Resource elements present in the Virtual Track */
+    uint32_t resource_count;        /**< Number of Resource elements present in the Virtual Track */
     FFIMFMarkerResource *resources; /**< Resource elements of the Virtual Track */
 } FFIMFMarkerVirtualTrack;
 
@@ -122,7 +123,7 @@ typedef struct FFIMFCPL {
     AVRational edit_rate;                            /**< CompositionPlaylist/EditRate element */
     FFIMFMarkerVirtualTrack *main_markers_track;     /**< Main Marker Virtual Track */
     FFIMFTrackFileVirtualTrack *main_image_2d_track; /**< Main Image Virtual Track */
-    unsigned long main_audio_track_count;            /**< Number of Main Audio Virtual Tracks */
+    uint32_t main_audio_track_count;                 /**< Number of Main Audio Virtual Tracks */
     FFIMFTrackFileVirtualTrack *main_audio_tracks;   /**< Main Audio Virtual Tracks */
 } FFIMFCPL;
 
@@ -163,10 +164,10 @@ FFIMFCPL *ff_imf_cpl_alloc(void);
 void ff_imf_cpl_free(FFIMFCPL *cpl);
 
 /**
- * Reads an unsigned long from an XML element
+ * Reads an unsigned 32-bit integer from an XML element
  * @return 0 on success, < 0 AVERROR code on error.
  */
-int ff_xml_read_ulong(xmlNodePtr element, unsigned long *number);
+int ff_xml_read_uint32(xmlNodePtr element, uint32_t *number);
 
 /**
  * Reads an AVRational from an XML element
@@ -178,7 +179,7 @@ int ff_xml_read_rational(xmlNodePtr element, AVRational *rational);
  * Reads a UUID from an XML element
  * @return 0 on success, < 0 AVERROR code on error.
  */
-int ff_xml_read_UUID(xmlNodePtr element, uint8_t uuid[16]);
+int ff_xml_read_uuid(xmlNodePtr element, uint8_t uuid[16]);
 
 /**
  * Returns the first child element with the specified local name
