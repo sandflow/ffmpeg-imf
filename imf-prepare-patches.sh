@@ -2,7 +2,7 @@
 
 set -e
 
-PATCH_VERSION="6"
+PATCH_VERSION="7"
 
 PATCH_NAME="avformat/imf"
 
@@ -82,7 +82,8 @@ CHANGE NOTES:
 - fixed rational initialization
 - removed extraneous call to xmlCleanupParser()
 - fix if/for single line braces
-- replace av_realloc_f with av_fast_realloc when allocating CPL Resources
+- replace av_realloc_f with av_fast_realloc when allocating CPL Resources and
+  ASSETMAP assets
 "
 
 # add tests back to the Makefile

@@ -74,7 +74,7 @@ typedef struct IMFAssetLocator {
  */
 typedef struct IMFAssetLocatorMap {
     uint8_t asset_count;
-    IMFAssetLocator **assets;
+    IMFAssetLocator *assets;
 } IMFAssetLocatorMap;
 
 typedef struct IMFVirtualTrackResourcePlaybackCtx {
@@ -184,34 +184,36 @@ static int parse_imf_asset_map_from_xml_dom(AVFormatContext *s,
         av_log(s, AV_LOG_ERROR, "Unable to parse asset map XML - missing AssetList node\n");
         return AVERROR_INVALIDDATA;
     }
-
+    asset_map->assets = av_realloc_f(asset_map->assets,
+        xmlChildElementCount(node),
+        sizeof(IMFAssetLocator));
+    if (!asset_map->assets) {
+        av_log(NULL, AV_LOG_PANIC, "Cannot allocate IMF asset locators\n");
+        return AVERROR(ENOMEM);
+    }
+    asset_map->asset_count = 0;
     node = xmlFirstElementChild(node);
     while (node) {
         if (av_strcasecmp(node->name, "Asset") != 0)
             continue;
 
-        asset = av_malloc(sizeof(IMFAssetLocator));
-        if (!asset)
-            return AVERROR(ENOMEM);
+        asset = &(asset_map->assets[asset_map->asset_count]);
 
         if (ff_xml_read_UUID(ff_xml_get_child_element_by_name(node, "Id"), asset->uuid)) {
             av_log(s, AV_LOG_ERROR, "Could not parse UUID from asset in asset map.\n");
-            ret = AVERROR_INVALIDDATA;
-            goto clean_up_asset;
+            return AVERROR_INVALIDDATA;
         }
 
         av_log(s, AV_LOG_DEBUG, "Found asset id: " FF_UUID_FORMAT "\n", UID_ARG(asset->uuid));
 
         if (!(node = ff_xml_get_child_element_by_name(node, "ChunkList"))) {
             av_log(s, AV_LOG_ERROR, "Unable to parse asset map XML - missing ChunkList node\n");
-            ret = AVERROR_INVALIDDATA;
-            goto clean_up_asset;
+            return AVERROR_INVALIDDATA;
         }
 
         if (!(node = ff_xml_get_child_element_by_name(node, "Chunk"))) {
             av_log(s, AV_LOG_ERROR, "Unable to parse asset map XML - missing Chunk node\n");
-            ret = AVERROR_INVALIDDATA;
-            goto clean_up_asset;
+            return AVERROR_INVALIDDATA;
         }
 
         uri = xmlNodeGetContent(ff_xml_get_child_element_by_name(node, "Path"));
@@ -222,28 +224,13 @@ static int parse_imf_asset_map_from_xml_dom(AVFormatContext *s,
         xmlFree(uri);
         if (!asset->absolute_uri) {
             av_log(NULL, AV_LOG_PANIC, "Cannot allocate asset locator absolute URI\n");
-            ret = AVERROR(ENOMEM);
-            goto clean_up_asset;
+            return AVERROR(ENOMEM);
         }
 
         av_log(s, AV_LOG_DEBUG, "Found asset absolute URI: %s\n", asset->absolute_uri);
 
-        node = xmlNextElementSibling(node->parent->parent);
-
-        asset_map->assets = av_realloc_f(asset_map->assets,
-            asset_map->asset_count + 1,
-            sizeof(IMFAssetLocator));
-        if (!asset_map->assets) {
-            av_log(NULL, AV_LOG_PANIC, "Cannot allocate IMF asset locators\n");
-            ret = AVERROR(ENOMEM);
-            goto clean_up_asset;
-        }
-        asset_map->assets[asset_map->asset_count++] = asset;
-        continue;
-
-    clean_up_asset:
-        av_freep(&asset);
-        return ret;
+        asset_map->asset_count++;
+        node = xmlNextElementSibling(node);
     }
 
     return ret;
@@ -275,8 +262,7 @@ static void imf_asset_locator_map_free(IMFAssetLocatorMap *asset_map)
         return;
 
     for (int i = 0; i < asset_map->asset_count; ++i) {
-        av_free(asset_map->assets[i]->absolute_uri);
-        av_free(asset_map->assets[i]);
+        av_free(asset_map->assets[i].absolute_uri);
     }
 
     av_freep(&asset_map->assets);
@@ -360,12 +346,9 @@ clean_up:
 
 static IMFAssetLocator *find_asset_map_locator(IMFAssetLocatorMap *asset_map, FFUUID uuid)
 {
-    IMFAssetLocator *asset_locator;
-    for (int i = 0; i < asset_map->asset_count; ++i) {
-        asset_locator = asset_map->assets[i];
-        if (memcmp(asset_map->assets[i]->uuid, uuid, 16) == 0)
-            return asset_locator;
-    }
+    for (int i = 0; i < asset_map->asset_count; ++i)
+        if (memcmp(asset_map->assets[i].uuid, uuid, 16) == 0)
+            return &(asset_map->assets[i]);
     return NULL;
 }
 

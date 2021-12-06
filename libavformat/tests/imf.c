@@ -343,26 +343,26 @@ static int test_bad_cpl_parsing(void)
     return 0;
 }
 
-static int check_asset_locator_attributes(IMFAssetLocator *asset, IMFAssetLocator expected_asset)
+static int check_asset_locator_attributes(IMFAssetLocator *asset, IMFAssetLocator *expected_asset)
 {
 
     printf("\tCompare " FF_UUID_FORMAT " to " FF_UUID_FORMAT ".\n",
         UID_ARG(asset->uuid),
-        UID_ARG(expected_asset.uuid));
+        UID_ARG(expected_asset->uuid));
     for (int i = 0; i < 16; ++i) {
-        if (asset->uuid[i] != expected_asset.uuid[i]) {
+        if (asset->uuid[i] != expected_asset->uuid[i]) {
             printf("Invalid asset locator UUID: found " FF_UUID_FORMAT " instead of " FF_UUID_FORMAT " expected.\n",
                 UID_ARG(asset->uuid),
-                UID_ARG(expected_asset.uuid));
+                UID_ARG(expected_asset->uuid));
             return 1;
         }
     }
 
-    printf("\tCompare %s to %s.\n", asset->absolute_uri, expected_asset.absolute_uri);
-    if (strcmp(asset->absolute_uri, expected_asset.absolute_uri) != 0) {
+    printf("\tCompare %s to %s.\n", asset->absolute_uri, expected_asset->absolute_uri);
+    if (strcmp(asset->absolute_uri, expected_asset->absolute_uri) != 0) {
         printf("Invalid asset locator URI: found %s instead of %s expected.\n",
             asset->absolute_uri,
-            expected_asset.absolute_uri);
+            expected_asset->absolute_uri);
         return 1;
     }
 
@@ -414,8 +414,8 @@ static int test_asset_map_parsing(void)
 
     for (int i = 0; i < asset_locator_map->asset_count; ++i) {
         printf("For asset: %d:\n", i);
-        ret = check_asset_locator_attributes(asset_locator_map->assets[i],
-            ASSET_MAP_EXPECTED_LOCATORS[i]);
+        ret = check_asset_locator_attributes(&(asset_locator_map->assets[i]),
+            &(ASSET_MAP_EXPECTED_LOCATORS[i]));
         if (ret > 0)
             goto cleanup;
     }
