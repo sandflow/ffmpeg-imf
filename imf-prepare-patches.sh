@@ -48,7 +48,7 @@ GPLCC=" * This file is part of FFmpeg.\n\
 \n\
 \\/*"
 
-sed -i "s/^ \* This file is part of FFmpeg\./$GPLCC/" $PATCHES_SRC
+sed -i "s/^ \* This file is part of FFmpeg\./$GPLCC/" $PATCHES_SRC $PATCHES_TESTS
 
 # remove tests from Makefile
 sed -i "/^TESTPROGS-\$(CONFIG_IMF_DEMUXER)/d" $PATCHES_MAKEFILE
