@@ -51,7 +51,7 @@ GPLCC=" * This file is part of FFmpeg.\n\
 sed -i "s/^ \* This file is part of FFmpeg\./$GPLCC/" $PATCHES_SRC $PATCHES_TESTS
 
 # remove MXF documentation
-sed -i "/^\@section mxf/d,+12d" doc/demuxers.texi 
+sed -i "/^@section mxf/,+12d" doc/demuxers.texi 
 
 # remove clang formatting commands
 sed -i "/^\\/\\/ clang-format/d" $PATCHES_SRC $PATCHES_TESTS
