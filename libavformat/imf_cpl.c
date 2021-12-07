@@ -325,9 +325,8 @@ static int fill_marker_resource(xmlNodePtr marker_resource_elem,
         if (xmlStrcmp(element->name, "Marker") == 0) {
             tmp = av_realloc(marker_resource->markers,
                 (marker_resource->marker_count + 1) * sizeof(FFIMFMarker));
-            if (!tmp) {
+            if (!tmp)
                 return AVERROR(ENOMEM);
-            }
             marker_resource->markers = tmp;
             imf_marker_init(&marker_resource->markers[marker_resource->marker_count]);
             ret = fill_marker(element,
@@ -369,9 +368,8 @@ static int push_marker_sequence(xmlNodePtr marker_sequence_elem, FFIMFCPL *cpl)
     /* create main marker virtual track if it does not exist */
     if (!cpl->main_markers_track) {
         cpl->main_markers_track = av_malloc(sizeof(FFIMFMarkerVirtualTrack));
-        if (!cpl->main_markers_track) {
+        if (!cpl->main_markers_track)
             return AVERROR(ENOMEM);
-        }
         imf_marker_virtual_track_init(cpl->main_markers_track);
         memcpy(cpl->main_markers_track->base.id_uuid, uuid, sizeof(uuid));
     } else if (memcmp(cpl->main_markers_track->base.id_uuid, uuid, sizeof(uuid)) != 0) {
@@ -458,9 +456,8 @@ static int push_main_audio_sequence(xmlNodePtr audio_sequence_elem, FFIMFCPL *cp
     if (!vt) {
         tmp = av_realloc(cpl->main_audio_tracks,
             (cpl->main_audio_track_count + 1) * sizeof(FFIMFTrackFileVirtualTrack));
-        if (!tmp) {
+        if (!tmp)
             return AVERROR(ENOMEM);
-        }
         cpl->main_audio_tracks = tmp;
         vt = &cpl->main_audio_tracks[cpl->main_audio_track_count];
         imf_trackfile_virtual_track_init(vt);
@@ -528,9 +525,8 @@ static int push_main_image_2d_sequence(xmlNodePtr image_sequence_elem, FFIMFCPL 
     /* create main image virtual track if one does not exist */
     if (!cpl->main_image_2d_track) {
         cpl->main_image_2d_track = av_malloc(sizeof(FFIMFTrackFileVirtualTrack));
-        if (!cpl->main_image_2d_track) {
+        if (!cpl->main_image_2d_track)
             return AVERROR(ENOMEM);
-        }
         imf_trackfile_virtual_track_init(cpl->main_image_2d_track);
         memcpy(cpl->main_image_2d_track->base.id_uuid, uuid, sizeof(uuid));
     } else if (memcmp(cpl->main_image_2d_track->base.id_uuid, uuid, sizeof(uuid)) != 0) {

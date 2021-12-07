@@ -339,10 +339,8 @@ static int open_track_resource_context(AVFormatContext *s,
 
     if (!track_resource->ctx) {
         track_resource->ctx = avformat_alloc_context();
-        if (!track_resource->ctx) {
-            av_log(NULL, AV_LOG_ERROR, "Cannot allocate Track Resource Context\n");
+        if (!track_resource->ctx)
             return AVERROR(ENOMEM);
-        }
     }
 
     if (track_resource->ctx->iformat) {
@@ -454,10 +452,8 @@ static int open_track_file_resource(AVFormatContext *s,
         &track->resources_alloc_sz,
         (track->resource_count + track_file_resource->base.repeat_count)
             * sizeof(IMFVirtualTrackResourcePlaybackCtx));
-    if (!tmp) {
-        av_log(NULL, AV_LOG_ERROR, "Cannot allocate Virtual Track playback context\n");
+    if (!tmp)
         return AVERROR(ENOMEM);
-    }
     track->resources = tmp;
 
     for (uint32_t i = 0; i < track_file_resource->base.repeat_count; ++i) {
@@ -508,7 +504,6 @@ static int open_virtual_track(AVFormatContext *s,
 
     tmp = av_realloc(c->tracks, (c->track_count + 1) * sizeof(IMFVirtualTrackPlaybackCtx *));
     if (!tmp) {
-        av_log(NULL, AV_LOG_ERROR, "Cannot allocate Virtual Track playback context\n");
         ret = AVERROR(ENOMEM);
         goto clean_up;
     }

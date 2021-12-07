@@ -349,7 +349,7 @@ static int check_asset_locator_attributes(IMFAssetLocator *asset, IMFAssetLocato
     printf("\tCompare " FF_UUID_FORMAT " to " FF_UUID_FORMAT ".\n",
         UID_ARG(asset->uuid),
         UID_ARG(expected_asset->uuid));
-    for(uint32_t i = 0; i < 16; ++i) {
+    for (uint32_t i = 0; i < 16; ++i) {
         if (asset->uuid[i] != expected_asset->uuid[i]) {
             printf("Invalid asset locator UUID: found " FF_UUID_FORMAT " instead of " FF_UUID_FORMAT " expected.\n",
                 UID_ARG(asset->uuid),
@@ -412,7 +412,7 @@ static int test_asset_map_parsing(void)
         goto cleanup;
     }
 
-    for(uint32_t i = 0; i < asset_locator_map.asset_count; ++i) {
+    for (uint32_t i = 0; i < asset_locator_map.asset_count; ++i) {
         printf("For asset: %d:\n", i);
         ret = check_asset_locator_attributes(&(asset_locator_map.assets[i]),
             &(ASSET_MAP_EXPECTED_LOCATORS[i]));
@@ -450,7 +450,7 @@ static const PathTypeTestStruct PATH_TYPE_TEST_STRUCTS[11] = {
 static int test_path_type_functions(void)
 {
     PathTypeTestStruct path_type;
-    for(uint32_t i = 0; i < 11; ++i) {
+    for (uint32_t i = 0; i < 11; ++i) {
         path_type = PATH_TYPE_TEST_STRUCTS[i];
         if (imf_uri_is_url(path_type.path) != path_type.is_url) {
             fprintf(stderr,
