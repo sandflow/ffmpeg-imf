@@ -112,8 +112,7 @@ typedef struct IMFContext {
 
 static int imf_uri_is_url(const char *string)
 {
-    const char *substr = strstr(string, "://");
-    return substr != NULL;
+    return strstr(string, "://") != NULL;
 }
 
 static int imf_uri_is_unix_abs_path(const char *string)
@@ -157,6 +156,7 @@ static int parse_imf_asset_map_from_xml_dom(AVFormatContext *s,
     char *uri;
     int ret = 0;
     IMFAssetLocator *asset = NULL;
+    void *tmp;
 
     asset_map_element = xmlDocGetRootElement(doc);
 
@@ -180,14 +180,15 @@ static int parse_imf_asset_map_from_xml_dom(AVFormatContext *s,
         av_log(s, AV_LOG_ERROR, "Unable to parse asset map XML - missing AssetList node\n");
         return AVERROR_INVALIDDATA;
     }
-    asset_map->assets = av_realloc_f(asset_map->assets,
-        xmlChildElementCount(node),
-        sizeof(IMFAssetLocator));
-    if (!asset_map->assets) {
+    tmp = av_realloc(asset_map->assets,
+        (xmlChildElementCount(node) + asset_map->asset_count)
+            * sizeof(IMFAssetLocator));
+    if (!tmp) {
         av_log(NULL, AV_LOG_ERROR, "Cannot allocate IMF asset locators\n");
         return AVERROR(ENOMEM);
     }
-    asset_map->asset_count = 0;
+    asset_map->assets = tmp;
+
     asset_element = xmlFirstElementChild(node);
     while (asset_element) {
         if (av_strcasecmp(asset_element->name, "Asset") != 0)
@@ -219,7 +220,6 @@ static int parse_imf_asset_map_from_xml_dom(AVFormatContext *s,
             asset->absolute_uri = av_strdup(uri);
         xmlFree(uri);
         if (!asset->absolute_uri) {
-            av_log(NULL, AV_LOG_ERROR, "Cannot allocate asset locator absolute URI\n");
             return AVERROR(ENOMEM);
         }
 
@@ -296,7 +296,7 @@ static int parse_assetmap(AVFormatContext *s, const char *url, AVIOContext *in)
         goto clean_up;
     }
     base_url = av_dirname(tmp_str);
-    
+
     doc = xmlReadMemory(buf.str, filesize, url, NULL, 0);
 
     ret = parse_imf_asset_map_from_xml_dom(s, doc, &c->asset_locator_map, base_url);
@@ -350,7 +350,7 @@ static int open_track_resource_context(AVFormatContext *s,
             AV_LOG_DEBUG,
             "Input context already opened for %s.\n",
             track_resource->locator->absolute_uri);
-        return ret;
+        return 0;
     }
 
     track_resource->ctx->io_open = s->io_open;
@@ -372,7 +372,7 @@ static int open_track_resource_context(AVFormatContext *s,
             "Could not open %s input context: %s\n",
             track_resource->locator->absolute_uri,
             av_err2str(ret));
-        goto cleanup;
+        return ret;
     }
 
     ret = avformat_find_stream_info(track_resource->ctx, NULL);
@@ -421,6 +421,7 @@ static int open_track_resource_context(AVFormatContext *s,
     return ret;
 cleanup:
     avformat_free_context(track_resource->ctx);
+    track_resource->ctx = NULL;
     return ret;
 }
 
@@ -431,6 +432,7 @@ static int open_track_file_resource(AVFormatContext *s,
     IMFContext *c = s->priv_data;
     IMFAssetLocator *asset_locator;
     IMFVirtualTrackResourcePlaybackCtx vt_ctx;
+    void *tmp;
     int ret;
 
     asset_locator = find_asset_map_locator(&c->asset_locator_map, track_file_resource->track_file_uuid);
@@ -448,14 +450,15 @@ static int open_track_file_resource(AVFormatContext *s,
         UID_ARG(asset_locator->uuid),
         asset_locator->absolute_uri);
 
-    track->resources = av_fast_realloc(track->resources,
+    tmp = av_fast_realloc(track->resources,
         &track->resources_alloc_sz,
         (track->resource_count + track_file_resource->base.repeat_count)
             * sizeof(IMFVirtualTrackResourcePlaybackCtx));
-    if (!track->resources) {
+    if (!tmp) {
         av_log(NULL, AV_LOG_ERROR, "Cannot allocate Virtual Track playback context\n");
         return AVERROR(ENOMEM);
     }
+    track->resources = tmp;
 
     for (uint32_t i = 0; i < track_file_resource->base.repeat_count; ++i) {
         vt_ctx.locator = asset_locator;
@@ -477,14 +480,12 @@ static int open_virtual_track(AVFormatContext *s,
     int32_t track_index)
 {
     IMFContext *c = s->priv_data;
-    IMFVirtualTrackPlaybackCtx *track;
+    IMFVirtualTrackPlaybackCtx *track = NULL;
+    void *tmp;
     int ret = 0;
 
-    track = av_mallocz(sizeof(IMFVirtualTrackPlaybackCtx));
-    if (!track) {
-        av_log(NULL, AV_LOG_ERROR, "Cannot allocate IMF Virtual Track Playback context\n");
+    if (!(track = av_mallocz(sizeof(IMFVirtualTrackPlaybackCtx))))
         return AVERROR(ENOMEM);
-    }
     track->index = track_index;
     track->duration = av_make_q(0, 1);
 
@@ -499,19 +500,25 @@ static int open_virtual_track(AVFormatContext *s,
                 AV_LOG_ERROR,
                 "Could not open image track resource " FF_UUID_FORMAT "\n",
                 UID_ARG(virtual_track->resources[i].track_file_uuid));
-            return ret;
+            goto clean_up;
         }
     }
 
     track->current_timestamp = av_make_q(0, track->duration.den);
 
-    c->tracks = av_realloc_f(c->tracks, c->track_count + 1, sizeof(IMFVirtualTrackPlaybackCtx));
-    if (!c->tracks) {
+    tmp = av_realloc(c->tracks, (c->track_count + 1) * sizeof(IMFVirtualTrackPlaybackCtx *));
+    if (!tmp) {
         av_log(NULL, AV_LOG_ERROR, "Cannot allocate Virtual Track playback context\n");
-        return AVERROR(ENOMEM);
+        ret = AVERROR(ENOMEM);
+        goto clean_up;
     }
+    c->tracks = tmp;
     c->tracks[c->track_count++] = track;
 
+    return ret;
+
+clean_up:
+    av_free(track);
     return ret;
 }
 
@@ -640,7 +647,6 @@ static int imf_read_header(AVFormatContext *s)
     if (!c->asset_map_paths) {
         c->asset_map_paths = av_append_path_component(c->base_url, "ASSETMAP.xml");
         if (!c->asset_map_paths) {
-            av_log(NULL, AV_LOG_ERROR, "Cannot allocate asset map paths\n");
             ret = AVERROR(ENOMEM);
             return ret;
         }
@@ -665,7 +671,7 @@ static int imf_read_header(AVFormatContext *s)
 
     av_log(s, AV_LOG_DEBUG, "parsed IMF package\n");
 
-    return ret;
+    return 0;
 }
 
 static IMFVirtualTrackPlaybackCtx *get_next_track_with_minimum_timestamp(AVFormatContext *s)
