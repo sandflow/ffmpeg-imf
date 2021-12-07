@@ -112,35 +112,30 @@ typedef struct IMFContext {
 
 static int imf_uri_is_url(const char *string)
 {
-    char *substr = strstr(string, "://");
+    const char *substr = strstr(string, "://");
     return substr != NULL;
 }
 
 static int imf_uri_is_unix_abs_path(const char *string)
 {
-    char *substr = strstr(string, "/");
-    int index = (int)(substr - string);
-    return index == 0;
+    return string[0] == '/';
 }
 
 static int imf_uri_is_dos_abs_path(const char *string)
 {
     // Absolute path case: `C:\path\to\somwhere`
-    char *substr = strstr(string, ":\\");
-    int index = (int)(substr - string);
-    if (index == 1)
+    if (string[1] == ':' && string[2] == '\\')
         return 1;
 
     // Absolute path case: `C:/path/to/somwhere`
-    substr = strstr(string, ":/");
-    index = (int)(substr - string);
-    if (index == 1)
+    if (string[1] == ':' && string[2] == '/')
         return 1;
 
     // Network path case: `\\path\to\somwhere`
-    substr = strstr(string, "\\\\");
-    index = (int)(substr - string);
-    return index == 0;
+    if (string[0] == '\\' && string[1] == '\\')
+        return 1;
+
+    return 0;
 }
 
 /**
@@ -262,12 +257,12 @@ static void imf_asset_locator_map_free(IMFAssetLocatorMap *asset_map)
     if (!asset_map)
         return;
 
-    for(uint32_t i = 0; i < asset_map->asset_count; ++i) {
+    for (uint32_t i = 0; i < asset_map->asset_count; ++i) {
         av_freep(&asset_map->assets[i].absolute_uri);
     }
 
     av_freep(&asset_map->assets);
-    av_freep(&asset_map);
+    av_free(asset_map);
 }
 
 static int parse_assetmap(AVFormatContext *s, const char *url, AVIOContext *in)
@@ -325,7 +320,10 @@ static int parse_assetmap(AVFormatContext *s, const char *url, AVIOContext *in)
 
         doc = xmlReadMemory(buf.str, filesize, url, NULL, 0);
 
-        if (!(ret = parse_imf_asset_map_from_xml_dom(s, doc, c->asset_locator_map, base_url)))
+        ret = parse_imf_asset_map_from_xml_dom(s, doc, c->asset_locator_map, base_url);
+        if (ret)
+            imf_asset_locator_map_free(c->asset_locator_map);
+        else
             av_log(s,
                 AV_LOG_DEBUG,
                 "Found %d assets from %s\n",
@@ -347,7 +345,7 @@ clean_up:
 
 static IMFAssetLocator *find_asset_map_locator(IMFAssetLocatorMap *asset_map, FFUUID uuid)
 {
-    for(uint32_t i = 0; i < asset_map->asset_count; ++i)
+    for (uint32_t i = 0; i < asset_map->asset_count; ++i)
         if (memcmp(asset_map->assets[i].uuid, uuid, 16) == 0)
             return &(asset_map->assets[i]);
     return NULL;
@@ -481,7 +479,7 @@ static int open_track_file_resource(AVFormatContext *s,
         return AVERROR(ENOMEM);
     }
 
-    for(uint32_t i = 0; i < track_file_resource->base.repeat_count; ++i) {
+    for (uint32_t i = 0; i < track_file_resource->base.repeat_count; ++i) {
         vt_ctx.locator = asset_locator;
         vt_ctx.resource = track_file_resource;
         vt_ctx.ctx = NULL;
@@ -544,7 +542,7 @@ static void imf_virtual_track_playback_context_free(IMFVirtualTrackPlaybackCtx *
     if (!track)
         return;
 
-    for(uint32_t i = 0; i < track->resource_count; ++i)
+    for (uint32_t i = 0; i < track->resource_count; ++i)
         if (track->resources[i].ctx && track->resources[i].ctx->iformat) {
             avformat_close_input(&(track->resources[i].ctx));
             track->resources[i].ctx = NULL;
@@ -562,7 +560,7 @@ static int set_context_streams_from_tracks(AVFormatContext *s)
 
     int ret = 0;
 
-    for(uint32_t i = 0; i < c->track_count; ++i) {
+    for (uint32_t i = 0; i < c->track_count; ++i) {
         // Open the first resource of the track to get stream information
         first_resource_stream = c->tracks[i]->resources[0].ctx->streams[0];
 
@@ -570,6 +568,10 @@ static int set_context_streams_from_tracks(AVFormatContext *s)
 
         // Copy stream information
         asset_stream = avformat_new_stream(s, NULL);
+        if (!asset_stream) {
+            av_log(s, AV_LOG_ERROR, "Could not create stream\n");
+            break;
+        }
         asset_stream->id = i;
         ret = avcodec_parameters_copy(asset_stream->codecpar, first_resource_stream->codecpar);
         if (ret < 0) {
@@ -623,7 +625,7 @@ static int open_cpl_tracks(AVFormatContext *s)
             return ret;
         }
 
-    for(uint32_t i = 0; i < c->cpl->main_audio_track_count; ++i)
+    for (uint32_t i = 0; i < c->cpl->main_audio_track_count; ++i)
         if ((ret = open_virtual_track(s, &c->cpl->main_audio_tracks[i], track_index++)) != 0) {
             av_log(s,
                 AV_LOG_ERROR,
@@ -635,29 +637,27 @@ static int open_cpl_tracks(AVFormatContext *s)
     return set_context_streams_from_tracks(s);
 }
 
-static int imf_close(AVFormatContext *s);
-
 static int imf_read_header(AVFormatContext *s)
 {
     IMFContext *c = s->priv_data;
     char *asset_map_path;
     char *tmp_str;
-    int ret;
+    int ret = 0;
 
     c->interrupt_callback = &s->interrupt_callback;
     tmp_str = av_strdup(s->url);
     if (!tmp_str) {
         ret = AVERROR(ENOMEM);
-        goto fail;
+        return ret;
     }
     c->base_url = av_dirname(tmp_str);
     if ((ret = save_avio_options(s)) < 0)
-        goto fail;
+        return ret;
 
     av_log(s, AV_LOG_DEBUG, "start parsing IMF CPL: %s\n", s->url);
 
     if ((ret = ff_parse_imf_cpl(s->pb, &c->cpl)) < 0)
-        goto fail;
+        return ret;
 
     av_log(s,
         AV_LOG_DEBUG,
@@ -669,7 +669,7 @@ static int imf_read_header(AVFormatContext *s)
         if (!c->asset_map_paths) {
             av_log(NULL, AV_LOG_PANIC, "Cannot allocate asset map paths\n");
             ret = AVERROR(ENOMEM);
-            goto fail;
+            return ret;
         }
     }
 
@@ -678,22 +678,19 @@ static int imf_read_header(AVFormatContext *s)
     while (asset_map_path != NULL) {
         av_log(s, AV_LOG_DEBUG, "start parsing IMF Asset Map: %s\n", asset_map_path);
 
-        if ((ret = parse_assetmap(s, asset_map_path, NULL)) < 0)
-            goto fail;
+        if (ret = parse_assetmap(s, asset_map_path, NULL))
+            return ret;
 
         asset_map_path = av_strtok(NULL, ",", &tmp_str);
     }
 
     av_log(s, AV_LOG_DEBUG, "parsed IMF Asset Maps\n");
 
-    if ((ret = open_cpl_tracks(s)) != 0)
-        goto fail;
+    if (ret = open_cpl_tracks(s))
+        return ret;
 
     av_log(s, AV_LOG_DEBUG, "parsed IMF package\n");
-    return ret;
 
-fail:
-    imf_close(s);
     return ret;
 }
 
@@ -703,7 +700,7 @@ static IMFVirtualTrackPlaybackCtx *get_next_track_with_minimum_timestamp(AVForma
     IMFVirtualTrackPlaybackCtx *track;
 
     AVRational minimum_timestamp = av_make_q(INT32_MAX, 1);
-    for(uint32_t i = 0; i < c->track_count; ++i) {
+    for (uint32_t i = 0; i < c->track_count; ++i) {
         av_log(
             s,
             AV_LOG_DEBUG,
@@ -742,7 +739,7 @@ static IMFVirtualTrackResourcePlaybackCtx *get_resource_context_for_timestamp(AV
         track->index,
         av_q2d(track->current_timestamp),
         av_q2d(track->duration));
-    for(uint32_t i = 0; i < track->resource_count; ++i) {
+    for (uint32_t i = 0; i < track->resource_count; ++i) {
         cumulated_duration = av_add_q(cumulated_duration,
             av_make_q((int)track->resources[i].resource->base.duration * edit_unit_duration.num,
                 edit_unit_duration.den));
@@ -780,7 +777,7 @@ static IMFVirtualTrackResourcePlaybackCtx *get_resource_context_for_timestamp(AV
     return NULL;
 }
 
-static int ff_imf_read_packet(AVFormatContext *s, AVPacket *pkt)
+static int imf_read_packet(AVFormatContext *s, AVPacket *pkt)
 {
     IMFContext *c = s->priv_data;
 
@@ -862,7 +859,7 @@ static int imf_close(AVFormatContext *s)
     imf_asset_locator_map_free(c->asset_locator_map);
     ff_imf_cpl_free(c->cpl);
 
-    for(uint32_t i = 0; i < c->track_count; ++i) {
+    for (uint32_t i = 0; i < c->track_count; ++i) {
         imf_virtual_track_playback_context_free(c->tracks[i]);
         av_freep(&c->tracks[i]);
     }
@@ -873,16 +870,19 @@ static int imf_close(AVFormatContext *s)
 }
 
 static const AVOption imf_options[] = {
-    {"assetmaps",
-        "IMF CPL-related asset map comma-separated absolute paths. "
-        "If not specified, the CPL sibling `ASSETMAP.xml` file is used.",
-        offsetof(IMFContext, asset_map_paths),
-        AV_OPT_TYPE_STRING,
-        {.str = NULL},
-        0,
-        0,
-        AV_OPT_FLAG_DECODING_PARAM},
-    {NULL}};
+    {
+        .name = "assetmaps",
+        .help = "Comma-separated paths to ASSETMAP files."
+                "If not specified, the `ASSETMAP.xml` file in the same directory as the CPL is used.",
+        .offset = offsetof(IMFContext, asset_map_paths),
+        .type = AV_OPT_TYPE_STRING,
+        .default_val = {.str = NULL},
+        .flags = AV_OPT_FLAG_DECODING_PARAM,
+    },
+    {
+        NULL,
+    },
+};
 
 static const AVClass imf_class = {
     .class_name = "imf",
@@ -894,10 +894,11 @@ static const AVClass imf_class = {
 const AVInputFormat ff_imf_demuxer = {
     .name = "imf",
     .long_name = NULL_IF_CONFIG_SMALL("IMF (Interoperable Master Format)"),
+    .flags_internal = FF_FMT_INIT_CLEANUP,
     .priv_class = &imf_class,
     .priv_data_size = sizeof(IMFContext),
     .read_header = imf_read_header,
-    .read_packet = ff_imf_read_packet,
+    .read_packet = imf_read_packet,
     .read_close = imf_close,
     .extensions = "xml",
     .mime_type = "application/xml,text/xml",
