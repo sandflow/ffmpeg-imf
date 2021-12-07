@@ -384,7 +384,7 @@ static IMFAssetLocator ASSET_MAP_EXPECTED_LOCATORS[5] = {
 
 static int test_asset_map_parsing(void)
 {
-    IMFAssetLocatorMap *asset_locator_map;
+    IMFAssetLocatorMap asset_locator_map;
     xmlDoc *doc;
     int ret;
 
@@ -395,33 +395,33 @@ static int test_asset_map_parsing(void)
     }
 
     printf("Allocate asset map\n");
-    asset_locator_map = imf_asset_locator_map_alloc();
+    imf_asset_locator_map_init(&asset_locator_map);
 
     printf("Parse asset map XML document\n");
-    ret = parse_imf_asset_map_from_xml_dom(NULL, doc, asset_locator_map, doc->name);
+    ret = parse_imf_asset_map_from_xml_dom(NULL, doc, &asset_locator_map, doc->name);
     if (ret) {
         printf("Asset map parsing failed.\n");
         goto cleanup;
     }
 
-    printf("Compare assets count: %d to 5\n", asset_locator_map->asset_count);
-    if (asset_locator_map->asset_count != 5) {
+    printf("Compare assets count: %d to 5\n", asset_locator_map.asset_count);
+    if (asset_locator_map.asset_count != 5) {
         printf("Asset map parsing failed: found %d assets instead of 5 expected.\n",
-            asset_locator_map->asset_count);
+            asset_locator_map.asset_count);
         ret = 1;
         goto cleanup;
     }
 
-    for(uint32_t i = 0; i < asset_locator_map->asset_count; ++i) {
+    for(uint32_t i = 0; i < asset_locator_map.asset_count; ++i) {
         printf("For asset: %d:\n", i);
-        ret = check_asset_locator_attributes(&(asset_locator_map->assets[i]),
+        ret = check_asset_locator_attributes(&(asset_locator_map.assets[i]),
             &(ASSET_MAP_EXPECTED_LOCATORS[i]));
         if (ret > 0)
             goto cleanup;
     }
 
 cleanup:
-    imf_asset_locator_map_free(asset_locator_map);
+    imf_asset_locator_map_deinit(&asset_locator_map);
     xmlFreeDoc(doc);
     return ret;
 }

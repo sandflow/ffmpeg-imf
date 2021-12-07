@@ -228,7 +228,7 @@ static int fill_marker(xmlNodePtr marker_elem, FFIMFMarker *marker)
     if (!(marker->scope_utf8 = xmlGetNoNsProp(element, "scope"))) {
         marker->scope_utf8 = xmlCharStrdup("http://www.smpte-ra.org/schemas/2067-3/2013#standard-markers");
         if (!marker->scope_utf8) {
-            av_log(NULL, AV_LOG_PANIC, "Cannot allocate marker scope string\n");
+            av_log(NULL, AV_LOG_ERROR, "Cannot allocate marker scope string\n");
             return AVERROR(ENOMEM);
         }
     }
@@ -326,7 +326,7 @@ static int fill_marker_resource(xmlNodePtr marker_resource_elem,
                 ++marker_resource->marker_count,
                 sizeof(FFIMFMarker));
             if (!marker_resource->markers) {
-                av_log(NULL, AV_LOG_PANIC, "Cannot allocate Marker\n");
+                av_log(NULL, AV_LOG_ERROR, "Cannot allocate Marker\n");
                 return AVERROR(ENOMEM);
             }
             imf_marker_init(&marker_resource->markers[marker_resource->marker_count - 1]);
@@ -364,7 +364,7 @@ static int push_marker_sequence(xmlNodePtr marker_sequence_elem, FFIMFCPL *cpl)
     if (!cpl->main_markers_track) {
         cpl->main_markers_track = av_malloc(sizeof(FFIMFMarkerVirtualTrack));
         if (!cpl->main_markers_track) {
-            av_log(NULL, AV_LOG_PANIC, "Cannot allocate Marker Virtual Track\n");
+            av_log(NULL, AV_LOG_ERROR, "Cannot allocate Marker Virtual Track\n");
             return AVERROR(ENOMEM);
         }
         imf_marker_virtual_track_init(cpl->main_markers_track);
@@ -384,7 +384,7 @@ static int push_marker_sequence(xmlNodePtr marker_sequence_elem, FFIMFCPL *cpl)
             ++cpl->main_markers_track->resource_count,
             sizeof(FFIMFMarkerResource));
         if (!cpl->main_markers_track->resources) {
-            av_log(NULL, AV_LOG_PANIC, "Cannot allocate Resource\n");
+            av_log(NULL, AV_LOG_ERROR, "Cannot allocate Resource\n");
             return AVERROR(ENOMEM);
         }
         imf_marker_resource_init(
@@ -449,7 +449,7 @@ static int push_main_audio_sequence(xmlNodePtr audio_sequence_elem, FFIMFCPL *cp
             ++cpl->main_audio_track_count,
             sizeof(FFIMFTrackFileVirtualTrack));
         if (!cpl->main_audio_tracks) {
-            av_log(NULL, AV_LOG_PANIC, "Cannot allocate MainAudio virtual track\n");
+            av_log(NULL, AV_LOG_ERROR, "Cannot allocate MainAudio virtual track\n");
             return AVERROR(ENOMEM);
         }
         vt = &cpl->main_audio_tracks[cpl->main_audio_track_count - 1];
@@ -466,7 +466,7 @@ static int push_main_audio_sequence(xmlNodePtr audio_sequence_elem, FFIMFCPL *cp
         &vt->resources_alloc_sz,
         (vt->resource_count + resource_elem_count) * sizeof(FFIMFTrackFileResource));
     if (!vt->resources) {
-        av_log(NULL, AV_LOG_PANIC, "Cannot allocate Main Audio Resources\n");
+        av_log(NULL, AV_LOG_ERROR, "Cannot allocate Main Audio Resources\n");
         return AVERROR(ENOMEM);
     }
     resource_elem = xmlFirstElementChild(resource_list_elem);
@@ -515,7 +515,7 @@ static int push_main_image_2d_sequence(xmlNodePtr image_sequence_elem, FFIMFCPL 
     if (!cpl->main_image_2d_track) {
         cpl->main_image_2d_track = av_malloc(sizeof(FFIMFTrackFileVirtualTrack));
         if (!cpl->main_image_2d_track) {
-            av_log(NULL, AV_LOG_PANIC, "Cannot allocate MainImage virtual track\n");
+            av_log(NULL, AV_LOG_ERROR, "Cannot allocate MainImage virtual track\n");
             return AVERROR(ENOMEM);
         }
         imf_trackfile_virtual_track_init(cpl->main_image_2d_track);
@@ -538,7 +538,7 @@ static int push_main_image_2d_sequence(xmlNodePtr image_sequence_elem, FFIMFCPL 
         &cpl->main_image_2d_track->resources_alloc_sz,
         (cpl->main_image_2d_track->resource_count + resource_elem_count) * sizeof(FFIMFTrackFileResource));
     if (!cpl->main_image_2d_track->resources) {
-        av_log(NULL, AV_LOG_PANIC, "Cannot allocate Main Image Resource\n");
+        av_log(NULL, AV_LOG_ERROR, "Cannot allocate Main Image Resource\n");
         return AVERROR(ENOMEM);
     }
     resource_elem = xmlFirstElementChild(resource_list_elem);

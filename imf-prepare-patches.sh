@@ -50,6 +50,9 @@ GPLCC=" * This file is part of FFmpeg.\n\
 
 sed -i "s/^ \* This file is part of FFmpeg\./$GPLCC/" $PATCHES_SRC $PATCHES_TESTS
 
+# remove clang formatting commands
+sed -i "/^\\/\\/ clang-format/d" $PATCHES_SRC $PATCHES_TESTS
+
 # remove tests from Makefile
 sed -i "/^TESTPROGS-\$(CONFIG_IMF_DEMUXER)/d" $PATCHES_MAKEFILE
 
