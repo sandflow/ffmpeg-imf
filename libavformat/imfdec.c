@@ -760,13 +760,13 @@ static IMFVirtualTrackResourcePlaybackCtx *get_resource_context_for_timestamp(AV
 static int imf_read_packet(AVFormatContext *s, AVPacket *pkt)
 {
     IMFContext *c = s->priv_data;
-
     IMFVirtualTrackResourcePlaybackCtx *resource_to_read = NULL;
     AVRational edit_unit_duration;
     int ret = 0;
-
-    IMFVirtualTrackPlaybackCtx *track = get_next_track_with_minimum_timestamp(s);
+    IMFVirtualTrackPlaybackCtx *track;
     FFStream *track_stream;
+
+    track = get_next_track_with_minimum_timestamp(s);
 
     if (av_cmp_q(track->current_timestamp, track->duration) == 0)
         return AVERROR_EOF;
