@@ -226,6 +226,7 @@ static int fill_marker(xmlNodePtr marker_elem, FFIMFMarker *marker)
         return AVERROR_INVALIDDATA;
     }
     if (!(marker->scope_utf8 = xmlGetNoNsProp(element, "scope"))) {
+        /* memtest: marker->scope_utf8 = NULL; */
         marker->scope_utf8 = xmlCharStrdup("http://www.smpte-ra.org/schemas/2067-3/2013#standard-markers");
         if (!marker->scope_utf8) {
             xmlFree(marker->label_utf8);
@@ -325,15 +326,16 @@ static int fill_marker_resource(xmlNodePtr marker_resource_elem,
         if (xmlStrcmp(element->name, "Marker") == 0) {
             tmp = av_realloc(marker_resource->markers,
                 (marker_resource->marker_count + 1) * sizeof(FFIMFMarker));
+            /* memtest: tmp = NULL; */
             if (!tmp)
                 return AVERROR(ENOMEM);
             marker_resource->markers = tmp;
             imf_marker_init(&marker_resource->markers[marker_resource->marker_count]);
             ret = fill_marker(element,
                 &marker_resource->markers[marker_resource->marker_count]);
+            marker_resource->marker_count++;
             if (ret)
                 return ret;
-            marker_resource->marker_count++;
         }
         element = xmlNextElementSibling(element);
     }
@@ -368,6 +370,7 @@ static int push_marker_sequence(xmlNodePtr marker_sequence_elem, FFIMFCPL *cpl)
     /* create main marker virtual track if it does not exist */
     if (!cpl->main_markers_track) {
         cpl->main_markers_track = av_malloc(sizeof(FFIMFMarkerVirtualTrack));
+        /* memtest: cpl->main_markers_track = NULL; */
         if (!cpl->main_markers_track)
             return AVERROR(ENOMEM);
         imf_marker_virtual_track_init(cpl->main_markers_track);
@@ -382,6 +385,9 @@ static int push_marker_sequence(xmlNodePtr marker_sequence_elem, FFIMFCPL *cpl)
     if (!resource_list_elem)
         return 0;
     resource_elem_count = xmlChildElementCount(resource_list_elem);
+    /* memtest:  if (cpl->main_markers_track->resource_count > 0) 
+        tmp = 0;
+    else*/
     tmp = av_realloc(cpl->main_markers_track->resources,
         (cpl->main_markers_track->resource_count + resource_elem_count)
             * sizeof(FFIMFMarkerResource));
@@ -393,14 +399,14 @@ static int push_marker_sequence(xmlNodePtr marker_sequence_elem, FFIMFCPL *cpl)
 
     resource_elem = xmlFirstElementChild(resource_list_elem);
     while (resource_elem) {
-
         imf_marker_resource_init(
             &cpl->main_markers_track->resources[cpl->main_markers_track->resource_count]);
-        if (ret = fill_marker_resource(resource_elem,
-                &cpl->main_markers_track->resources[cpl->main_markers_track->resource_count],
-                cpl))
-            return ret;
+        ret = fill_marker_resource(resource_elem,
+            &cpl->main_markers_track->resources[cpl->main_markers_track->resource_count],
+            cpl);
         cpl->main_markers_track->resource_count++;
+        if (ret)
+            return ret;
         resource_elem = xmlNextElementSibling(resource_elem);
     }
 
@@ -456,6 +462,11 @@ static int push_main_audio_sequence(xmlNodePtr audio_sequence_elem, FFIMFCPL *cp
     if (!vt) {
         tmp = av_realloc(cpl->main_audio_tracks,
             (cpl->main_audio_track_count + 1) * sizeof(FFIMFTrackFileVirtualTrack));
+        /* memtest:   if (cpl->main_audio_track_count > 0)
+            tmp = 0;
+        else
+            tmp = av_realloc(cpl->main_audio_tracks,
+                (cpl->main_audio_track_count + 1) * sizeof(FFIMFTrackFileVirtualTrack)); */
         if (!tmp)
             return AVERROR(ENOMEM);
         cpl->main_audio_tracks = tmp;
@@ -470,6 +481,9 @@ static int push_main_audio_sequence(xmlNodePtr audio_sequence_elem, FFIMFCPL *cp
     if (!resource_list_elem)
         return 0;
     resource_elem_count = xmlChildElementCount(resource_list_elem);
+    /* memtest: if (vt->resource_count > 0)
+        tmp = NULL;
+    else */
     tmp = av_fast_realloc(vt->resources,
         &vt->resources_alloc_sz,
         (vt->resource_count + resource_elem_count) * sizeof(FFIMFTrackFileResource));
@@ -485,11 +499,11 @@ static int push_main_audio_sequence(xmlNodePtr audio_sequence_elem, FFIMFCPL *cp
         ret = fill_trackfile_resource(resource_elem,
             &vt->resources[vt->resource_count],
             cpl);
+        vt->resource_count++;
         if (ret) {
             av_log(NULL, AV_LOG_ERROR, "Invalid Resource\n");
             continue;
         }
-        vt->resource_count++;
         resource_elem = xmlNextElementSibling(resource_elem);
     }
 
@@ -525,6 +539,7 @@ static int push_main_image_2d_sequence(xmlNodePtr image_sequence_elem, FFIMFCPL 
     /* create main image virtual track if one does not exist */
     if (!cpl->main_image_2d_track) {
         cpl->main_image_2d_track = av_malloc(sizeof(FFIMFTrackFileVirtualTrack));
+        /* memtest:  cpl->main_image_2d_track = NULL; */
         if (!cpl->main_image_2d_track)
             return AVERROR(ENOMEM);
         imf_trackfile_virtual_track_init(cpl->main_image_2d_track);
@@ -543,6 +558,9 @@ static int push_main_image_2d_sequence(xmlNodePtr image_sequence_elem, FFIMFCPL 
     if (!resource_list_elem)
         return 0;
     resource_elem_count = xmlChildElementCount(resource_list_elem);
+    /* memtest: if (cpl->main_image_2d_track->resource_count > 0)
+        tmp = 0;
+    else */
     tmp = av_fast_realloc(cpl->main_image_2d_track->resources,
         &cpl->main_image_2d_track->resources_alloc_sz,
         (cpl->main_image_2d_track->resource_count + resource_elem_count) * sizeof(FFIMFTrackFileResource));
@@ -559,11 +577,11 @@ static int push_main_image_2d_sequence(xmlNodePtr image_sequence_elem, FFIMFCPL 
         ret = fill_trackfile_resource(resource_elem,
             &cpl->main_image_2d_track->resources[cpl->main_image_2d_track->resource_count],
             cpl);
+        cpl->main_image_2d_track->resource_count++;
         if (ret) {
             av_log(NULL, AV_LOG_ERROR, "Invalid Resource\n");
             continue;
         }
-        cpl->main_image_2d_track->resource_count++;
         resource_elem = xmlNextElementSibling(resource_elem);
     }
 

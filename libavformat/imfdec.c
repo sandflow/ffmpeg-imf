@@ -180,6 +180,9 @@ static int parse_imf_asset_map_from_xml_dom(AVFormatContext *s,
         av_log(s, AV_LOG_ERROR, "Unable to parse asset map XML - missing AssetList node\n");
         return AVERROR_INVALIDDATA;
     }
+    /* memtest: if (asset_map->asset_count > 0)
+        tmp = NULL;
+    else */
     tmp = av_realloc(asset_map->assets,
         (xmlChildElementCount(node) + asset_map->asset_count)
             * sizeof(IMFAssetLocator));
@@ -219,6 +222,7 @@ static int parse_imf_asset_map_from_xml_dom(AVFormatContext *s,
         else
             asset->absolute_uri = av_strdup(uri);
         xmlFree(uri);
+        /* memtest: av_freep(&asset->absolute_uri);*/
         if (!asset->absolute_uri) {
             return AVERROR(ENOMEM);
         }
@@ -291,6 +295,7 @@ static int parse_assetmap(AVFormatContext *s, const char *url, AVIOContext *in)
     LIBXML_TEST_VERSION
 
     tmp_str = av_strdup(url);
+    /* memtest: av_freep(&tmp_str); */
     if (!tmp_str) {
         ret = AVERROR(ENOMEM);
         goto clean_up;
@@ -300,9 +305,7 @@ static int parse_assetmap(AVFormatContext *s, const char *url, AVIOContext *in)
     doc = xmlReadMemory(buf.str, filesize, url, NULL, 0);
 
     ret = parse_imf_asset_map_from_xml_dom(s, doc, &c->asset_locator_map, base_url);
-    if (ret)
-        imf_asset_locator_map_deinit(&c->asset_locator_map);
-    else
+    if (!ret)
         av_log(s,
             AV_LOG_DEBUG,
             "Found %d assets from %s\n",
@@ -338,6 +341,7 @@ static int open_track_resource_context(AVFormatContext *s,
     AVDictionary *opts = NULL;
 
     if (!track_resource->ctx) {
+        /* memtest : */
         track_resource->ctx = avformat_alloc_context();
         if (!track_resource->ctx)
             return AVERROR(ENOMEM);
@@ -447,7 +451,9 @@ static int open_track_file_resource(AVFormatContext *s,
         "Found locator for " FF_UUID_FORMAT ": %s\n",
         UID_ARG(asset_locator->uuid),
         asset_locator->absolute_uri);
-
+    /* memtest: if (track->resource_count > 0)
+        tmp = NULL;
+    else */
     tmp = av_fast_realloc(track->resources,
         &track->resources_alloc_sz,
         (track->resource_count + track_file_resource->base.repeat_count)
@@ -471,6 +477,15 @@ static int open_track_file_resource(AVFormatContext *s,
     return ret;
 }
 
+static void imf_virtual_track_playback_context_deinit(IMFVirtualTrackPlaybackCtx *track)
+{
+    for (uint32_t i = 0; i < track->resource_count; ++i)
+        if (track->resources[i].ctx && track->resources[i].ctx->iformat)
+            avformat_close_input(&track->resources[i].ctx);
+
+    av_freep(&track->resources);
+}
+
 static int open_virtual_track(AVFormatContext *s,
     FFIMFTrackFileVirtualTrack *virtual_track,
     int32_t track_index)
@@ -482,6 +497,8 @@ static int open_virtual_track(AVFormatContext *s,
 
     if (!(track = av_mallocz(sizeof(IMFVirtualTrackPlaybackCtx))))
         return AVERROR(ENOMEM);
+    /* memtest: av_freep(&track);
+    return AVERROR(ENOMEM);*/
     track->index = track_index;
     track->duration = av_make_q(0, 1);
 
@@ -502,6 +519,9 @@ static int open_virtual_track(AVFormatContext *s,
 
     track->current_timestamp = av_make_q(0, track->duration.den);
 
+    /* memtest: if (c->track_count == 0)
+        tmp = 0;
+    else*/
     tmp = av_realloc(c->tracks, (c->track_count + 1) * sizeof(IMFVirtualTrackPlaybackCtx *));
     if (!tmp) {
         ret = AVERROR(ENOMEM);
@@ -510,20 +530,12 @@ static int open_virtual_track(AVFormatContext *s,
     c->tracks = tmp;
     c->tracks[c->track_count++] = track;
 
-    return ret;
+    return 0;
 
 clean_up:
+    imf_virtual_track_playback_context_deinit(track);
     av_free(track);
     return ret;
-}
-
-static void imf_virtual_track_playback_context_deinit(IMFVirtualTrackPlaybackCtx *track)
-{
-    for (uint32_t i = 0; i < track->resource_count; ++i)
-        if (track->resources[i].ctx && track->resources[i].ctx->iformat)
-            avformat_close_input(&track->resources[i].ctx);
-
-    av_freep(&track->resources);
 }
 
 static int set_context_streams_from_tracks(AVFormatContext *s)
@@ -542,6 +554,9 @@ static int set_context_streams_from_tracks(AVFormatContext *s)
         av_log(s, AV_LOG_DEBUG, "Open the first resource of track %d\n", c->tracks[i]->index);
 
         // Copy stream information
+        /* memtest: if (1)
+            asset_stream = NULL;
+        else */
         asset_stream = avformat_new_stream(s, NULL);
         if (!asset_stream) {
             av_log(s, AV_LOG_ERROR, "Could not create stream\n");
@@ -621,6 +636,7 @@ static int imf_read_header(AVFormatContext *s)
 
     c->interrupt_callback = &s->interrupt_callback;
     tmp_str = av_strdup(s->url);
+    /* memtest: av_freep(&tmp_str); */
     if (!tmp_str) {
         ret = AVERROR(ENOMEM);
         return ret;
@@ -641,10 +657,12 @@ static int imf_read_header(AVFormatContext *s)
 
     if (!c->asset_map_paths) {
         c->asset_map_paths = av_append_path_component(c->base_url, "ASSETMAP.xml");
+        /* memtest: av_freep(&c->asset_map_paths);*/
         if (!c->asset_map_paths) {
             ret = AVERROR(ENOMEM);
             return ret;
         }
+        av_log(s, AV_LOG_DEBUG, "No asset maps provided, using the default ASSETMAP.xml\n");
     }
 
     // Parse each asset map XML file
