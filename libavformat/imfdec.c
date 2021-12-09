@@ -122,15 +122,15 @@ static int imf_uri_is_unix_abs_path(const char *string)
 
 static int imf_uri_is_dos_abs_path(const char *string)
 {
-    // Absolute path case: `C:\path\to\somwhere`
+    /* Absolute path case: `C:\path\to\somwhere` */
     if (string[1] == ':' && string[2] == '\\')
         return 1;
 
-    // Absolute path case: `C:/path/to/somwhere`
+    /* Absolute path case: `C:/path/to/somwhere` */
     if (string[1] == ':' && string[2] == '/')
         return 1;
 
-    // Network path case: `\\path\to\somwhere`
+    /* Network path case: `\\path\to\somwhere` */
     if (string[0] == '\\' && string[1] == '\\')
         return 1;
 
@@ -174,15 +174,11 @@ static int parse_imf_asset_map_from_xml_dom(AVFormatContext *s,
         return AVERROR_INVALIDDATA;
     }
 
-    // parse asset locators
-
+    /* parse asset locators */
     if (!(node = ff_xml_get_child_element_by_name(asset_map_element, "AssetList"))) {
         av_log(s, AV_LOG_ERROR, "Unable to parse asset map XML - missing AssetList node\n");
         return AVERROR_INVALIDDATA;
     }
-    /* memtest: if (asset_map->asset_count > 0)
-        tmp = NULL;
-    else */
     tmp = av_realloc(asset_map->assets,
         (xmlChildElementCount(node) + asset_map->asset_count)
             * sizeof(IMFAssetLocator));
@@ -222,7 +218,6 @@ static int parse_imf_asset_map_from_xml_dom(AVFormatContext *s,
         else
             asset->absolute_uri = av_strdup(uri);
         xmlFree(uri);
-        /* memtest: av_freep(&asset->absolute_uri);*/
         if (!asset->absolute_uri) {
             return AVERROR(ENOMEM);
         }
@@ -295,7 +290,6 @@ static int parse_assetmap(AVFormatContext *s, const char *url, AVIOContext *in)
     LIBXML_TEST_VERSION
 
     tmp_str = av_strdup(url);
-    /* memtest: av_freep(&tmp_str); */
     if (!tmp_str) {
         ret = AVERROR(ENOMEM);
         goto clean_up;
@@ -341,7 +335,6 @@ static int open_track_resource_context(AVFormatContext *s,
     AVDictionary *opts = NULL;
 
     if (!track_resource->ctx) {
-        /* memtest : */
         track_resource->ctx = avformat_alloc_context();
         if (!track_resource->ctx)
             return AVERROR(ENOMEM);
@@ -387,7 +380,7 @@ static int open_track_resource_context(AVFormatContext *s,
         goto cleanup;
     }
 
-    // Compare the source timebase to the resource edit rate, considering the first stream of the source file
+    /* Compare the source timebase to the resource edit rate, considering the first stream of the source file */
     if (av_cmp_q(track_resource->ctx->streams[0]->time_base, av_inv_q(track_resource->resource->base.edit_rate)))
         av_log(s,
             AV_LOG_WARNING,
@@ -451,9 +444,6 @@ static int open_track_file_resource(AVFormatContext *s,
         "Found locator for " FF_UUID_FORMAT ": %s\n",
         UID_ARG(asset_locator->uuid),
         asset_locator->absolute_uri);
-    /* memtest: if (track->resource_count > 0)
-        tmp = NULL;
-    else */
     tmp = av_fast_realloc(track->resources,
         &track->resources_alloc_sz,
         (track->resource_count + track_file_resource->base.repeat_count)
@@ -497,8 +487,6 @@ static int open_virtual_track(AVFormatContext *s,
 
     if (!(track = av_mallocz(sizeof(IMFVirtualTrackPlaybackCtx))))
         return AVERROR(ENOMEM);
-    /* memtest: av_freep(&track);
-    return AVERROR(ENOMEM);*/
     track->index = track_index;
     track->duration = av_make_q(0, 1);
 
@@ -519,9 +507,6 @@ static int open_virtual_track(AVFormatContext *s,
 
     track->current_timestamp = av_make_q(0, track->duration.den);
 
-    /* memtest: if (c->track_count == 0)
-        tmp = 0;
-    else*/
     tmp = av_realloc(c->tracks, (c->track_count + 1) * sizeof(IMFVirtualTrackPlaybackCtx *));
     if (!tmp) {
         ret = AVERROR(ENOMEM);
@@ -548,15 +533,11 @@ static int set_context_streams_from_tracks(AVFormatContext *s)
     int ret = 0;
 
     for (uint32_t i = 0; i < c->track_count; ++i) {
-        // Open the first resource of the track to get stream information
+        /* Open the first resource of the track to get stream information */
         first_resource_stream = c->tracks[i]->resources[0].ctx->streams[0];
-
         av_log(s, AV_LOG_DEBUG, "Open the first resource of track %d\n", c->tracks[i]->index);
 
-        // Copy stream information
-        /* memtest: if (1)
-            asset_stream = NULL;
-        else */
+        /* Copy stream information */
         asset_stream = avformat_new_stream(s, NULL);
         if (!asset_stream) {
             av_log(s, AV_LOG_ERROR, "Could not create stream\n");
@@ -636,7 +617,6 @@ static int imf_read_header(AVFormatContext *s)
 
     c->interrupt_callback = &s->interrupt_callback;
     tmp_str = av_strdup(s->url);
-    /* memtest: av_freep(&tmp_str); */
     if (!tmp_str) {
         ret = AVERROR(ENOMEM);
         return ret;
@@ -657,7 +637,6 @@ static int imf_read_header(AVFormatContext *s)
 
     if (!c->asset_map_paths) {
         c->asset_map_paths = av_append_path_component(c->base_url, "ASSETMAP.xml");
-        /* memtest: av_freep(&c->asset_map_paths);*/
         if (!c->asset_map_paths) {
             ret = AVERROR(ENOMEM);
             return ret;
@@ -665,7 +644,7 @@ static int imf_read_header(AVFormatContext *s)
         av_log(s, AV_LOG_DEBUG, "No asset maps provided, using the default ASSETMAP.xml\n");
     }
 
-    // Parse each asset map XML file
+    /* Parse each asset map XML file */
     imf_asset_locator_map_init(&c->asset_locator_map);
     asset_map_path = av_strtok(c->asset_map_paths, ",", &tmp_str);
     while (asset_map_path != NULL) {
@@ -813,7 +792,7 @@ static int imf_read_packet(AVFormatContext *s, AVPacket *pkt)
             pkt->pos);
         track_stream = ffstream(s->streams[track->index]);
         if (ret >= 0) {
-            // Update packet info from track
+            /* Update packet info from track */
             if (pkt->dts < track_stream->cur_dts && track->last_pts > 0)
                 pkt->dts = track_stream->cur_dts;
 
@@ -822,7 +801,7 @@ static int imf_read_packet(AVFormatContext *s, AVPacket *pkt)
                 - (int64_t)track->resources[track->current_resource_index].resource->base.entry_point;
             pkt->stream_index = track->index;
 
-            // Update track cursors
+            /* Update track cursors */
             track->current_timestamp = av_add_q(track->current_timestamp,
                 av_make_q((int)pkt->duration * resource_to_read->ctx->streams[0]->time_base.num,
                     resource_to_read->ctx->streams[0]->time_base.den));
