@@ -2,7 +2,7 @@
 
 set -e
 
-PATCH_VERSION="8"
+PATCH_VERSION="9"
 
 PATCH_NAME="avformat/imf"
 
