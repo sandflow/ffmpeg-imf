@@ -82,14 +82,7 @@ The IMF standard was first introduced in 2013 and is managed by the SMPTE.
 
 CHANGE NOTES:
 
-- reduced line width
-- use ff_ and FF prefixes for non-local functions and structures
-- modified copyright header
-- fixed rational initialization
-- removed extraneous call to xmlCleanupParser()
-- fix if/for single line braces
-- replace av_realloc_f with av_fast_realloc when allocating CPL Resources and
-  ASSETMAP assets
+- fix leaks when head allocation fails
 "
 
 # add tests back to the Makefile
