@@ -4,7 +4,7 @@ AlignAfterOpenBracket: false
 AlignConsecutiveAssignments: false
 AlignConsecutiveDeclarations: false
 AlignOperands: false
-AlignTrailingComments: false
+AlignTrailingComments: true
 AllowAllParametersOfDeclarationOnNextLine: true
 AllowShortBlocksOnASingleLine: false
 AllowShortCaseLabelsOnASingleLine: false
@@ -22,6 +22,7 @@ BraceWrapping:
   AfterFunction: true
 BreakBeforeTernaryOperators: false
 BreakConstructorInitializersBeforeComma: true
+BreakStringLiterals: true
 ColumnLimit: 0
 CommentPragmas: '^ IWYU pragma:'
 ContinuationIndentWidth: 4

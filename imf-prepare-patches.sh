@@ -2,7 +2,7 @@
 
 set -e
 
-PATCH_VERSION="5"
+PATCH_VERSION="9"
 
 PATCH_NAME="avformat/imf"
 
@@ -11,14 +11,12 @@ PATCH_BRANCH="rd/patches"
 
 PATCHES_DIR="build/patches"
 
-PATCHES_IMF_HEADERS="libavformat/imf.h"
-PATCHES_IMF_DEC="libavformat/imfdec.c"
-PATCHES_IMF_CPL="libavformat/imf_cpl.c"
-PATCHES_IMF_TESTS="libavformat/tests/imf.c"
-PATCHES_MXF="libavformat/mxf.h libavformat/mxfdec.c"
+PATCHES_SRC="libavformat/imf.h libavformat/imf_cpl.c libavformat/imfdec.c"
 PATCHES_MISC="MAINTAINERS configure doc/demuxers.texi libavformat/Makefile libavformat/allformats.c"
+PATCHES_MAKEFILE="libavformat/Makefile"
+PATCHES_TESTS="libavformat/tests/imf.c"
 
-PATCHES_ALL="$PATCHES_IMF_HEADERS $PATCHES_IMF_DEC $PATCHES_IMF_CPL $PATCHES_IMF_TESTS $PATCHES_MXF $PATCHES_MISC"
+PATCHES_ALL="$PATCHES_SRC $PATCHES_MAKEFILE $PATCHES_MISC $PATCHES_TESTS"
 
 git fetch --all
 
@@ -30,9 +28,8 @@ git rebase $BASE_BRANCH
 
 git reset $BASE_BRANCH
 
-AUGMENTED=" * POSSIBILITY OF SUCH DAMAGE.\n\
- *\n\
- * This file is part of FFmpeg.\n\
+# update copyright header
+GPLCC=" * This file is part of FFmpeg.\n\
  *\n\
  * FFmpeg is free software; you can redistribute it and\/or\n\
  * modify it under the terms of the GNU Lesser General Public\n\
@@ -46,14 +43,24 @@ AUGMENTED=" * POSSIBILITY OF SUCH DAMAGE.\n\
  *\n\
  * You should have received a copy of the GNU Lesser General Public\n\
  * License along with FFmpeg; if not, write to the Free Software\n\
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA"
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA\n\
+ *\\/\n\
+\n\
+\\/*"
 
-sed -i "/^ \* This file is part of FFmpeg\./,+1 d" $PATCHES_IMF_HEADERS $PATCHES_IMF_DEC $PATCHES_IMF_CPL $PATCHES_IMF_TESTS 
-sed -i "s/^ \* POSSIBILITY OF SUCH DAMAGE\./$AUGMENTED/" $PATCHES_IMF_HEADERS $PATCHES_IMF_DEC $PATCHES_IMF_CPL $PATCHES_IMF_TESTS
+sed -i "s/^ \* This file is part of FFmpeg\./$GPLCC/" $PATCHES_SRC $PATCHES_TESTS
 
-git add -- $PATCHES_ALL
+# remove MXF documentation
+sed -i "/^@section mxf/,+12d" doc/demuxers.texi 
 
-git commit -m "${PATCH_NAME}: Headers" -- $PATCHES_IMF_HEADERS
+# remove clang formatting commands
+sed -i "/^\\/\\/ clang-format/d" $PATCHES_SRC $PATCHES_TESTS
+
+# remove tests from Makefile
+sed -i "/^TESTPROGS-\$(CONFIG_IMF_DEMUXER)/d" $PATCHES_MAKEFILE
+
+git add -- $PATCHES_SRC $PATCHES_MISC $PATCHES_MAKEFILE
+git commit -m "${PATCH_NAME}: Demuxer" -- $PATCHES_SRC $PATCHES_MISC $PATCHES_MAKEFILE
 git notes add -m "The IMF demuxer accepts as input an IMF CPL. The assets referenced by the CPL can be
 contained in multiple deliveries, each defined by an ASSETMAP file:
 
@@ -73,32 +80,16 @@ The location of the Track Files referenced by the Composition Playlist is stored
 in one or more XML documents called Asset Maps. More details at https://www.imfug.com/explainer.
 The IMF standard was first introduced in 2013 and is managed by the SMPTE.
 
-Header and build files.
-
 CHANGE NOTES:
 
-- fixed patchwork warnings
-- updated patch notes
-- added LGPL license
-- removed imf_internal.h
-- Improve error handling, including removing exit()
-- Fix code style
-- Allow custom I/O for all files (following DASH and HLS template)
-- replace realloc with av_realloc_f to fix leaks"
+- fix leaks when head allocation fails
+"
 
-# git commit -m "[IMF demuxer] MCA improvements to MXF decoder" -- $PATCHES_MXF
-# git notes add -m "Add support for SMPTE ST 377-4 (Multichannel Audio Labeling -- MCA) \
-# to the MXF decoder. MCA allows arbitrary audio channel configurations \
-# in MXF files."
-
-git commit -m "${PATCH_NAME}: CPL processor" -- $PATCHES_IMF_CPL
-git notes add -m "Implements IMF Composition Playlist (CPL) parsing."
-
-git commit -m "${PATCH_NAME}: Demuxer implementation" -- $PATCHES_IMF_DEC
-git notes add -m "Implements the IMF demuxer."
-
-git commit -m "${PATCH_NAME}: Tests and build files" -- $PATCHES_IMF_TESTS $PATCHES_MISC 
-git notes add -m "Tests and build files for the IMF demuxer."
+# add tests back to the Makefile
+sed -i "/^TESTPROGS-\$(CONFIG_SRTP)/a TESTPROGS-\$(CONFIG_IMF_DEMUXER)          += imf" $PATCHES_MAKEFILE
+git add -- $PATCHES_TESTS $PATCHES_MAKEFILE
+git commit -m "${PATCH_NAME}: Tests" -- $PATCHES_TESTS $PATCHES_MAKEFILE
+git notes add -m "Tests for the IMF demuxer."
 
 mkdir -p $PATCHES_DIR
 

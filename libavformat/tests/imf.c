@@ -270,7 +270,7 @@ const char *asset_map_doc =
 static int test_cpl_parsing(void)
 {
     xmlDocPtr doc;
-    IMFCPL *cpl;
+    FFIMFCPL *cpl;
     int ret;
 
     doc = xmlReadMemory(cpl_doc, strlen(cpl_doc), NULL, NULL, 0);
@@ -279,7 +279,7 @@ static int test_cpl_parsing(void)
         return 1;
     }
 
-    ret = parse_imf_cpl_from_xml_dom(doc, &cpl);
+    ret = ff_parse_imf_cpl_from_xml_dom(doc, &cpl);
     xmlFreeDoc(doc);
     if (ret) {
         printf("CPL parsing failed.\n");
@@ -287,36 +287,36 @@ static int test_cpl_parsing(void)
     }
 
     printf("%s\n", cpl->content_title_utf8);
-    printf(IMF_UUID_FORMAT "\n", UID_ARG(cpl->id_uuid));
+    printf(FF_UUID_FORMAT "\n", UID_ARG(cpl->id_uuid));
     printf("%i %i\n", cpl->edit_rate.num, cpl->edit_rate.den);
 
-    printf("Marker resource count: %lu\n", cpl->main_markers_track->resource_count);
-    for (unsigned long i = 0; i < cpl->main_markers_track->resource_count; i++) {
-        printf("Marker resource %lu\n", i);
-        for (unsigned long j = 0; j < cpl->main_markers_track->resources[i].marker_count; j++) {
-            printf("  Marker %lu\n", j);
+    printf("Marker resource count: %" PRIu32 "\n", cpl->main_markers_track->resource_count);
+    for (uint32_t i = 0; i < cpl->main_markers_track->resource_count; i++) {
+        printf("Marker resource %" PRIu32 "\n", i);
+        for (uint32_t j = 0; j < cpl->main_markers_track->resources[i].marker_count; j++) {
+            printf("  Marker %" PRIu32 "\n", j);
             printf("    Label %s\n", cpl->main_markers_track->resources[i].markers[j].label_utf8);
-            printf("    Offset %lu\n", cpl->main_markers_track->resources[i].markers[j].offset);
+            printf("    Offset %" PRIu32 "\n", cpl->main_markers_track->resources[i].markers[j].offset);
         }
     }
 
-    printf("Main image resource count: %lu\n", cpl->main_image_2d_track->resource_count);
-    for (unsigned long i = 0; i < cpl->main_image_2d_track->resource_count; i++) {
-        printf("Track file resource %lu\n", i);
-        printf("  " IMF_UUID_FORMAT "\n", UID_ARG(cpl->main_image_2d_track->resources[i].track_file_uuid));
+    printf("Main image resource count: %" PRIu32 "\n", cpl->main_image_2d_track->resource_count);
+    for (uint32_t i = 0; i < cpl->main_image_2d_track->resource_count; i++) {
+        printf("Track file resource %" PRIu32 "\n", i);
+        printf("  " FF_UUID_FORMAT "\n", UID_ARG(cpl->main_image_2d_track->resources[i].track_file_uuid));
     }
 
-    printf("Main audio track count: %lu\n", cpl->main_audio_track_count);
-    for (unsigned long i = 0; i < cpl->main_audio_track_count; i++) {
-        printf("  Main audio virtual track %lu\n", i);
-        printf("  Main audio resource count: %lu\n", cpl->main_audio_tracks[i].resource_count);
-        for (unsigned long j = 0; j < cpl->main_audio_tracks[i].resource_count; j++) {
-            printf("  Track file resource %lu\n", j);
-            printf("    " IMF_UUID_FORMAT "\n", UID_ARG(cpl->main_audio_tracks[i].resources[j].track_file_uuid));
+    printf("Main audio track count: %" PRIu32 "\n", cpl->main_audio_track_count);
+    for (uint32_t i = 0; i < cpl->main_audio_track_count; i++) {
+        printf("  Main audio virtual track %" PRIu32 "\n", i);
+        printf("  Main audio resource count: %" PRIu32 "\n", cpl->main_audio_tracks[i].resource_count);
+        for (uint32_t j = 0; j < cpl->main_audio_tracks[i].resource_count; j++) {
+            printf("  Track file resource %" PRIu32 "\n", j);
+            printf("    " FF_UUID_FORMAT "\n", UID_ARG(cpl->main_audio_tracks[i].resources[j].track_file_uuid));
         }
     }
 
-    imf_cpl_free(cpl);
+    ff_imf_cpl_free(cpl);
 
     return 0;
 }
@@ -324,7 +324,7 @@ static int test_cpl_parsing(void)
 static int test_bad_cpl_parsing(void)
 {
     xmlDocPtr doc;
-    IMFCPL *cpl;
+    FFIMFCPL *cpl;
     int ret;
 
     doc = xmlReadMemory(cpl_bad_doc, strlen(cpl_bad_doc), NULL, NULL, 0);
@@ -333,7 +333,7 @@ static int test_bad_cpl_parsing(void)
         return ret;
     }
 
-    ret = parse_imf_cpl_from_xml_dom(doc, &cpl);
+    ret = ff_parse_imf_cpl_from_xml_dom(doc, &cpl);
     xmlFreeDoc(doc);
     if (ret) {
         printf("CPL parsing failed.\n");
@@ -343,20 +343,26 @@ static int test_bad_cpl_parsing(void)
     return 0;
 }
 
-static int check_asset_locator_attributes(IMFAssetLocator *asset, IMFAssetLocator expected_asset)
+static int check_asset_locator_attributes(IMFAssetLocator *asset, IMFAssetLocator *expected_asset)
 {
 
-    printf("\tCompare " IMF_UUID_FORMAT " to " IMF_UUID_FORMAT ".\n", UID_ARG(asset->uuid), UID_ARG(expected_asset.uuid));
-    for (int i = 0; i < 16; ++i) {
-        if (asset->uuid[i] != expected_asset.uuid[i]) {
-            printf("Invalid asset locator UUID: found " IMF_UUID_FORMAT " instead of " IMF_UUID_FORMAT " expected.\n", UID_ARG(asset->uuid), UID_ARG(expected_asset.uuid));
+    printf("\tCompare " FF_UUID_FORMAT " to " FF_UUID_FORMAT ".\n",
+        UID_ARG(asset->uuid),
+        UID_ARG(expected_asset->uuid));
+    for (uint32_t i = 0; i < 16; ++i) {
+        if (asset->uuid[i] != expected_asset->uuid[i]) {
+            printf("Invalid asset locator UUID: found " FF_UUID_FORMAT " instead of " FF_UUID_FORMAT " expected.\n",
+                UID_ARG(asset->uuid),
+                UID_ARG(expected_asset->uuid));
             return 1;
         }
     }
 
-    printf("\tCompare %s to %s.\n", asset->absolute_uri, expected_asset.absolute_uri);
-    if (strcmp(asset->absolute_uri, expected_asset.absolute_uri) != 0) {
-        printf("Invalid asset locator URI: found %s instead of %s expected.\n", asset->absolute_uri, expected_asset.absolute_uri);
+    printf("\tCompare %s to %s.\n", asset->absolute_uri, expected_asset->absolute_uri);
+    if (strcmp(asset->absolute_uri, expected_asset->absolute_uri) != 0) {
+        printf("Invalid asset locator URI: found %s instead of %s expected.\n",
+            asset->absolute_uri,
+            expected_asset->absolute_uri);
         return 1;
     }
 
@@ -364,16 +370,21 @@ static int check_asset_locator_attributes(IMFAssetLocator *asset, IMFAssetLocato
 }
 
 static IMFAssetLocator ASSET_MAP_EXPECTED_LOCATORS[5] = {
-    [0] = {.uuid = {0xb5, 0xd6, 0x74, 0xb8, 0xc6, 0xce, 0x4b, 0xce, 0x3b, 0xdf, 0xbe, 0x04, 0x5d, 0xfd, 0xb2, 0xd0}, .absolute_uri = (char *)"IMF_TEST_ASSET_MAP_video.mxf"},
-    [1] = {.uuid = {0xec, 0x34, 0x67, 0xec, 0xab, 0x2a, 0x4f, 0x49, 0xc8, 0xcb, 0x89, 0xca, 0xa3, 0x76, 0x1f, 0x4a}, .absolute_uri = (char *)"IMF_TEST_ASSET_MAP_video_1.mxf"},
-    [2] = {.uuid = {0x5c, 0xf5, 0xb5, 0xa7, 0x8b, 0xb3, 0x4f, 0x08, 0xea, 0xa6, 0x35, 0x33, 0xd4, 0xb7, 0x7f, 0xa6}, .absolute_uri = (char *)"IMF_TEST_ASSET_MAP_audio.mxf"},
-    [3] = {.uuid = {0x55, 0x97, 0x77, 0xd6, 0xec, 0x29, 0x43, 0x75, 0xf9, 0x0d, 0x30, 0x0b, 0x0b, 0xf7, 0x36, 0x86}, .absolute_uri = (char *)"CPL_IMF_TEST_ASSET_MAP.xml"},
-    [4] = {.uuid = {0xdd, 0x04, 0x52, 0x8d, 0x9b, 0x80, 0x45, 0x2a, 0x7a, 0x13, 0x80, 0x5b, 0x08, 0x27, 0x8b, 0x3d}, .absolute_uri = (char *)"PKL_IMF_TEST_ASSET_MAP.xml"},
+    {.uuid = {0xb5, 0xd6, 0x74, 0xb8, 0xc6, 0xce, 0x4b, 0xce, 0x3b, 0xdf, 0xbe, 0x04, 0x5d, 0xfd, 0xb2, 0xd0},
+        .absolute_uri = (char *)"IMF_TEST_ASSET_MAP_video.mxf"},
+    {.uuid = {0xec, 0x34, 0x67, 0xec, 0xab, 0x2a, 0x4f, 0x49, 0xc8, 0xcb, 0x89, 0xca, 0xa3, 0x76, 0x1f, 0x4a},
+        .absolute_uri = (char *)"IMF_TEST_ASSET_MAP_video_1.mxf"},
+    {.uuid = {0x5c, 0xf5, 0xb5, 0xa7, 0x8b, 0xb3, 0x4f, 0x08, 0xea, 0xa6, 0x35, 0x33, 0xd4, 0xb7, 0x7f, 0xa6},
+        .absolute_uri = (char *)"IMF_TEST_ASSET_MAP_audio.mxf"},
+    {.uuid = {0x55, 0x97, 0x77, 0xd6, 0xec, 0x29, 0x43, 0x75, 0xf9, 0x0d, 0x30, 0x0b, 0x0b, 0xf7, 0x36, 0x86},
+        .absolute_uri = (char *)"CPL_IMF_TEST_ASSET_MAP.xml"},
+    {.uuid = {0xdd, 0x04, 0x52, 0x8d, 0x9b, 0x80, 0x45, 0x2a, 0x7a, 0x13, 0x80, 0x5b, 0x08, 0x27, 0x8b, 0x3d},
+        .absolute_uri = (char *)"PKL_IMF_TEST_ASSET_MAP.xml"},
 };
 
 static int test_asset_map_parsing(void)
 {
-    IMFAssetLocatorMap *asset_locator_map;
+    IMFAssetLocatorMap asset_locator_map;
     xmlDoc *doc;
     int ret;
 
@@ -384,32 +395,33 @@ static int test_asset_map_parsing(void)
     }
 
     printf("Allocate asset map\n");
-    asset_locator_map = imf_asset_locator_map_alloc();
+    imf_asset_locator_map_init(&asset_locator_map);
 
     printf("Parse asset map XML document\n");
-    ret = parse_imf_asset_map_from_xml_dom(NULL, doc, asset_locator_map, doc->name);
+    ret = parse_imf_asset_map_from_xml_dom(NULL, doc, &asset_locator_map, doc->name);
     if (ret) {
         printf("Asset map parsing failed.\n");
         goto cleanup;
     }
 
-    printf("Compare assets count: %d to 5\n", asset_locator_map->asset_count);
-    if (asset_locator_map->asset_count != 5) {
-        printf("Asset map parsing failed: found %d assets instead of 5 expected.\n", asset_locator_map->asset_count);
+    printf("Compare assets count: %d to 5\n", asset_locator_map.asset_count);
+    if (asset_locator_map.asset_count != 5) {
+        printf("Asset map parsing failed: found %d assets instead of 5 expected.\n",
+            asset_locator_map.asset_count);
         ret = 1;
         goto cleanup;
     }
 
-    for (int i = 0; i < asset_locator_map->asset_count; ++i) {
+    for (uint32_t i = 0; i < asset_locator_map.asset_count; ++i) {
         printf("For asset: %d:\n", i);
-        ret = check_asset_locator_attributes(asset_locator_map->assets[i], ASSET_MAP_EXPECTED_LOCATORS[i]);
-        if (ret > 0) {
+        ret = check_asset_locator_attributes(&(asset_locator_map.assets[i]),
+            &(ASSET_MAP_EXPECTED_LOCATORS[i]));
+        if (ret > 0)
             goto cleanup;
-        }
     }
 
 cleanup:
-    imf_asset_locator_map_free(asset_locator_map);
+    imf_asset_locator_map_deinit(&asset_locator_map);
     xmlFreeDoc(doc);
     return ret;
 }
@@ -422,36 +434,48 @@ typedef struct PathTypeTestStruct {
 } PathTypeTestStruct;
 
 static const PathTypeTestStruct PATH_TYPE_TEST_STRUCTS[11] = {
-    [0] = {.path = "file://path/to/somewhere", .is_url = 1, .is_unix_absolute_path = 0, .is_dos_absolute_path = 0},
-    [1] = {.path = "http://path/to/somewhere", .is_url = 1, .is_unix_absolute_path = 0, .is_dos_absolute_path = 0},
-    [2] = {.path = "https://path/to/somewhere", .is_url = 1, .is_unix_absolute_path = 0, .is_dos_absolute_path = 0},
-    [3] = {.path = "s3://path/to/somewhere", .is_url = 1, .is_unix_absolute_path = 0, .is_dos_absolute_path = 0},
-    [4] = {.path = "ftp://path/to/somewhere", .is_url = 1, .is_unix_absolute_path = 0, .is_dos_absolute_path = 0},
-    [5] = {.path = "/path/to/somewhere", .is_url = 0, .is_unix_absolute_path = 1, .is_dos_absolute_path = 0},
-    [6] = {.path = "path/to/somewhere", .is_url = 0, .is_unix_absolute_path = 0, .is_dos_absolute_path = 0},
-    [7] = {.path = "C:\\path\\to\\somewhere", .is_url = 0, .is_unix_absolute_path = 0, .is_dos_absolute_path = 1},
-    [8] = {.path = "C:/path/to/somewhere", .is_url = 0, .is_unix_absolute_path = 0, .is_dos_absolute_path = 1},
-    [9] = {.path = "\\\\path\\to\\somewhere", .is_url = 0, .is_unix_absolute_path = 0, .is_dos_absolute_path = 1},
-    [10] = {.path = "path\\to\\somewhere", .is_url = 0, .is_unix_absolute_path = 0, .is_dos_absolute_path = 0},
+    {.path = "file://path/to/somewhere", .is_url = 1, .is_unix_absolute_path = 0, .is_dos_absolute_path = 0},
+    {.path = "http://path/to/somewhere", .is_url = 1, .is_unix_absolute_path = 0, .is_dos_absolute_path = 0},
+    {.path = "https://path/to/somewhere", .is_url = 1, .is_unix_absolute_path = 0, .is_dos_absolute_path = 0},
+    {.path = "s3://path/to/somewhere", .is_url = 1, .is_unix_absolute_path = 0, .is_dos_absolute_path = 0},
+    {.path = "ftp://path/to/somewhere", .is_url = 1, .is_unix_absolute_path = 0, .is_dos_absolute_path = 0},
+    {.path = "/path/to/somewhere", .is_url = 0, .is_unix_absolute_path = 1, .is_dos_absolute_path = 0},
+    {.path = "path/to/somewhere", .is_url = 0, .is_unix_absolute_path = 0, .is_dos_absolute_path = 0},
+    {.path = "C:\\path\\to\\somewhere", .is_url = 0, .is_unix_absolute_path = 0, .is_dos_absolute_path = 1},
+    {.path = "C:/path/to/somewhere", .is_url = 0, .is_unix_absolute_path = 0, .is_dos_absolute_path = 1},
+    {.path = "\\\\path\\to\\somewhere", .is_url = 0, .is_unix_absolute_path = 0, .is_dos_absolute_path = 1},
+    {.path = "path\\to\\somewhere", .is_url = 0, .is_unix_absolute_path = 0, .is_dos_absolute_path = 0},
 };
 
 static int test_path_type_functions(void)
 {
     PathTypeTestStruct path_type;
-    for (int i = 0; i < 11; ++i) {
+    for (uint32_t i = 0; i < 11; ++i) {
         path_type = PATH_TYPE_TEST_STRUCTS[i];
         if (imf_uri_is_url(path_type.path) != path_type.is_url) {
-            fprintf(stderr, "URL comparison test failed for '%s', got %d instead of expected %d\n", path_type.path, path_type.is_url, !path_type.is_url);
+            fprintf(stderr,
+                "URL comparison test failed for '%s', got %d instead of expected %d\n",
+                path_type.path,
+                path_type.is_url,
+                !path_type.is_url);
             goto fail;
         }
 
         if (imf_uri_is_unix_abs_path(path_type.path) != path_type.is_unix_absolute_path) {
-            fprintf(stderr, "Unix absolute path comparison test failed for '%s', got %d instead of expected %d\n", path_type.path, path_type.is_unix_absolute_path, !path_type.is_unix_absolute_path);
+            fprintf(stderr,
+                "Unix absolute path comparison test failed for '%s', got %d instead of expected %d\n",
+                path_type.path,
+                path_type.is_unix_absolute_path,
+                !path_type.is_unix_absolute_path);
             goto fail;
         }
 
         if (imf_uri_is_dos_abs_path(path_type.path) != path_type.is_dos_absolute_path) {
-            fprintf(stderr, "DOS absolute path comparison test failed for '%s', got %d instead of expected %d\n", path_type.path, path_type.is_dos_absolute_path, !path_type.is_dos_absolute_path);
+            fprintf(stderr,
+                "DOS absolute path comparison test failed for '%s', got %d instead of expected %d\n",
+                path_type.path,
+                path_type.is_dos_absolute_path,
+                !path_type.is_dos_absolute_path);
             goto fail;
         }
     }
