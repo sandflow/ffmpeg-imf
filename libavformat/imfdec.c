@@ -52,6 +52,7 @@
 #include "libavutil/opt.h"
 #include "mxf.h"
 #include "url.h"
+#include "avio_internal.h"
 #include <inttypes.h>
 #include <libxml/parser.h>
 
