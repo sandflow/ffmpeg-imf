@@ -64,7 +64,7 @@
  * IMF Asset locator
  */
 typedef struct IMFAssetLocator {
-    FFUUID uuid;
+    FFIMFUUID uuid;
     char *absolute_uri;
 } IMFAssetLocator;
 
@@ -175,7 +175,7 @@ static int parse_imf_asset_map_from_xml_dom(AVFormatContext *s,
     }
 
     /* parse asset locators */
-    if (!(node = ff_xml_get_child_element_by_name(asset_map_element, "AssetList"))) {
+    if (!(node = ff_imf_xml_get_child_element_by_name(asset_map_element, "AssetList"))) {
         av_log(s, AV_LOG_ERROR, "Unable to parse asset map XML - missing AssetList node\n");
         return AVERROR_INVALIDDATA;
     }
@@ -195,24 +195,24 @@ static int parse_imf_asset_map_from_xml_dom(AVFormatContext *s,
 
         asset = &(asset_map->assets[asset_map->asset_count]);
 
-        if (ff_xml_read_uuid(ff_xml_get_child_element_by_name(asset_element, "Id"), asset->uuid)) {
+        if (ff_imf_xml_read_uuid(ff_imf_xml_get_child_element_by_name(asset_element, "Id"), asset->uuid)) {
             av_log(s, AV_LOG_ERROR, "Could not parse UUID from asset in asset map.\n");
             return AVERROR_INVALIDDATA;
         }
 
-        av_log(s, AV_LOG_DEBUG, "Found asset id: " FF_UUID_FORMAT "\n", UID_ARG(asset->uuid));
+        av_log(s, AV_LOG_DEBUG, "Found asset id: " FF_IMF_UUID_FORMAT "\n", UID_ARG(asset->uuid));
 
-        if (!(node = ff_xml_get_child_element_by_name(asset_element, "ChunkList"))) {
+        if (!(node = ff_imf_xml_get_child_element_by_name(asset_element, "ChunkList"))) {
             av_log(s, AV_LOG_ERROR, "Unable to parse asset map XML - missing ChunkList node\n");
             return AVERROR_INVALIDDATA;
         }
 
-        if (!(node = ff_xml_get_child_element_by_name(node, "Chunk"))) {
+        if (!(node = ff_imf_xml_get_child_element_by_name(node, "Chunk"))) {
             av_log(s, AV_LOG_ERROR, "Unable to parse asset map XML - missing Chunk node\n");
             return AVERROR_INVALIDDATA;
         }
 
-        uri = xmlNodeGetContent(ff_xml_get_child_element_by_name(node, "Path"));
+        uri = xmlNodeGetContent(ff_imf_xml_get_child_element_by_name(node, "Path"));
         if (!imf_uri_is_url(uri) && !imf_uri_is_unix_abs_path(uri) && !imf_uri_is_dos_abs_path(uri))
             asset->absolute_uri = av_append_path_component(base_url, uri);
         else
@@ -318,7 +318,7 @@ clean_up:
     return ret;
 }
 
-static IMFAssetLocator *find_asset_map_locator(IMFAssetLocatorMap *asset_map, FFUUID uuid)
+static IMFAssetLocator *find_asset_map_locator(IMFAssetLocatorMap *asset_map, FFIMFUUID uuid)
 {
     for (uint32_t i = 0; i < asset_map->asset_count; ++i)
         if (memcmp(asset_map->assets[i].uuid, uuid, 16) == 0)
@@ -434,14 +434,14 @@ static int open_track_file_resource(AVFormatContext *s,
     if (!asset_locator) {
         av_log(s,
             AV_LOG_ERROR,
-            "Could not find asset locator for UUID: " FF_UUID_FORMAT "\n",
+            "Could not find asset locator for UUID: " FF_IMF_UUID_FORMAT "\n",
             UID_ARG(track_file_resource->track_file_uuid));
         return AVERROR_INVALIDDATA;
     }
 
     av_log(s,
         AV_LOG_DEBUG,
-        "Found locator for " FF_UUID_FORMAT ": %s\n",
+        "Found locator for " FF_IMF_UUID_FORMAT ": %s\n",
         UID_ARG(asset_locator->uuid),
         asset_locator->absolute_uri);
     tmp = av_fast_realloc(track->resources,
@@ -493,13 +493,13 @@ static int open_virtual_track(AVFormatContext *s,
     for (uint32_t i = 0; i < virtual_track->resource_count; i++) {
         av_log(s,
             AV_LOG_DEBUG,
-            "Open stream from file " FF_UUID_FORMAT ", stream %d\n",
+            "Open stream from file " FF_IMF_UUID_FORMAT ", stream %d\n",
             UID_ARG(virtual_track->resources[i].track_file_uuid),
             i);
         if ((ret = open_track_file_resource(s, &virtual_track->resources[i], track)) != 0) {
             av_log(s,
                 AV_LOG_ERROR,
-                "Could not open image track resource " FF_UUID_FORMAT "\n",
+                "Could not open image track resource " FF_IMF_UUID_FORMAT "\n",
                 UID_ARG(virtual_track->resources[i].track_file_uuid));
             goto clean_up;
         }
@@ -591,7 +591,7 @@ static int open_cpl_tracks(AVFormatContext *s)
         if ((ret = open_virtual_track(s, c->cpl->main_image_2d_track, track_index++)) != 0) {
             av_log(s,
                 AV_LOG_ERROR,
-                "Could not open image track " FF_UUID_FORMAT "\n",
+                "Could not open image track " FF_IMF_UUID_FORMAT "\n",
                 UID_ARG(c->cpl->main_image_2d_track->base.id_uuid));
             return ret;
         }
@@ -600,7 +600,7 @@ static int open_cpl_tracks(AVFormatContext *s)
         if ((ret = open_virtual_track(s, &c->cpl->main_audio_tracks[i], track_index++)) != 0) {
             av_log(s,
                 AV_LOG_ERROR,
-                "Could not open audio track " FF_UUID_FORMAT "\n",
+                "Could not open audio track " FF_IMF_UUID_FORMAT "\n",
                 UID_ARG(c->cpl->main_audio_tracks[i].base.id_uuid));
             return ret;
         }
@@ -627,12 +627,12 @@ static int imf_read_header(AVFormatContext *s)
 
     av_log(s, AV_LOG_DEBUG, "start parsing IMF CPL: %s\n", s->url);
 
-    if ((ret = ff_parse_imf_cpl(s->pb, &c->cpl)) < 0)
+    if ((ret = ff_imf_parse_cpl(s->pb, &c->cpl)) < 0)
         return ret;
 
     av_log(s,
         AV_LOG_DEBUG,
-        "parsed IMF CPL: " FF_UUID_FORMAT "\n",
+        "parsed IMF CPL: " FF_IMF_UUID_FORMAT "\n",
         UID_ARG(c->cpl->id_uuid));
 
     if (!c->asset_map_paths) {
@@ -841,6 +841,20 @@ static int imf_close(AVFormatContext *s)
     return 0;
 }
 
+static int imf_probe(const AVProbeData *p)
+{
+    if (!strstr(p->buf, "<CompositionPlaylist"))
+        return 0;
+
+    /* check for a ContentTitle element without including ContentTitleText,
+     * which is used by the D-Cinema CPL.
+     */
+    if (!strstr(p->buf, "ContentTitle>"))
+        return 0;
+
+    return AVPROBE_SCORE_MAX;
+}
+
 // clang-format off
 static const AVOption imf_options[] = {
     {
@@ -868,10 +882,9 @@ const AVInputFormat ff_imf_demuxer = {
     .flags_internal = FF_FMT_INIT_CLEANUP,
     .priv_class     = &imf_class,
     .priv_data_size = sizeof(IMFContext),
+    .read_probe     = imf_probe,
     .read_header    = imf_read_header,
     .read_packet    = imf_read_packet,
-    .read_close     = imf_close,
-    .extensions     = "xml",
-    .mime_type      = "application/xml,text/xml",
+    .read_close     = imf_close
 };
 // clang-format on
