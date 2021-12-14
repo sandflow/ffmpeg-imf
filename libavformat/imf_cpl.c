@@ -39,7 +39,7 @@
 #include "libavutil/error.h"
 #include <libxml/parser.h>
 
-xmlNodePtr ff_xml_get_child_element_by_name(xmlNodePtr parent, const char *name_utf8)
+xmlNodePtr ff_imf_xml_get_child_element_by_name(xmlNodePtr parent, const char *name_utf8)
 {
     xmlNodePtr cur_element;
 
@@ -52,7 +52,7 @@ xmlNodePtr ff_xml_get_child_element_by_name(xmlNodePtr parent, const char *name_
     return NULL;
 }
 
-int ff_xml_read_uuid(xmlNodePtr element, uint8_t uuid[16])
+int ff_imf_xml_read_uuid(xmlNodePtr element, uint8_t uuid[16])
 {
     xmlChar *element_text = NULL;
     int scanf_ret;
@@ -60,7 +60,7 @@ int ff_xml_read_uuid(xmlNodePtr element, uint8_t uuid[16])
 
     element_text = xmlNodeListGetString(element->doc, element->xmlChildrenNode, 1);
     scanf_ret = sscanf(element_text,
-        FF_UUID_FORMAT,
+        FF_IMF_UUID_FORMAT,
         &uuid[0],
         &uuid[1],
         &uuid[2],
@@ -86,7 +86,7 @@ int ff_xml_read_uuid(xmlNodePtr element, uint8_t uuid[16])
     return ret;
 }
 
-int ff_xml_read_rational(xmlNodePtr element, AVRational *rational)
+int ff_imf_xml_read_rational(xmlNodePtr element, AVRational *rational)
 {
     xmlChar *element_text = NULL;
     int ret = 0;
@@ -101,7 +101,7 @@ int ff_xml_read_rational(xmlNodePtr element, AVRational *rational)
     return ret;
 }
 
-int ff_xml_read_uint32(xmlNodePtr element, uint32_t *number)
+int ff_imf_xml_read_uint32(xmlNodePtr element, uint32_t *number)
 {
     xmlChar *element_text = NULL;
     int ret = 0;
@@ -168,7 +168,7 @@ static int fill_content_title(xmlNodePtr cpl_element, FFIMFCPL *cpl)
 {
     xmlNodePtr element = NULL;
 
-    if (!(element = ff_xml_get_child_element_by_name(cpl_element, "ContentTitle"))) {
+    if (!(element = ff_imf_xml_get_child_element_by_name(cpl_element, "ContentTitle"))) {
         av_log(NULL, AV_LOG_ERROR, "ContentTitle element not found in the IMF CPL\n");
         return AVERROR_INVALIDDATA;
     }
@@ -183,24 +183,24 @@ static int fill_edit_rate(xmlNodePtr cpl_element, FFIMFCPL *cpl)
 {
     xmlNodePtr element = NULL;
 
-    if (!(element = ff_xml_get_child_element_by_name(cpl_element, "EditRate"))) {
+    if (!(element = ff_imf_xml_get_child_element_by_name(cpl_element, "EditRate"))) {
         av_log(NULL, AV_LOG_ERROR, "EditRate element not found in the IMF CPL\n");
         return AVERROR_INVALIDDATA;
     }
 
-    return ff_xml_read_rational(element, &cpl->edit_rate);
+    return ff_imf_xml_read_rational(element, &cpl->edit_rate);
 }
 
 static int fill_id(xmlNodePtr cpl_element, FFIMFCPL *cpl)
 {
     xmlNodePtr element = NULL;
 
-    if (!(element = ff_xml_get_child_element_by_name(cpl_element, "Id"))) {
+    if (!(element = ff_imf_xml_get_child_element_by_name(cpl_element, "Id"))) {
         av_log(NULL, AV_LOG_ERROR, "Id element not found in the IMF CPL\n");
         return AVERROR_INVALIDDATA;
     }
 
-    return ff_xml_read_uuid(element, cpl->id_uuid);
+    return ff_imf_xml_read_uuid(element, cpl->id_uuid);
 }
 
 static int fill_marker(xmlNodePtr marker_elem, FFIMFMarker *marker)
@@ -209,15 +209,15 @@ static int fill_marker(xmlNodePtr marker_elem, FFIMFMarker *marker)
     int ret = 0;
 
     /* read Offset */
-    if (!(element = ff_xml_get_child_element_by_name(marker_elem, "Offset"))) {
+    if (!(element = ff_imf_xml_get_child_element_by_name(marker_elem, "Offset"))) {
         av_log(NULL, AV_LOG_ERROR, "Offset element not found in a Marker\n");
         return AVERROR_INVALIDDATA;
     }
-    if ((ret = ff_xml_read_uint32(element, &marker->offset)))
+    if ((ret = ff_imf_xml_read_uint32(element, &marker->offset)))
         return ret;
 
     /* read Label and Scope */
-    if (!(element = ff_xml_get_child_element_by_name(marker_elem, "Label"))) {
+    if (!(element = ff_imf_xml_get_child_element_by_name(marker_elem, "Label"))) {
         av_log(NULL, AV_LOG_ERROR, "Label element not found in a Marker\n");
         return AVERROR_INVALIDDATA;
     }
@@ -242,16 +242,16 @@ static int fill_base_resource(xmlNodePtr resource_elem, FFIMFBaseResource *resou
     int ret = 0;
 
     /* read EditRate */
-    if (!(element = ff_xml_get_child_element_by_name(resource_elem, "EditRate"))) {
+    if (!(element = ff_imf_xml_get_child_element_by_name(resource_elem, "EditRate"))) {
         resource->edit_rate = cpl->edit_rate;
-    } else if (ret = ff_xml_read_rational(element, &resource->edit_rate)) {
+    } else if (ret = ff_imf_xml_read_rational(element, &resource->edit_rate)) {
         av_log(NULL, AV_LOG_ERROR, "Invalid EditRate element found in a Resource\n");
         return ret;
     }
 
     /* read EntryPoint */
-    if (element = ff_xml_get_child_element_by_name(resource_elem, "EntryPoint")) {
-        if (ret = ff_xml_read_uint32(element, &resource->entry_point)) {
+    if (element = ff_imf_xml_get_child_element_by_name(resource_elem, "EntryPoint")) {
+        if (ret = ff_imf_xml_read_uint32(element, &resource->entry_point)) {
             av_log(NULL, AV_LOG_ERROR, "Invalid EntryPoint element found in a Resource\n");
             return ret;
         }
@@ -260,26 +260,26 @@ static int fill_base_resource(xmlNodePtr resource_elem, FFIMFBaseResource *resou
     }
 
     /* read IntrinsicDuration */
-    if (!(element = ff_xml_get_child_element_by_name(resource_elem, "IntrinsicDuration"))) {
+    if (!(element = ff_imf_xml_get_child_element_by_name(resource_elem, "IntrinsicDuration"))) {
         av_log(NULL, AV_LOG_ERROR, "IntrinsicDuration element missing from Resource\n");
         return AVERROR_INVALIDDATA;
     }
-    if (ret = ff_xml_read_uint32(element, &resource->duration)) {
+    if (ret = ff_imf_xml_read_uint32(element, &resource->duration)) {
         av_log(NULL, AV_LOG_ERROR, "Invalid IntrinsicDuration element found in a Resource\n");
         return ret;
     }
     resource->duration -= resource->entry_point;
 
     /* read SourceDuration */
-    if (element = ff_xml_get_child_element_by_name(resource_elem, "SourceDuration"))
-        if (ret = ff_xml_read_uint32(element, &resource->duration)) {
+    if (element = ff_imf_xml_get_child_element_by_name(resource_elem, "SourceDuration"))
+        if (ret = ff_imf_xml_read_uint32(element, &resource->duration)) {
             av_log(NULL, AV_LOG_ERROR, "SourceDuration element missing from Resource\n");
             return ret;
         }
 
     /* read RepeatCount */
-    if (element = ff_xml_get_child_element_by_name(resource_elem, "RepeatCount"))
-        ret = ff_xml_read_uint32(element, &resource->repeat_count);
+    if (element = ff_imf_xml_get_child_element_by_name(resource_elem, "RepeatCount"))
+        ret = ff_imf_xml_read_uint32(element, &resource->repeat_count);
 
     return ret;
 }
@@ -295,8 +295,8 @@ static int fill_trackfile_resource(xmlNodePtr tf_resource_elem,
         return ret;
 
     /* read TrackFileId */
-    if (element = ff_xml_get_child_element_by_name(tf_resource_elem, "TrackFileId")) {
-        if (ret = ff_xml_read_uuid(element, tf_resource->track_file_uuid)) {
+    if (element = ff_imf_xml_get_child_element_by_name(tf_resource_elem, "TrackFileId")) {
+        if (ret = ff_imf_xml_read_uuid(element, tf_resource->track_file_uuid)) {
             av_log(NULL, AV_LOG_ERROR, "Invalid TrackFileId element found in Resource\n");
             return ret;
         }
@@ -352,17 +352,17 @@ static int push_marker_sequence(xmlNodePtr marker_sequence_elem, FFIMFCPL *cpl)
     void *tmp;
 
     /* read TrackID element */
-    if (!(track_id_elem = ff_xml_get_child_element_by_name(marker_sequence_elem, "TrackId"))) {
+    if (!(track_id_elem = ff_imf_xml_get_child_element_by_name(marker_sequence_elem, "TrackId"))) {
         av_log(NULL, AV_LOG_ERROR, "TrackId element missing from Sequence\n");
         return AVERROR_INVALIDDATA;
     }
-    if (ret = ff_xml_read_uuid(track_id_elem, uuid)) {
+    if (ret = ff_imf_xml_read_uuid(track_id_elem, uuid)) {
         av_log(NULL, AV_LOG_ERROR, "Invalid TrackId element found in Sequence\n");
         return AVERROR_INVALIDDATA;
     }
     av_log(NULL,
         AV_LOG_DEBUG,
-        "Processing IMF CPL Marker Sequence for Virtual Track " FF_UUID_FORMAT "\n",
+        "Processing IMF CPL Marker Sequence for Virtual Track " FF_IMF_UUID_FORMAT "\n",
         UID_ARG(uuid));
 
     /* create main marker virtual track if it does not exist */
@@ -378,7 +378,7 @@ static int push_marker_sequence(xmlNodePtr marker_sequence_elem, FFIMFCPL *cpl)
     }
 
     /* process resources */
-    resource_list_elem = ff_xml_get_child_element_by_name(marker_sequence_elem, "ResourceList");
+    resource_list_elem = ff_imf_xml_get_child_element_by_name(marker_sequence_elem, "ResourceList");
     if (!resource_list_elem)
         return 0;
     resource_elem_count = xmlChildElementCount(resource_list_elem);
@@ -432,17 +432,17 @@ static int push_main_audio_sequence(xmlNodePtr audio_sequence_elem, FFIMFCPL *cp
     void *tmp;
 
     /* read TrackID element */
-    if (!(track_id_elem = ff_xml_get_child_element_by_name(audio_sequence_elem, "TrackId"))) {
+    if (!(track_id_elem = ff_imf_xml_get_child_element_by_name(audio_sequence_elem, "TrackId"))) {
         av_log(NULL, AV_LOG_ERROR, "TrackId element missing from audio sequence\n");
         return AVERROR_INVALIDDATA;
     }
-    if (ret = ff_xml_read_uuid(track_id_elem, uuid)) {
+    if (ret = ff_imf_xml_read_uuid(track_id_elem, uuid)) {
         av_log(NULL, AV_LOG_ERROR, "Invalid TrackId element found in audio sequence\n");
         return ret;
     }
     av_log(NULL,
         AV_LOG_DEBUG,
-        "Processing IMF CPL Audio Sequence for Virtual Track " FF_UUID_FORMAT "\n",
+        "Processing IMF CPL Audio Sequence for Virtual Track " FF_IMF_UUID_FORMAT "\n",
         UID_ARG(uuid));
 
     /* get the main audio virtual track corresponding to the sequence */
@@ -466,7 +466,7 @@ static int push_main_audio_sequence(xmlNodePtr audio_sequence_elem, FFIMFCPL *cp
     }
 
     /* process resources */
-    resource_list_elem = ff_xml_get_child_element_by_name(audio_sequence_elem, "ResourceList");
+    resource_list_elem = ff_imf_xml_get_child_element_by_name(audio_sequence_elem, "ResourceList");
     if (!resource_list_elem)
         return 0;
     resource_elem_count = xmlChildElementCount(resource_list_elem);
@@ -513,11 +513,11 @@ static int push_main_image_2d_sequence(xmlNodePtr image_sequence_elem, FFIMFCPL 
     }
 
     /* read TrackId element*/
-    if (!(track_id_elem = ff_xml_get_child_element_by_name(image_sequence_elem, "TrackId"))) {
+    if (!(track_id_elem = ff_imf_xml_get_child_element_by_name(image_sequence_elem, "TrackId"))) {
         av_log(NULL, AV_LOG_ERROR, "TrackId element missing from audio sequence\n");
         return AVERROR_INVALIDDATA;
     }
-    if (ret = ff_xml_read_uuid(track_id_elem, uuid)) {
+    if (ret = ff_imf_xml_read_uuid(track_id_elem, uuid)) {
         av_log(NULL, AV_LOG_ERROR, "Invalid TrackId element found in audio sequence\n");
         return ret;
     }
@@ -535,11 +535,11 @@ static int push_main_image_2d_sequence(xmlNodePtr image_sequence_elem, FFIMFCPL 
     }
     av_log(NULL,
         AV_LOG_DEBUG,
-        "Processing IMF CPL Main Image Sequence for Virtual Track " FF_UUID_FORMAT "\n",
+        "Processing IMF CPL Main Image Sequence for Virtual Track " FF_IMF_UUID_FORMAT "\n",
         UID_ARG(uuid));
 
     /* process resources */
-    resource_list_elem = ff_xml_get_child_element_by_name(image_sequence_elem, "ResourceList");
+    resource_list_elem = ff_imf_xml_get_child_element_by_name(image_sequence_elem, "ResourceList");
     if (!resource_list_elem)
         return 0;
     resource_elem_count = xmlChildElementCount(resource_list_elem);
@@ -578,7 +578,7 @@ static int fill_virtual_tracks(xmlNodePtr cpl_element, FFIMFCPL *cpl)
     xmlNodePtr sequence_list_elem = NULL;
     xmlNodePtr sequence_elem = NULL;
 
-    if (!(segment_list_elem = ff_xml_get_child_element_by_name(cpl_element, "SegmentList"))) {
+    if (!(segment_list_elem = ff_imf_xml_get_child_element_by_name(cpl_element, "SegmentList"))) {
         av_log(NULL, AV_LOG_ERROR, "SegmentList element missing\n");
         return AVERROR_INVALIDDATA;
     }
@@ -587,7 +587,7 @@ static int fill_virtual_tracks(xmlNodePtr cpl_element, FFIMFCPL *cpl)
     segment_elem = xmlFirstElementChild(segment_list_elem);
     while (segment_elem) {
         av_log(NULL, AV_LOG_DEBUG, "Processing IMF CPL Segment\n");
-        sequence_list_elem = ff_xml_get_child_element_by_name(segment_elem, "SequenceList");
+        sequence_list_elem = ff_imf_xml_get_child_element_by_name(segment_elem, "SequenceList");
         if (!segment_list_elem)
             continue;
         sequence_elem = xmlFirstElementChild(sequence_list_elem);
@@ -614,7 +614,7 @@ static int fill_virtual_tracks(xmlNodePtr cpl_element, FFIMFCPL *cpl)
     return ret;
 }
 
-int ff_parse_imf_cpl_from_xml_dom(xmlDocPtr doc, FFIMFCPL **cpl)
+int ff_imf_parse_cpl_from_xml_dom(xmlDocPtr doc, FFIMFCPL **cpl)
 {
     int ret = 0;
     xmlNodePtr cpl_element = NULL;
@@ -720,7 +720,7 @@ void ff_imf_cpl_free(FFIMFCPL *cpl)
     av_freep(&cpl);
 }
 
-int ff_parse_imf_cpl(AVIOContext *in, FFIMFCPL **cpl)
+int ff_imf_parse_cpl(AVIOContext *in, FFIMFCPL **cpl)
 {
     AVBPrint buf;
     xmlDoc *doc = NULL;
@@ -745,7 +745,7 @@ int ff_parse_imf_cpl(AVIOContext *in, FFIMFCPL **cpl)
                 "XML parsing failed when reading the IMF CPL\n");
             ret = AVERROR_INVALIDDATA;
         }
-        if (ret = ff_parse_imf_cpl_from_xml_dom(doc, cpl)) {
+        if (ret = ff_imf_parse_cpl_from_xml_dom(doc, cpl)) {
             av_log(NULL, AV_LOG_ERROR, "Cannot parse IMF CPL\n");
         } else {
             av_log(NULL,
@@ -754,7 +754,7 @@ int ff_parse_imf_cpl(AVIOContext *in, FFIMFCPL **cpl)
                 (*cpl)->content_title_utf8);
             av_log(NULL,
                 AV_LOG_INFO,
-                "IMF CPL Id: " FF_UUID_FORMAT "\n",
+                "IMF CPL Id: " FF_IMF_UUID_FORMAT "\n",
                 UID_ARG((*cpl)->id_uuid));
         }
         xmlFreeDoc(doc);
