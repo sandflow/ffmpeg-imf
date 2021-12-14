@@ -43,14 +43,14 @@
 #include "libavutil/rational.h"
 #include <libxml/tree.h>
 
-#define FF_UUID_FORMAT                                \
+#define FF_IMF_UUID_FORMAT                            \
     "urn:uuid:%02hhx%02hhx%02hhx%02hhx-%02hhx%02hhx-" \
     "%02hhx%02hhx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx"
 
 /**
  * UUID as defined in IETF RFC 422
  */
-typedef uint8_t FFUUID[16];
+typedef uint8_t FFIMFUUID[16];
 
 /**
  * IMF Composition Playlist Base Resource
@@ -67,7 +67,7 @@ typedef struct FFIMFBaseResource {
  */
 typedef struct FFIMFTrackFileResource {
     FFIMFBaseResource base;
-    FFUUID track_file_uuid; /**< TrackFileResourceType/TrackFileId */
+    FFIMFUUID track_file_uuid; /**< TrackFileResourceType/TrackFileId */
 } FFIMFTrackFileResource;
 
 /**
@@ -92,7 +92,7 @@ typedef struct FFIMFMarkerResource {
  * IMF Composition Playlist Virtual Track
  */
 typedef struct FFIMFBaseVirtualTrack {
-    FFUUID id_uuid; /**< TrackId associated with the Virtual Track */
+    FFIMFUUID id_uuid; /**< TrackId associated with the Virtual Track */
 } FFIMFBaseVirtualTrack;
 
 /**
@@ -118,7 +118,7 @@ typedef struct FFIMFMarkerVirtualTrack {
  * IMF Composition Playlist
  */
 typedef struct FFIMFCPL {
-    FFUUID id_uuid;                                  /**< CompositionPlaylist/Id element */
+    FFIMFUUID id_uuid;                               /**< CompositionPlaylist/Id element */
     xmlChar *content_title_utf8;                     /**< CompositionPlaylist/ContentTitle element */
     AVRational edit_rate;                            /**< CompositionPlaylist/EditRate element */
     FFIMFMarkerVirtualTrack *main_markers_track;     /**< Main Marker Virtual Track */
@@ -136,7 +136,7 @@ typedef struct FFIMFCPL {
  *  the FFIMFCPL structure using ff_imf_cpl_free().
  * @return A non-zero value in case of an error.
  */
-int ff_parse_imf_cpl_from_xml_dom(xmlDocPtr doc, FFIMFCPL **cpl);
+int ff_imf_parse_cpl_from_xml_dom(xmlDocPtr doc, FFIMFCPL **cpl);
 
 /**
  * Parse an IMF Composition Playlist document into the FFIMFCPL data structure.
@@ -147,7 +147,7 @@ int ff_parse_imf_cpl_from_xml_dom(xmlDocPtr doc, FFIMFCPL **cpl);
  * the FFIMFCPL structure using ff_imf_cpl_free().
  * @return A non-zero value in case of an error.
  */
-int ff_parse_imf_cpl(AVIOContext *in, FFIMFCPL **cpl);
+int ff_imf_parse_cpl(AVIOContext *in, FFIMFCPL **cpl);
 
 /**
  * Allocates and initializes an FFIMFCPL data structure.
@@ -167,24 +167,24 @@ void ff_imf_cpl_free(FFIMFCPL *cpl);
  * Reads an unsigned 32-bit integer from an XML element
  * @return 0 on success, < 0 AVERROR code on error.
  */
-int ff_xml_read_uint32(xmlNodePtr element, uint32_t *number);
+int ff_imf_xml_read_uint32(xmlNodePtr element, uint32_t *number);
 
 /**
  * Reads an AVRational from an XML element
  * @return 0 on success, < 0 AVERROR code on error.
  */
-int ff_xml_read_rational(xmlNodePtr element, AVRational *rational);
+int ff_imf_xml_read_rational(xmlNodePtr element, AVRational *rational);
 
 /**
  * Reads a UUID from an XML element
  * @return 0 on success, < 0 AVERROR code on error.
  */
-int ff_xml_read_uuid(xmlNodePtr element, uint8_t uuid[16]);
+int ff_imf_xml_read_uuid(xmlNodePtr element, uint8_t uuid[16]);
 
 /**
  * Returns the first child element with the specified local name
  * @return A pointer to the child element, or NULL if no such child element exists.
  */
-xmlNodePtr ff_xml_get_child_element_by_name(xmlNodePtr parent, const char *name_utf8);
+xmlNodePtr ff_imf_xml_get_child_element_by_name(xmlNodePtr parent, const char *name_utf8);
 
 #endif

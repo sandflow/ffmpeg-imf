@@ -2,7 +2,7 @@
 
 set -e
 
-PATCH_VERSION="9"
+PATCH_VERSION="10"
 
 PATCH_NAME="avformat/imf"
 
@@ -82,7 +82,8 @@ The IMF standard was first introduced in 2013 and is managed by the SMPTE.
 
 CHANGE NOTES:
 
-- fix leaks when head allocation fails
+- add imf_probe
+- improve imf-specific function names
 "
 
 # add tests back to the Makefile
