@@ -731,13 +731,14 @@ int ff_imf_parse_cpl(AVIOContext *in, FFIMFCPL **cpl)
     filesize = filesize > 0 ? filesize : 8192;
     av_bprint_init(&buf, filesize + 1, AV_BPRINT_SIZE_UNLIMITED);
     ret = avio_read_to_bprint(in, &buf, UINT_MAX - 1);
-    if (ret < 0 || !avio_feof(in) || (filesize = buf.len) == 0) {
+    if (ret < 0 || !avio_feof(in) || buf.len == 0) {
+        av_log(NULL, AV_LOG_ERROR, "Cannot read IMF CPL\n");
         if (ret == 0) {
-            av_log(NULL, AV_LOG_ERROR, "Cannot read IMF CPL\n");
-            return AVERROR_INVALIDDATA;
+            ret = AVERROR_INVALIDDATA;
         }
     } else {
         LIBXML_TEST_VERSION
+        filesize = buf.len;
         doc = xmlReadMemory(buf.str, filesize, NULL, NULL, 0);
         if (!doc) {
             av_log(NULL,
