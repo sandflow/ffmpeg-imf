@@ -250,9 +250,10 @@ static void imf_asset_locator_map_deinit(IMFAssetLocatorMap *asset_map)
     av_freep(&asset_map->assets);
 }
 
-static int parse_assetmap(AVFormatContext *s, const char *url, AVIOContext *in)
+static int parse_assetmap(AVFormatContext *s, const char *url)
 {
     IMFContext *c = s->priv_data;
+    AVIOContext *in = NULL;
     struct AVBPrint buf;
     AVDictionary *opts = NULL;
     xmlDoc *doc = NULL;
@@ -280,7 +281,7 @@ static int parse_assetmap(AVFormatContext *s, const char *url, AVIOContext *in)
     av_bprint_init(&buf, filesize + 1, AV_BPRINT_SIZE_UNLIMITED);
 
     ret = avio_read_to_bprint(in, &buf, MAX_BPRINT_READ_SIZE);
-    if (ret < 0 || !avio_feof(in) || (filesize = buf.len) == 0) {
+    if (ret < 0 || !avio_feof(in) || buf.len == 0) {
         av_log(s, AV_LOG_ERROR, "Unable to read to asset map '%s'\n", url);
         if (ret == 0)
             ret = AVERROR_INVALIDDATA;
@@ -296,6 +297,7 @@ static int parse_assetmap(AVFormatContext *s, const char *url, AVIOContext *in)
     }
     base_url = av_dirname(tmp_str);
 
+    filesize = buf.len;
     doc = xmlReadMemory(buf.str, filesize, url, NULL, 0);
 
     ret = parse_imf_asset_map_from_xml_dom(s, doc, &c->asset_locator_map, base_url);
@@ -370,14 +372,12 @@ static int open_track_resource_context(AVFormatContext *s,
         return ret;
     }
 
-    ret = avformat_find_stream_info(track_resource->ctx, NULL);
-    if (ret < 0) {
+    if (av_strcasecmp(track_resource->ctx->iformat->name, "mxf")) {
         av_log(s,
             AV_LOG_ERROR,
-            "Could not find %s stream information: %s\n",
-            track_resource->locator->absolute_uri,
-            av_err2str(ret));
-        goto cleanup;
+            "Track file kind is not MXF but %s instead\n",
+            track_resource->ctx->iformat->name);
+        return AVERROR_INVALIDDATA;
     }
 
     /* Compare the source timebase to the resource edit rate, considering the first stream of the source file */
@@ -650,7 +650,7 @@ static int imf_read_header(AVFormatContext *s)
     while (asset_map_path != NULL) {
         av_log(s, AV_LOG_DEBUG, "start parsing IMF Asset Map: %s\n", asset_map_path);
 
-        if (ret = parse_assetmap(s, asset_map_path, NULL))
+        if (ret = parse_assetmap(s, asset_map_path))
             return ret;
 
         asset_map_path = av_strtok(NULL, ",", &tmp_str);
