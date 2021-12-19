@@ -349,28 +349,25 @@ static int open_track_resource_context(AVFormatContext *s,
     if ((ret = ff_copy_whiteblacklists(track_resource->ctx, s)) < 0)
         goto cleanup;
 
-    av_dict_copy(&opts, c->avio_opts, 0);
+    if (ret = av_opt_set(track_resource->ctx, "format_whitelist", "mxf", 0))
+        goto cleanup;
+
+    if ((ret = av_dict_copy(&opts, c->avio_opts, 0)) < 0)
+        goto cleanup;
+
     ret = avformat_open_input(&track_resource->ctx,
         track_resource->locator->absolute_uri,
         NULL,
         &opts);
-    av_dict_free(&opts);
     if (ret < 0) {
         av_log(s,
             AV_LOG_ERROR,
             "Could not open %s input context: %s\n",
             track_resource->locator->absolute_uri,
             av_err2str(ret));
-        return ret;
+        goto cleanup;
     }
-
-    if (av_strcasecmp(track_resource->ctx->iformat->name, "mxf")) {
-        av_log(s,
-            AV_LOG_ERROR,
-            "Track file kind is not MXF but %s instead\n",
-            track_resource->ctx->iformat->name);
-        return AVERROR_INVALIDDATA;
-    }
+    av_dict_free(&opts);
 
     /* Compare the source timebase to the resource edit rate, considering the first stream of the source file */
     if (av_cmp_q(track_resource->ctx->streams[0]->time_base, av_inv_q(track_resource->resource->base.edit_rate)))
@@ -405,8 +402,9 @@ static int open_track_resource_context(AVFormatContext *s,
         }
     }
 
-    return ret;
+    return 0;
 cleanup:
+    av_dict_free(&opts);
     avformat_free_context(track_resource->ctx);
     track_resource->ctx = NULL;
     return ret;
