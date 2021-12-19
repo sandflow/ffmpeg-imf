@@ -398,11 +398,13 @@ static int open_track_resource_context(AVFormatContext *s,
                 entry_point,
                 track_resource->locator->absolute_uri,
                 av_err2str(ret));
-            goto cleanup;
+            avformat_close_input(&track_resource->ctx);
+            return ret;
         }
     }
 
     return 0;
+
 cleanup:
     av_dict_free(&opts);
     avformat_free_context(track_resource->ctx);
@@ -416,7 +418,6 @@ static int open_track_file_resource(AVFormatContext *s,
 {
     IMFContext *c = s->priv_data;
     IMFAssetLocator *asset_locator;
-    IMFVirtualTrackResourcePlaybackCtx vt_ctx;
     void *tmp;
     int ret;
 
@@ -443,6 +444,8 @@ static int open_track_file_resource(AVFormatContext *s,
     track->resources = tmp;
 
     for (uint32_t i = 0; i < track_file_resource->base.repeat_count; ++i) {
+        IMFVirtualTrackResourcePlaybackCtx vt_ctx;
+
         vt_ctx.locator = asset_locator;
         vt_ctx.resource = track_file_resource;
         vt_ctx.ctx = NULL;
@@ -454,14 +457,13 @@ static int open_track_file_resource(AVFormatContext *s,
                 track_file_resource->base.edit_rate.num));
     }
 
-    return ret;
+    return 0;
 }
 
 static void imf_virtual_track_playback_context_deinit(IMFVirtualTrackPlaybackCtx *track)
 {
     for (uint32_t i = 0; i < track->resource_count; ++i)
-        if (track->resources[i].ctx && track->resources[i].ctx->iformat)
-            avformat_close_input(&track->resources[i].ctx);
+        avformat_close_input(&track->resources[i].ctx);
 
     av_freep(&track->resources);
 }
@@ -516,13 +518,12 @@ clean_up:
 static int set_context_streams_from_tracks(AVFormatContext *s)
 {
     IMFContext *c = s->priv_data;
-
-    AVStream *asset_stream;
-    AVStream *first_resource_stream;
-
     int ret = 0;
 
     for (uint32_t i = 0; i < c->track_count; ++i) {
+        AVStream *asset_stream;
+        AVStream *first_resource_stream;
+
         /* Open the first resource of the track to get stream information */
         first_resource_stream = c->tracks[i]->resources[0].ctx->streams[0];
         av_log(s, AV_LOG_DEBUG, "Open the first resource of track %d\n", c->tracks[i]->index);
@@ -530,6 +531,7 @@ static int set_context_streams_from_tracks(AVFormatContext *s)
         /* Copy stream information */
         asset_stream = avformat_new_stream(s, NULL);
         if (!asset_stream) {
+            ret = AVERROR(ENOMEM);
             av_log(s, AV_LOG_ERROR, "Could not create stream\n");
             break;
         }
@@ -537,7 +539,7 @@ static int set_context_streams_from_tracks(AVFormatContext *s)
         ret = avcodec_parameters_copy(asset_stream->codecpar, first_resource_stream->codecpar);
         if (ret < 0) {
             av_log(s, AV_LOG_ERROR, "Could not copy stream parameters\n");
-            break;
+            return ret;
         }
         avpriv_set_pts_info(asset_stream,
             first_resource_stream->pts_wrap_bits,
@@ -547,7 +549,7 @@ static int set_context_streams_from_tracks(AVFormatContext *s)
             av_inv_q(asset_stream->time_base)));
     }
 
-    return ret;
+    return 0;
 }
 
 static int open_cpl_tracks(AVFormatContext *s)
@@ -586,10 +588,9 @@ static int imf_read_header(AVFormatContext *s)
 
     c->interrupt_callback = &s->interrupt_callback;
     tmp_str = av_strdup(s->url);
-    if (!tmp_str) {
-        ret = AVERROR(ENOMEM);
-        return ret;
-    }
+    if (!tmp_str)
+        return AVERROR(ENOMEM);
+
     c->base_url = av_dirname(tmp_str);
     if ((ret = ffio_copy_url_options(s->pb, &c->avio_opts)) < 0)
         return ret;
@@ -854,6 +855,6 @@ const AVInputFormat ff_imf_demuxer = {
     .read_probe     = imf_probe,
     .read_header    = imf_read_header,
     .read_packet    = imf_read_packet,
-    .read_close     = imf_close
+    .read_close     = imf_close,
 };
 // clang-format on
