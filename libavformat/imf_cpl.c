@@ -324,6 +324,8 @@ static int fill_marker_resource(xmlNodePtr marker_resource_elem,
         if (xmlStrcmp(element->name, "Marker") == 0) {
             void *tmp;
 
+            if (marker_resource->marker_count == UINT32_MAX)
+                return AVERROR(ENOMEM);
             tmp = av_realloc_array(marker_resource->markers,
                 marker_resource->marker_count + 1,
                 sizeof(FFIMFMarker));
@@ -384,6 +386,9 @@ static int push_marker_sequence(xmlNodePtr marker_sequence_elem, FFIMFCPL *cpl)
     if (!resource_list_elem)
         return 0;
     resource_elem_count = xmlChildElementCount(resource_list_elem);
+    if (resource_elem_count > UINT32_MAX
+        || cpl->main_markers_track->resource_count > UINT32_MAX - resource_elem_count)
+        return AVERROR(ENOMEM);
     tmp = av_realloc_array(cpl->main_markers_track->resources,
         cpl->main_markers_track->resource_count + resource_elem_count,
         sizeof(FFIMFMarkerResource));
@@ -456,6 +461,8 @@ static int push_main_audio_sequence(xmlNodePtr audio_sequence_elem, FFIMFCPL *cp
 
     /* create a main audio virtual track if none exists for the sequence */
     if (!vt) {
+        if (cpl->main_audio_track_count == UINT32_MAX)
+            return AVERROR(ENOMEM);
         tmp = av_realloc_array(cpl->main_audio_tracks,
             cpl->main_audio_track_count + 1,
             sizeof(FFIMFTrackFileVirtualTrack));
@@ -473,6 +480,9 @@ static int push_main_audio_sequence(xmlNodePtr audio_sequence_elem, FFIMFCPL *cp
     if (!resource_list_elem)
         return 0;
     resource_elem_count = xmlChildElementCount(resource_list_elem);
+    if (resource_elem_count > UINT32_MAX
+        || vt->resource_count > UINT32_MAX - resource_elem_count)
+        return AVERROR(ENOMEM);
     tmp = av_fast_realloc(vt->resources,
         &vt->resources_alloc_sz,
         (vt->resource_count + resource_elem_count) * sizeof(FFIMFTrackFileResource));
@@ -546,6 +556,10 @@ static int push_main_image_2d_sequence(xmlNodePtr image_sequence_elem, FFIMFCPL 
     if (!resource_list_elem)
         return 0;
     resource_elem_count = xmlChildElementCount(resource_list_elem);
+    if (resource_elem_count > UINT32_MAX
+        || cpl->main_image_2d_track->resource_count > UINT32_MAX - resource_elem_count
+        || (cpl->main_image_2d_track->resource_count + resource_elem_count) > INT_MAX / sizeof(FFIMFTrackFileResource))
+        return AVERROR(ENOMEM);
     tmp = av_fast_realloc(cpl->main_image_2d_track->resources,
         &cpl->main_image_2d_track->resources_alloc_sz,
         (cpl->main_image_2d_track->resource_count + resource_elem_count) * sizeof(FFIMFTrackFileResource));

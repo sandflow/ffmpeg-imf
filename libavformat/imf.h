@@ -102,7 +102,7 @@ typedef struct FFIMFTrackFileVirtualTrack {
     FFIMFBaseVirtualTrack base;
     uint32_t resource_count;           /**< Number of Resource elements present in the Virtual Track */
     FFIMFTrackFileResource *resources; /**< Resource elements of the Virtual Track */
-    uint32_t resources_alloc_sz;       /**< Size of the resources buffer */
+    unsigned int resources_alloc_sz;   /**< Size of the resources buffer */
 } FFIMFTrackFileVirtualTrack;
 
 /**

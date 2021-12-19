@@ -92,7 +92,7 @@ typedef struct IMFVirtualTrackPlaybackCtx {
     AVRational duration;
     // Resources
     uint32_t resource_count;
-    uint32_t resources_alloc_sz;
+    unsigned int resources_alloc_sz;
     IMFVirtualTrackResourcePlaybackCtx *resources;
     // Decoding cursors
     uint32_t current_resource_index;
@@ -154,6 +154,7 @@ static int parse_imf_asset_map_from_xml_dom(AVFormatContext *s,
     xmlNodePtr asset_map_element = NULL;
     xmlNodePtr node = NULL;
     xmlNodePtr asset_element = NULL;
+    unsigned long elem_count;
     char *uri;
     int ret = 0;
     IMFAssetLocator *asset = NULL;
@@ -180,8 +181,12 @@ static int parse_imf_asset_map_from_xml_dom(AVFormatContext *s,
         av_log(s, AV_LOG_ERROR, "Unable to parse asset map XML - missing AssetList node\n");
         return AVERROR_INVALIDDATA;
     }
+    elem_count = xmlChildElementCount(node);
+    if (elem_count > UINT32_MAX
+        || asset_map->asset_count > UINT32_MAX - elem_count)
+        return AVERROR(ENOMEM);
     tmp = av_realloc_array(asset_map->assets,
-        xmlChildElementCount(node) + asset_map->asset_count,
+        elem_count + asset_map->asset_count,
         sizeof(IMFAssetLocator));
     if (!tmp) {
         av_log(NULL, AV_LOG_ERROR, "Cannot allocate IMF asset locators\n");
@@ -436,6 +441,11 @@ static int open_track_file_resource(AVFormatContext *s,
         "Found locator for " FF_IMF_UUID_FORMAT ": %s\n",
         UID_ARG(asset_locator->uuid),
         asset_locator->absolute_uri);
+
+    if (track->resource_count > UINT32_MAX - track_file_resource->base.repeat_count
+        || (track->resource_count + track_file_resource->base.repeat_count)
+            > INT_MAX / sizeof(IMFVirtualTrackResourcePlaybackCtx))
+        return AVERROR(ENOMEM);
     tmp = av_fast_realloc(track->resources,
         &track->resources_alloc_sz,
         (track->resource_count + track_file_resource->base.repeat_count)
@@ -500,6 +510,10 @@ static int open_virtual_track(AVFormatContext *s,
 
     track->current_timestamp = av_make_q(0, track->duration.den);
 
+    if (c->track_count == UINT32_MAX) {
+        ret = AVERROR(ENOMEM);
+        goto clean_up;
+    }
     tmp = av_realloc_array(c->tracks, c->track_count + 1, sizeof(IMFVirtualTrackPlaybackCtx *));
     if (!tmp) {
         ret = AVERROR(ENOMEM);
