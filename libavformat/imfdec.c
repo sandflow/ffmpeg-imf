@@ -330,19 +330,17 @@ static int open_track_resource_context(AVFormatContext *s,
     int64_t entry_point;
     AVDictionary *opts = NULL;
 
-    if (!track_resource->ctx) {
-        track_resource->ctx = avformat_alloc_context();
-        if (!track_resource->ctx)
-            return AVERROR(ENOMEM);
-    }
-
-    if (track_resource->ctx->iformat) {
+    if (track_resource->ctx) {
         av_log(s,
             AV_LOG_DEBUG,
             "Input context already opened for %s.\n",
             track_resource->locator->absolute_uri);
         return 0;
     }
+
+    track_resource->ctx = avformat_alloc_context();
+    if (!track_resource->ctx)
+        return AVERROR(ENOMEM);
 
     track_resource->ctx->io_open = s->io_open;
     track_resource->ctx->io_close = s->io_close;
