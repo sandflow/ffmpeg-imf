@@ -323,8 +323,9 @@ static int fill_marker_resource(xmlNodePtr marker_resource_elem,
     element = xmlFirstElementChild(marker_resource_elem);
     while (element) {
         if (xmlStrcmp(element->name, "Marker") == 0) {
-            tmp = av_realloc(marker_resource->markers,
-                (marker_resource->marker_count + 1) * sizeof(FFIMFMarker));
+            tmp = av_realloc_array(marker_resource->markers,
+                marker_resource->marker_count + 1,
+                sizeof(FFIMFMarker));
             if (!tmp)
                 return AVERROR(ENOMEM);
             marker_resource->markers = tmp;
@@ -382,9 +383,9 @@ static int push_marker_sequence(xmlNodePtr marker_sequence_elem, FFIMFCPL *cpl)
     if (!resource_list_elem)
         return 0;
     resource_elem_count = xmlChildElementCount(resource_list_elem);
-    tmp = av_realloc(cpl->main_markers_track->resources,
-        (cpl->main_markers_track->resource_count + resource_elem_count)
-            * sizeof(FFIMFMarkerResource));
+    tmp = av_realloc_array(cpl->main_markers_track->resources,
+        cpl->main_markers_track->resource_count + resource_elem_count,
+        sizeof(FFIMFMarkerResource));
     if (!tmp) {
         av_log(NULL, AV_LOG_ERROR, "Cannot allocate Marker Resources\n");
         return AVERROR(ENOMEM);
@@ -454,8 +455,9 @@ static int push_main_audio_sequence(xmlNodePtr audio_sequence_elem, FFIMFCPL *cp
 
     /* create a main audio virtual track if none exists for the sequence */
     if (!vt) {
-        tmp = av_realloc(cpl->main_audio_tracks,
-            (cpl->main_audio_track_count + 1) * sizeof(FFIMFTrackFileVirtualTrack));
+        tmp = av_realloc_array(cpl->main_audio_tracks,
+            cpl->main_audio_track_count + 1,
+            sizeof(FFIMFTrackFileVirtualTrack));
         if (!tmp)
             return AVERROR(ENOMEM);
         cpl->main_audio_tracks = tmp;

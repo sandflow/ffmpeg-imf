@@ -45,6 +45,7 @@
  * @ingroup lavu_imf
  */
 
+#include "avio_internal.h"
 #include "imf.h"
 #include "internal.h"
 #include "libavutil/avstring.h"
@@ -52,7 +53,6 @@
 #include "libavutil/opt.h"
 #include "mxf.h"
 #include "url.h"
-#include "avio_internal.h"
 #include <inttypes.h>
 #include <libxml/parser.h>
 
@@ -180,9 +180,9 @@ static int parse_imf_asset_map_from_xml_dom(AVFormatContext *s,
         av_log(s, AV_LOG_ERROR, "Unable to parse asset map XML - missing AssetList node\n");
         return AVERROR_INVALIDDATA;
     }
-    tmp = av_realloc(asset_map->assets,
-        (xmlChildElementCount(node) + asset_map->asset_count)
-            * sizeof(IMFAssetLocator));
+    tmp = av_realloc_array(asset_map->assets,
+        xmlChildElementCount(node) + asset_map->asset_count,
+        sizeof(IMFAssetLocator));
     if (!tmp) {
         av_log(NULL, AV_LOG_ERROR, "Cannot allocate IMF asset locators\n");
         return AVERROR(ENOMEM);
@@ -260,21 +260,16 @@ static int parse_assetmap(AVFormatContext *s, const char *url)
     xmlDoc *doc = NULL;
     const char *base_url;
     char *tmp_str = NULL;
-    int close_in = 0;
     int ret;
     int64_t filesize;
 
     av_log(s, AV_LOG_DEBUG, "Asset Map URL: %s\n", url);
 
-    if (!in) {
-        close_in = 1;
-
-        av_dict_copy(&opts, c->avio_opts, 0);
-        ret = s->io_open(s, &in, url, AVIO_FLAG_READ, &opts);
-        av_dict_free(&opts);
-        if (ret < 0)
-            return ret;
-    }
+    av_dict_copy(&opts, c->avio_opts, 0);
+    ret = s->io_open(s, &in, url, AVIO_FLAG_READ, &opts);
+    av_dict_free(&opts);
+    if (ret < 0)
+        return ret;
 
     filesize = avio_size(in);
     filesize = filesize > 0 ? filesize : DEFAULT_ASSETMAP_SIZE;
@@ -314,10 +309,8 @@ static int parse_assetmap(AVFormatContext *s, const char *url)
 clean_up:
     if (tmp_str)
         av_freep(&tmp_str);
-    if (close_in)
-        avio_close(in);
+    ff_format_io_close(s, &in);
     av_bprint_finalize(&buf, NULL);
-
     return ret;
 }
 
@@ -508,7 +501,7 @@ static int open_virtual_track(AVFormatContext *s,
 
     track->current_timestamp = av_make_q(0, track->duration.den);
 
-    tmp = av_realloc(c->tracks, (c->track_count + 1) * sizeof(IMFVirtualTrackPlaybackCtx *));
+    tmp = av_realloc_array(c->tracks, c->track_count + 1, sizeof(IMFVirtualTrackPlaybackCtx *));
     if (!tmp) {
         ret = AVERROR(ENOMEM);
         goto clean_up;
