@@ -642,7 +642,7 @@ static IMFVirtualTrackPlaybackCtx *get_next_track_with_minimum_timestamp(AVForma
     IMFVirtualTrackPlaybackCtx *track;
 
     AVRational minimum_timestamp = av_make_q(INT32_MAX, 1);
-    for (uint32_t i = 0; i < c->track_count; ++i) {
+    for (uint32_t i = c->track_count; i > 0; i--) {
         av_log(
             s,
             AV_LOG_DEBUG,
@@ -651,11 +651,12 @@ static IMFVirtualTrackPlaybackCtx *get_next_track_with_minimum_timestamp(AVForma
             " (over duration: " AVRATIONAL_FORMAT
             ")\n",
             i,
-            AVRATIONAL_ARG(c->tracks[i]->current_timestamp),
+            AVRATIONAL_ARG(c->tracks[i - 1]->current_timestamp),
             AVRATIONAL_ARG(minimum_timestamp),
-            AVRATIONAL_ARG(c->tracks[i]->duration));
-        if (av_cmp_q(c->tracks[i]->current_timestamp, minimum_timestamp) < 0) {
-            track = c->tracks[i];
+            AVRATIONAL_ARG(c->tracks[i - 1]->duration));
+
+        if (av_cmp_q(c->tracks[i - 1]->current_timestamp, minimum_timestamp) <= 0) {
+            track = c->tracks[i - 1];
             minimum_timestamp = track->current_timestamp;
         }
     }

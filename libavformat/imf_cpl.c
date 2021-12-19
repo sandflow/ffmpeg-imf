@@ -313,7 +313,6 @@ static int fill_marker_resource(xmlNodePtr marker_resource_elem,
     FFIMFCPL *cpl)
 {
     xmlNodePtr element = NULL;
-    void *tmp;
     int ret = 0;
 
     if (ret = fill_base_resource(marker_resource_elem, (FFIMFBaseResource *)marker_resource, cpl))
@@ -323,6 +322,8 @@ static int fill_marker_resource(xmlNodePtr marker_resource_elem,
     element = xmlFirstElementChild(marker_resource_elem);
     while (element) {
         if (xmlStrcmp(element->name, "Marker") == 0) {
+            void *tmp;
+
             tmp = av_realloc_array(marker_resource->markers,
                 marker_resource->marker_count + 1,
                 sizeof(FFIMFMarker));
