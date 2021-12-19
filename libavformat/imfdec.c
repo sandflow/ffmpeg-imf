@@ -708,9 +708,9 @@ static IMFVirtualTrackResourcePlaybackCtx *get_resource_context_for_timestamp(AV
                     AV_LOG_DEBUG,
                     "Switch resource on track %d: re-open context\n",
                     track->index);
-                avformat_close_input(&(track->resources[track->current_resource_index].ctx));
                 if (open_track_resource_context(s, &(track->resources[i])) != 0)
                     return NULL;
+                avformat_close_input(&(track->resources[track->current_resource_index].ctx));
                 track->current_resource_index = i;
             }
             return &(track->resources[track->current_resource_index]);
