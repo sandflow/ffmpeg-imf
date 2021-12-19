@@ -2,7 +2,7 @@
 
 set -e
 
-PATCH_VERSION="11"
+PATCH_VERSION="12"
 
 PATCH_NAME="avformat/imf"
 
@@ -82,9 +82,11 @@ The IMF standard was first introduced in 2013 and is managed by the SMPTE.
 
 CHANGE NOTES:
 
-- limit Track Files to MXF
-- remove stealth variable assignment
-- remove unused function parameter
+- refactor save_avio_options()
+- change av_realloc() to av_realloc_array() to prevent size overflows
+- use av_opt_set(...format_whitelist...) to force MXF track files
+- add support for io_open2()
+- misc code path improvements
 "
 
 # add tests back to the Makefile
