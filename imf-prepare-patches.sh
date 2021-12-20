@@ -15,7 +15,7 @@ PATCHES_SRC="libavformat/imf.h libavformat/imf_cpl.c libavformat/imfdec.c"
 PATCHES_MISC="MAINTAINERS configure doc/demuxers.texi libavformat/Makefile libavformat/allformats.c"
 PATCHES_MAKEFILE="libavformat/Makefile"
 PATCHES_TESTS="libavformat/tests/imf.c"
-PATCHES_FATE="libavformat/tests/fate/libavformat.mak libavformat/tests/ref/fate/imf"
+PATCHES_FATE="tests/fate/libavformat.mak tests/ref/fate/imf"
 
 PATCHES_ALL="$PATCHES_SRC $PATCHES_MAKEFILE $PATCHES_MISC $PATCHES_TESTS $PATCHES_FATE"
 
