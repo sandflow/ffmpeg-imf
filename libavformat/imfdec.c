@@ -45,6 +45,7 @@
  * @ingroup lavu_imf
  */
 
+#include "avio_internal.h"
 #include "imf.h"
 #include "internal.h"
 #include "libavutil/avstring.h"
@@ -91,7 +92,7 @@ typedef struct IMFVirtualTrackPlaybackCtx {
     AVRational duration;
     // Resources
     uint32_t resource_count;
-    uint32_t resources_alloc_sz;
+    unsigned int resources_alloc_sz;
     IMFVirtualTrackResourcePlaybackCtx *resources;
     // Decoding cursors
     uint32_t current_resource_index;
@@ -153,6 +154,7 @@ static int parse_imf_asset_map_from_xml_dom(AVFormatContext *s,
     xmlNodePtr asset_map_element = NULL;
     xmlNodePtr node = NULL;
     xmlNodePtr asset_element = NULL;
+    unsigned long elem_count;
     char *uri;
     int ret = 0;
     IMFAssetLocator *asset = NULL;
@@ -179,9 +181,13 @@ static int parse_imf_asset_map_from_xml_dom(AVFormatContext *s,
         av_log(s, AV_LOG_ERROR, "Unable to parse asset map XML - missing AssetList node\n");
         return AVERROR_INVALIDDATA;
     }
-    tmp = av_realloc(asset_map->assets,
-        (xmlChildElementCount(node) + asset_map->asset_count)
-            * sizeof(IMFAssetLocator));
+    elem_count = xmlChildElementCount(node);
+    if (elem_count > UINT32_MAX
+        || asset_map->asset_count > UINT32_MAX - elem_count)
+        return AVERROR(ENOMEM);
+    tmp = av_realloc_array(asset_map->assets,
+        elem_count + asset_map->asset_count,
+        sizeof(IMFAssetLocator));
     if (!tmp) {
         av_log(NULL, AV_LOG_ERROR, "Cannot allocate IMF asset locators\n");
         return AVERROR(ENOMEM);
@@ -259,21 +265,16 @@ static int parse_assetmap(AVFormatContext *s, const char *url)
     xmlDoc *doc = NULL;
     const char *base_url;
     char *tmp_str = NULL;
-    int close_in = 0;
     int ret;
     int64_t filesize;
 
     av_log(s, AV_LOG_DEBUG, "Asset Map URL: %s\n", url);
 
-    if (!in) {
-        close_in = 1;
-
-        av_dict_copy(&opts, c->avio_opts, 0);
-        ret = s->io_open(s, &in, url, AVIO_FLAG_READ, &opts);
-        av_dict_free(&opts);
-        if (ret < 0)
-            return ret;
-    }
+    av_dict_copy(&opts, c->avio_opts, 0);
+    ret = s->io_open(s, &in, url, AVIO_FLAG_READ, &opts);
+    av_dict_free(&opts);
+    if (ret < 0)
+        return ret;
 
     filesize = avio_size(in);
     filesize = filesize > 0 ? filesize : DEFAULT_ASSETMAP_SIZE;
@@ -313,10 +314,8 @@ static int parse_assetmap(AVFormatContext *s, const char *url)
 clean_up:
     if (tmp_str)
         av_freep(&tmp_str);
-    if (close_in)
-        avio_close(in);
+    ff_format_io_close(s, &in);
     av_bprint_finalize(&buf, NULL);
-
     return ret;
 }
 
@@ -336,13 +335,7 @@ static int open_track_resource_context(AVFormatContext *s,
     int64_t entry_point;
     AVDictionary *opts = NULL;
 
-    if (!track_resource->ctx) {
-        track_resource->ctx = avformat_alloc_context();
-        if (!track_resource->ctx)
-            return AVERROR(ENOMEM);
-    }
-
-    if (track_resource->ctx->iformat) {
+    if (track_resource->ctx) {
         av_log(s,
             AV_LOG_DEBUG,
             "Input context already opened for %s.\n",
@@ -350,35 +343,37 @@ static int open_track_resource_context(AVFormatContext *s,
         return 0;
     }
 
+    track_resource->ctx = avformat_alloc_context();
+    if (!track_resource->ctx)
+        return AVERROR(ENOMEM);
+
     track_resource->ctx->io_open = s->io_open;
     track_resource->ctx->io_close = s->io_close;
+    track_resource->ctx->io_close2 = s->io_close2;
     track_resource->ctx->flags |= s->flags & ~AVFMT_FLAG_CUSTOM_IO;
 
     if ((ret = ff_copy_whiteblacklists(track_resource->ctx, s)) < 0)
         goto cleanup;
 
-    av_dict_copy(&opts, c->avio_opts, 0);
+    if (ret = av_opt_set(track_resource->ctx, "format_whitelist", "mxf", 0))
+        goto cleanup;
+
+    if ((ret = av_dict_copy(&opts, c->avio_opts, 0)) < 0)
+        goto cleanup;
+
     ret = avformat_open_input(&track_resource->ctx,
         track_resource->locator->absolute_uri,
         NULL,
         &opts);
-    av_dict_free(&opts);
     if (ret < 0) {
         av_log(s,
             AV_LOG_ERROR,
             "Could not open %s input context: %s\n",
             track_resource->locator->absolute_uri,
             av_err2str(ret));
-        return ret;
+        goto cleanup;
     }
-
-    if (av_strcasecmp(track_resource->ctx->iformat->name, "mxf")) {
-        av_log(s,
-            AV_LOG_ERROR,
-            "Track file kind is not MXF but %s instead\n",
-            track_resource->ctx->iformat->name);
-        return AVERROR_INVALIDDATA;
-    }
+    av_dict_free(&opts);
 
     /* Compare the source timebase to the resource edit rate, considering the first stream of the source file */
     if (av_cmp_q(track_resource->ctx->streams[0]->time_base, av_inv_q(track_resource->resource->base.edit_rate)))
@@ -409,12 +404,15 @@ static int open_track_resource_context(AVFormatContext *s,
                 entry_point,
                 track_resource->locator->absolute_uri,
                 av_err2str(ret));
-            goto cleanup;
+            avformat_close_input(&track_resource->ctx);
+            return ret;
         }
     }
 
-    return ret;
+    return 0;
+
 cleanup:
+    av_dict_free(&opts);
     avformat_free_context(track_resource->ctx);
     track_resource->ctx = NULL;
     return ret;
@@ -426,7 +424,6 @@ static int open_track_file_resource(AVFormatContext *s,
 {
     IMFContext *c = s->priv_data;
     IMFAssetLocator *asset_locator;
-    IMFVirtualTrackResourcePlaybackCtx vt_ctx;
     void *tmp;
     int ret;
 
@@ -444,6 +441,11 @@ static int open_track_file_resource(AVFormatContext *s,
         "Found locator for " FF_IMF_UUID_FORMAT ": %s\n",
         UID_ARG(asset_locator->uuid),
         asset_locator->absolute_uri);
+
+    if (track->resource_count > UINT32_MAX - track_file_resource->base.repeat_count
+        || (track->resource_count + track_file_resource->base.repeat_count)
+            > INT_MAX / sizeof(IMFVirtualTrackResourcePlaybackCtx))
+        return AVERROR(ENOMEM);
     tmp = av_fast_realloc(track->resources,
         &track->resources_alloc_sz,
         (track->resource_count + track_file_resource->base.repeat_count)
@@ -453,6 +455,8 @@ static int open_track_file_resource(AVFormatContext *s,
     track->resources = tmp;
 
     for (uint32_t i = 0; i < track_file_resource->base.repeat_count; ++i) {
+        IMFVirtualTrackResourcePlaybackCtx vt_ctx;
+
         vt_ctx.locator = asset_locator;
         vt_ctx.resource = track_file_resource;
         vt_ctx.ctx = NULL;
@@ -464,14 +468,13 @@ static int open_track_file_resource(AVFormatContext *s,
                 track_file_resource->base.edit_rate.num));
     }
 
-    return ret;
+    return 0;
 }
 
 static void imf_virtual_track_playback_context_deinit(IMFVirtualTrackPlaybackCtx *track)
 {
     for (uint32_t i = 0; i < track->resource_count; ++i)
-        if (track->resources[i].ctx && track->resources[i].ctx->iformat)
-            avformat_close_input(&track->resources[i].ctx);
+        avformat_close_input(&track->resources[i].ctx);
 
     av_freep(&track->resources);
 }
@@ -507,7 +510,11 @@ static int open_virtual_track(AVFormatContext *s,
 
     track->current_timestamp = av_make_q(0, track->duration.den);
 
-    tmp = av_realloc(c->tracks, (c->track_count + 1) * sizeof(IMFVirtualTrackPlaybackCtx *));
+    if (c->track_count == UINT32_MAX) {
+        ret = AVERROR(ENOMEM);
+        goto clean_up;
+    }
+    tmp = av_realloc_array(c->tracks, c->track_count + 1, sizeof(IMFVirtualTrackPlaybackCtx *));
     if (!tmp) {
         ret = AVERROR(ENOMEM);
         goto clean_up;
@@ -526,13 +533,12 @@ clean_up:
 static int set_context_streams_from_tracks(AVFormatContext *s)
 {
     IMFContext *c = s->priv_data;
-
-    AVStream *asset_stream;
-    AVStream *first_resource_stream;
-
     int ret = 0;
 
     for (uint32_t i = 0; i < c->track_count; ++i) {
+        AVStream *asset_stream;
+        AVStream *first_resource_stream;
+
         /* Open the first resource of the track to get stream information */
         first_resource_stream = c->tracks[i]->resources[0].ctx->streams[0];
         av_log(s, AV_LOG_DEBUG, "Open the first resource of track %d\n", c->tracks[i]->index);
@@ -540,6 +546,7 @@ static int set_context_streams_from_tracks(AVFormatContext *s)
         /* Copy stream information */
         asset_stream = avformat_new_stream(s, NULL);
         if (!asset_stream) {
+            ret = AVERROR(ENOMEM);
             av_log(s, AV_LOG_ERROR, "Could not create stream\n");
             break;
         }
@@ -547,7 +554,7 @@ static int set_context_streams_from_tracks(AVFormatContext *s)
         ret = avcodec_parameters_copy(asset_stream->codecpar, first_resource_stream->codecpar);
         if (ret < 0) {
             av_log(s, AV_LOG_ERROR, "Could not copy stream parameters\n");
-            break;
+            return ret;
         }
         avpriv_set_pts_info(asset_stream,
             first_resource_stream->pts_wrap_bits,
@@ -557,28 +564,7 @@ static int set_context_streams_from_tracks(AVFormatContext *s)
             av_inv_q(asset_stream->time_base)));
     }
 
-    return ret;
-}
-
-static int save_avio_options(AVFormatContext *s)
-{
-    IMFContext *c = s->priv_data;
-    static const char *const opts[] = {
-        "headers", "http_proxy", "user_agent", "cookies", "referer", "rw_timeout", "icy", NULL};
-    const char *const *opt = opts;
-    uint8_t *buf;
-    int ret = 0;
-
-    while (*opt) {
-        if (av_opt_get(s->pb, *opt, AV_OPT_SEARCH_CHILDREN | AV_OPT_ALLOW_NULL, &buf) >= 0) {
-            ret = av_dict_set(&c->avio_opts, *opt, buf, AV_DICT_DONT_STRDUP_VAL);
-            if (ret < 0)
-                return ret;
-        }
-        opt++;
-    }
-
-    return ret;
+    return 0;
 }
 
 static int open_cpl_tracks(AVFormatContext *s)
@@ -617,12 +603,11 @@ static int imf_read_header(AVFormatContext *s)
 
     c->interrupt_callback = &s->interrupt_callback;
     tmp_str = av_strdup(s->url);
-    if (!tmp_str) {
-        ret = AVERROR(ENOMEM);
-        return ret;
-    }
+    if (!tmp_str)
+        return AVERROR(ENOMEM);
+
     c->base_url = av_dirname(tmp_str);
-    if ((ret = save_avio_options(s)) < 0)
+    if ((ret = ffio_copy_url_options(s->pb, &c->avio_opts)) < 0)
         return ret;
 
     av_log(s, AV_LOG_DEBUG, "start parsing IMF CPL: %s\n", s->url);
@@ -672,7 +657,7 @@ static IMFVirtualTrackPlaybackCtx *get_next_track_with_minimum_timestamp(AVForma
     IMFVirtualTrackPlaybackCtx *track;
 
     AVRational minimum_timestamp = av_make_q(INT32_MAX, 1);
-    for (uint32_t i = 0; i < c->track_count; ++i) {
+    for (uint32_t i = c->track_count; i > 0; i--) {
         av_log(
             s,
             AV_LOG_DEBUG,
@@ -681,11 +666,12 @@ static IMFVirtualTrackPlaybackCtx *get_next_track_with_minimum_timestamp(AVForma
             " (over duration: " AVRATIONAL_FORMAT
             ")\n",
             i,
-            AVRATIONAL_ARG(c->tracks[i]->current_timestamp),
+            AVRATIONAL_ARG(c->tracks[i - 1]->current_timestamp),
             AVRATIONAL_ARG(minimum_timestamp),
-            AVRATIONAL_ARG(c->tracks[i]->duration));
-        if (av_cmp_q(c->tracks[i]->current_timestamp, minimum_timestamp) < 0) {
-            track = c->tracks[i];
+            AVRATIONAL_ARG(c->tracks[i - 1]->duration));
+
+        if (av_cmp_q(c->tracks[i - 1]->current_timestamp, minimum_timestamp) <= 0) {
+            track = c->tracks[i - 1];
             minimum_timestamp = track->current_timestamp;
         }
     }
@@ -738,9 +724,9 @@ static IMFVirtualTrackResourcePlaybackCtx *get_resource_context_for_timestamp(AV
                     AV_LOG_DEBUG,
                     "Switch resource on track %d: re-open context\n",
                     track->index);
-                avformat_close_input(&(track->resources[track->current_resource_index].ctx));
                 if (open_track_resource_context(s, &(track->resources[i])) != 0)
                     return NULL;
+                avformat_close_input(&(track->resources[track->current_resource_index].ctx));
                 track->current_resource_index = i;
             }
             return &(track->resources[track->current_resource_index]);
@@ -885,6 +871,6 @@ const AVInputFormat ff_imf_demuxer = {
     .read_probe     = imf_probe,
     .read_header    = imf_read_header,
     .read_packet    = imf_read_packet,
-    .read_close     = imf_close
+    .read_close     = imf_close,
 };
 // clang-format on

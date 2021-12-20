@@ -2,7 +2,7 @@
 
 set -e
 
-PATCH_VERSION="11"
+PATCH_VERSION="13"
 
 PATCH_NAME="avformat/imf"
 
@@ -15,8 +15,9 @@ PATCHES_SRC="libavformat/imf.h libavformat/imf_cpl.c libavformat/imfdec.c"
 PATCHES_MISC="MAINTAINERS configure doc/demuxers.texi libavformat/Makefile libavformat/allformats.c"
 PATCHES_MAKEFILE="libavformat/Makefile"
 PATCHES_TESTS="libavformat/tests/imf.c"
+PATCHES_FATE="tests/fate/libavformat.mak tests/ref/fate/imf"
 
-PATCHES_ALL="$PATCHES_SRC $PATCHES_MAKEFILE $PATCHES_MISC $PATCHES_TESTS"
+PATCHES_ALL="$PATCHES_SRC $PATCHES_MAKEFILE $PATCHES_MISC $PATCHES_TESTS $PATCHES_FATE"
 
 git fetch --all
 
@@ -82,15 +83,13 @@ The IMF standard was first introduced in 2013 and is managed by the SMPTE.
 
 CHANGE NOTES:
 
-- limit Track Files to MXF
-- remove stealth variable assignment
-- remove unused function parameter
+- added libavformat/tests/imf to FATE
 "
 
 # add tests back to the Makefile
 sed -i "/^TESTPROGS-\$(CONFIG_SRTP)/a TESTPROGS-\$(CONFIG_IMF_DEMUXER)          += imf" $PATCHES_MAKEFILE
-git add -- $PATCHES_TESTS $PATCHES_MAKEFILE
-git commit -m "${PATCH_NAME}: Tests" -- $PATCHES_TESTS $PATCHES_MAKEFILE
+git add -- $PATCHES_TESTS $PATCHES_MAKEFILE $PATCHES_FATE
+git commit -m "${PATCH_NAME}: Tests" -- $PATCHES_TESTS $PATCHES_MAKEFILE $PATCHES_FATE
 git notes add -m "Tests for the IMF demuxer."
 
 mkdir -p $PATCHES_DIR
