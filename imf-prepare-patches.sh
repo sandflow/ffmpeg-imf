@@ -15,8 +15,9 @@ PATCHES_SRC="libavformat/imf.h libavformat/imf_cpl.c libavformat/imfdec.c"
 PATCHES_MISC="MAINTAINERS configure doc/demuxers.texi libavformat/Makefile libavformat/allformats.c"
 PATCHES_MAKEFILE="libavformat/Makefile"
 PATCHES_TESTS="libavformat/tests/imf.c"
+PATCHES_FATE="libavformat/tests/fate/libavformat.mak libavformat/tests/ref/fate/imf"
 
-PATCHES_ALL="$PATCHES_SRC $PATCHES_MAKEFILE $PATCHES_MISC $PATCHES_TESTS"
+PATCHES_ALL="$PATCHES_SRC $PATCHES_MAKEFILE $PATCHES_MISC $PATCHES_TESTS $PATCHES_FATE"
 
 git fetch --all
 
@@ -87,8 +88,8 @@ CHANGE NOTES:
 
 # add tests back to the Makefile
 sed -i "/^TESTPROGS-\$(CONFIG_SRTP)/a TESTPROGS-\$(CONFIG_IMF_DEMUXER)          += imf" $PATCHES_MAKEFILE
-git add -- $PATCHES_TESTS $PATCHES_MAKEFILE
-git commit -m "${PATCH_NAME}: Tests" -- $PATCHES_TESTS $PATCHES_MAKEFILE
+git add -- $PATCHES_TESTS $PATCHES_MAKEFILE $PATCHES_FATE
+git commit -m "${PATCH_NAME}: Tests" -- $PATCHES_TESTS $PATCHES_MAKEFILE $PATCHES_FATE
 git notes add -m "Tests for the IMF demuxer."
 
 mkdir -p $PATCHES_DIR
