@@ -406,8 +406,7 @@ static int push_marker_sequence(xmlNodePtr marker_sequence_elem, FFIMFCPL *cpl)
 
     resource_elem = xmlFirstElementChild(resource_list_elem);
     while (resource_elem) {
-        imf_marker_resource_init(
-            &cpl->main_markers_track->resources[cpl->main_markers_track->resource_count]);
+        imf_marker_resource_init(&cpl->main_markers_track->resources[cpl->main_markers_track->resource_count]);
         ret = fill_marker_resource(resource_elem,
                                    &cpl->main_markers_track->resources[cpl->main_markers_track->resource_count],
                                    cpl);
