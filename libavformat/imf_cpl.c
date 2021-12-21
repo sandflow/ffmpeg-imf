@@ -622,7 +622,7 @@ static int fill_virtual_tracks(xmlNodePtr cpl_element, FFIMFCPL *cpl)
         sequence_list_elem = ff_imf_xml_get_child_element_by_name(segment_elem, "SequenceList");
         if (!segment_list_elem)
             continue;
-            
+
         sequence_elem = xmlFirstElementChild(sequence_list_elem);
         while (sequence_elem) {
             if (xmlStrcmp(sequence_elem->name, "MarkerSequence") == 0)

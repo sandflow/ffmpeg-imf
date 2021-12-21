@@ -349,7 +349,7 @@ static int check_asset_locator_attributes(IMFAssetLocator *asset, IMFAssetLocato
     printf("\tCompare " FF_IMF_UUID_FORMAT " to " FF_IMF_UUID_FORMAT ".\n",
            UID_ARG(asset->uuid),
            UID_ARG(expected_asset->uuid));
-           
+
     for (uint32_t i = 0; i < 16; ++i) {
         if (asset->uuid[i] != expected_asset->uuid[i]) {
             printf("Invalid asset locator UUID: found " FF_IMF_UUID_FORMAT " instead of " FF_IMF_UUID_FORMAT " expected.\n",
