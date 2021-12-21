@@ -697,7 +697,8 @@ static IMFVirtualTrackResourcePlaybackCtx *get_resource_context_for_timestamp(AV
            av_q2d(track->duration));
     for (uint32_t i = 0; i < track->resource_count; ++i) {
         cumulated_duration = av_add_q(cumulated_duration,
-                                      av_make_q((int)track->resources[i].resource->base.duration * edit_unit_duration.num,
+                                      av_make_q((int)track->resources[i].resource->base.duration
+                                                    * edit_unit_duration.num,
                                                 edit_unit_duration.den));
 
         if (av_cmp_q(av_add_q(track->current_timestamp, edit_unit_duration), cumulated_duration) <= 0) {

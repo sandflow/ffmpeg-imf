@@ -227,7 +227,8 @@ static int fill_marker(xmlNodePtr marker_elem, FFIMFMarker *marker)
         return AVERROR_INVALIDDATA;
     }
     if (!(marker->scope_utf8 = xmlGetNoNsProp(element, "scope"))) {
-        marker->scope_utf8 = xmlCharStrdup("http://www.smpte-ra.org/schemas/2067-3/2013#standard-markers");
+        marker->scope_utf8
+            = xmlCharStrdup("http://www.smpte-ra.org/schemas/2067-3/2013#standard-markers");
         if (!marker->scope_utf8) {
             xmlFree(marker->label_utf8);
             return AVERROR(ENOMEM);
@@ -495,7 +496,8 @@ static int push_main_audio_sequence(xmlNodePtr audio_sequence_elem, FFIMFCPL *cp
         return AVERROR(ENOMEM);
     tmp = av_fast_realloc(vt->resources,
                           &vt->resources_alloc_sz,
-                          (vt->resource_count + resource_elem_count) * sizeof(FFIMFTrackFileResource));
+                          (vt->resource_count + resource_elem_count)
+                              * sizeof(FFIMFTrackFileResource));
     if (!tmp) {
         av_log(NULL, AV_LOG_ERROR, "Cannot allocate Main Audio Resources\n");
         return AVERROR(ENOMEM);
@@ -571,11 +573,13 @@ static int push_main_image_2d_sequence(xmlNodePtr image_sequence_elem, FFIMFCPL 
     resource_elem_count = xmlChildElementCount(resource_list_elem);
     if (resource_elem_count > UINT32_MAX
         || cpl->main_image_2d_track->resource_count > UINT32_MAX - resource_elem_count
-        || (cpl->main_image_2d_track->resource_count + resource_elem_count) > INT_MAX / sizeof(FFIMFTrackFileResource))
+        || (cpl->main_image_2d_track->resource_count + resource_elem_count)
+            > INT_MAX / sizeof(FFIMFTrackFileResource))
         return AVERROR(ENOMEM);
     tmp = av_fast_realloc(cpl->main_image_2d_track->resources,
                           &cpl->main_image_2d_track->resources_alloc_sz,
-                          (cpl->main_image_2d_track->resource_count + resource_elem_count) * sizeof(FFIMFTrackFileResource));
+                          (cpl->main_image_2d_track->resource_count + resource_elem_count)
+                              * sizeof(FFIMFTrackFileResource));
     if (!tmp) {
         av_log(NULL, AV_LOG_ERROR, "Cannot allocate Main Image Resources\n");
         return AVERROR(ENOMEM);
@@ -662,12 +666,14 @@ int ff_imf_parse_cpl_from_xml_dom(xmlDocPtr doc, FFIMFCPL **cpl)
         ret = AVERROR(ENOMEM);
         goto cleanup;
     }
+
     cpl_element = xmlDocGetRootElement(doc);
     if (xmlStrcmp(cpl_element->name, "CompositionPlaylist")) {
         av_log(NULL, AV_LOG_ERROR, "The root element of the CPL is not CompositionPlaylist\n");
         ret = AVERROR_INVALIDDATA;
         goto cleanup;
     }
+
     if (ret = fill_content_title(cpl_element, *cpl))
         goto cleanup;
     if (ret = fill_id(cpl_element, *cpl))
