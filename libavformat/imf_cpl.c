@@ -273,11 +273,12 @@ static int fill_base_resource(xmlNodePtr resource_elem, FFIMFBaseResource *resou
     resource->duration -= resource->entry_point;
 
     /* read SourceDuration */
-    if (element = ff_imf_xml_get_child_element_by_name(resource_elem, "SourceDuration"))
+    if (element = ff_imf_xml_get_child_element_by_name(resource_elem, "SourceDuration")) {
         if (ret = ff_imf_xml_read_uint32(element, &resource->duration)) {
             av_log(NULL, AV_LOG_ERROR, "SourceDuration element missing from Resource\n");
             return ret;
         }
+    }
 
     /* read RepeatCount */
     if (element = ff_imf_xml_get_child_element_by_name(resource_elem, "RepeatCount"))
@@ -462,11 +463,12 @@ static int push_main_audio_sequence(xmlNodePtr audio_sequence_elem, FFIMFCPL *cp
            UID_ARG(uuid));
 
     /* get the main audio virtual track corresponding to the sequence */
-    for (uint32_t i = 0; i < cpl->main_audio_track_count; i++)
+    for (uint32_t i = 0; i < cpl->main_audio_track_count; i++) {
         if (memcmp(cpl->main_audio_tracks[i].base.id_uuid, uuid, sizeof(uuid)) == 0) {
             vt = &cpl->main_audio_tracks[i];
             break;
         }
+    }
 
     /* create a main audio virtual track if none exists for the sequence */
     if (!vt) {
@@ -477,6 +479,7 @@ static int push_main_audio_sequence(xmlNodePtr audio_sequence_elem, FFIMFCPL *cp
                                sizeof(FFIMFTrackFileVirtualTrack));
         if (!tmp)
             return AVERROR(ENOMEM);
+
         cpl->main_audio_tracks = tmp;
         vt = &cpl->main_audio_tracks[cpl->main_audio_track_count];
         imf_trackfile_virtual_track_init(vt);
@@ -642,8 +645,9 @@ static int fill_virtual_tracks(xmlNodePtr cpl_element, FFIMFCPL *cpl)
                        AV_LOG_INFO,
                        "The following Sequence is not supported and is ignored: %s\n",
                        sequence_elem->name);
+
+            /* abort parsing only if memory error occurred */
             if (ret == AVERROR(ENOMEM))
-                /* abort parsing only if memory error occurred */
                 return ret;
 
             sequence_elem = xmlNextElementSibling(sequence_elem);
@@ -784,9 +788,8 @@ int ff_imf_parse_cpl(AVIOContext *in, FFIMFCPL **cpl)
     ret = avio_read_to_bprint(in, &buf, UINT_MAX - 1);
     if (ret < 0 || !avio_feof(in) || buf.len == 0) {
         av_log(NULL, AV_LOG_ERROR, "Cannot read IMF CPL\n");
-        if (ret == 0) {
+        if (ret == 0)
             ret = AVERROR_INVALIDDATA;
-        }
     } else {
         LIBXML_TEST_VERSION
 

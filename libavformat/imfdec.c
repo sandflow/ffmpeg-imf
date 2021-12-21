@@ -248,6 +248,7 @@ static void imf_asset_locator_map_deinit(IMFAssetLocatorMap *asset_map)
 {
     for (uint32_t i = 0; i < asset_map->asset_count; ++i)
         av_freep(&asset_map->assets[i].absolute_uri);
+
     av_freep(&asset_map->assets);
 }
 
@@ -316,9 +317,10 @@ clean_up:
 
 static IMFAssetLocator *find_asset_map_locator(IMFAssetLocatorMap *asset_map, FFIMFUUID uuid)
 {
-    for (uint32_t i = 0; i < asset_map->asset_count; ++i)
+    for (uint32_t i = 0; i < asset_map->asset_count; ++i) {
         if (memcmp(asset_map->assets[i].uuid, uuid, 16) == 0)
             return &(asset_map->assets[i]);
+    }
     return NULL;
 }
 
@@ -572,7 +574,7 @@ static int open_cpl_tracks(AVFormatContext *s)
     int32_t track_index = 0;
     int ret;
 
-    if (c->cpl->main_image_2d_track)
+    if (c->cpl->main_image_2d_track) {
         if ((ret = open_virtual_track(s, c->cpl->main_image_2d_track, track_index++)) != 0) {
             av_log(s,
                    AV_LOG_ERROR,
@@ -580,8 +582,9 @@ static int open_cpl_tracks(AVFormatContext *s)
                    UID_ARG(c->cpl->main_image_2d_track->base.id_uuid));
             return ret;
         }
+    }
 
-    for (uint32_t i = 0; i < c->cpl->main_audio_track_count; ++i)
+    for (uint32_t i = 0; i < c->cpl->main_audio_track_count; ++i) {
         if ((ret = open_virtual_track(s, &c->cpl->main_audio_tracks[i], track_index++)) != 0) {
             av_log(s,
                    AV_LOG_ERROR,
@@ -589,6 +592,7 @@ static int open_cpl_tracks(AVFormatContext *s)
                    UID_ARG(c->cpl->main_audio_tracks[i].base.id_uuid));
             return ret;
         }
+    }
 
     return set_context_streams_from_tracks(s);
 }
