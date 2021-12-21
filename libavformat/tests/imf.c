@@ -347,13 +347,14 @@ static int check_asset_locator_attributes(IMFAssetLocator *asset, IMFAssetLocato
 {
 
     printf("\tCompare " FF_IMF_UUID_FORMAT " to " FF_IMF_UUID_FORMAT ".\n",
-        UID_ARG(asset->uuid),
-        UID_ARG(expected_asset->uuid));
+           UID_ARG(asset->uuid),
+           UID_ARG(expected_asset->uuid));
+           
     for (uint32_t i = 0; i < 16; ++i) {
         if (asset->uuid[i] != expected_asset->uuid[i]) {
             printf("Invalid asset locator UUID: found " FF_IMF_UUID_FORMAT " instead of " FF_IMF_UUID_FORMAT " expected.\n",
-                UID_ARG(asset->uuid),
-                UID_ARG(expected_asset->uuid));
+                   UID_ARG(asset->uuid),
+                   UID_ARG(expected_asset->uuid));
             return 1;
         }
     }
@@ -361,8 +362,8 @@ static int check_asset_locator_attributes(IMFAssetLocator *asset, IMFAssetLocato
     printf("\tCompare %s to %s.\n", asset->absolute_uri, expected_asset->absolute_uri);
     if (strcmp(asset->absolute_uri, expected_asset->absolute_uri) != 0) {
         printf("Invalid asset locator URI: found %s instead of %s expected.\n",
-            asset->absolute_uri,
-            expected_asset->absolute_uri);
+               asset->absolute_uri,
+               expected_asset->absolute_uri);
         return 1;
     }
 
@@ -371,15 +372,15 @@ static int check_asset_locator_attributes(IMFAssetLocator *asset, IMFAssetLocato
 
 static IMFAssetLocator ASSET_MAP_EXPECTED_LOCATORS[5] = {
     {.uuid = {0xb5, 0xd6, 0x74, 0xb8, 0xc6, 0xce, 0x4b, 0xce, 0x3b, 0xdf, 0xbe, 0x04, 0x5d, 0xfd, 0xb2, 0xd0},
-        .absolute_uri = (char *)"IMF_TEST_ASSET_MAP_video.mxf"},
+     .absolute_uri = (char *)"IMF_TEST_ASSET_MAP_video.mxf"},
     {.uuid = {0xec, 0x34, 0x67, 0xec, 0xab, 0x2a, 0x4f, 0x49, 0xc8, 0xcb, 0x89, 0xca, 0xa3, 0x76, 0x1f, 0x4a},
-        .absolute_uri = (char *)"IMF_TEST_ASSET_MAP_video_1.mxf"},
+     .absolute_uri = (char *)"IMF_TEST_ASSET_MAP_video_1.mxf"},
     {.uuid = {0x5c, 0xf5, 0xb5, 0xa7, 0x8b, 0xb3, 0x4f, 0x08, 0xea, 0xa6, 0x35, 0x33, 0xd4, 0xb7, 0x7f, 0xa6},
-        .absolute_uri = (char *)"IMF_TEST_ASSET_MAP_audio.mxf"},
+     .absolute_uri = (char *)"IMF_TEST_ASSET_MAP_audio.mxf"},
     {.uuid = {0x55, 0x97, 0x77, 0xd6, 0xec, 0x29, 0x43, 0x75, 0xf9, 0x0d, 0x30, 0x0b, 0x0b, 0xf7, 0x36, 0x86},
-        .absolute_uri = (char *)"CPL_IMF_TEST_ASSET_MAP.xml"},
+     .absolute_uri = (char *)"CPL_IMF_TEST_ASSET_MAP.xml"},
     {.uuid = {0xdd, 0x04, 0x52, 0x8d, 0x9b, 0x80, 0x45, 0x2a, 0x7a, 0x13, 0x80, 0x5b, 0x08, 0x27, 0x8b, 0x3d},
-        .absolute_uri = (char *)"PKL_IMF_TEST_ASSET_MAP.xml"},
+     .absolute_uri = (char *)"PKL_IMF_TEST_ASSET_MAP.xml"},
 };
 
 static int test_asset_map_parsing(void)
@@ -407,7 +408,7 @@ static int test_asset_map_parsing(void)
     printf("Compare assets count: %d to 5\n", asset_locator_map.asset_count);
     if (asset_locator_map.asset_count != 5) {
         printf("Asset map parsing failed: found %d assets instead of 5 expected.\n",
-            asset_locator_map.asset_count);
+               asset_locator_map.asset_count);
         ret = 1;
         goto cleanup;
     }
@@ -415,7 +416,7 @@ static int test_asset_map_parsing(void)
     for (uint32_t i = 0; i < asset_locator_map.asset_count; ++i) {
         printf("For asset: %d:\n", i);
         ret = check_asset_locator_attributes(&(asset_locator_map.assets[i]),
-            &(ASSET_MAP_EXPECTED_LOCATORS[i]));
+                                             &(ASSET_MAP_EXPECTED_LOCATORS[i]));
         if (ret > 0)
             goto cleanup;
     }
@@ -454,28 +455,28 @@ static int test_path_type_functions(void)
         path_type = PATH_TYPE_TEST_STRUCTS[i];
         if (imf_uri_is_url(path_type.path) != path_type.is_url) {
             fprintf(stderr,
-                "URL comparison test failed for '%s', got %d instead of expected %d\n",
-                path_type.path,
-                path_type.is_url,
-                !path_type.is_url);
+                    "URL comparison test failed for '%s', got %d instead of expected %d\n",
+                    path_type.path,
+                    path_type.is_url,
+                    !path_type.is_url);
             goto fail;
         }
 
         if (imf_uri_is_unix_abs_path(path_type.path) != path_type.is_unix_absolute_path) {
             fprintf(stderr,
-                "Unix absolute path comparison test failed for '%s', got %d instead of expected %d\n",
-                path_type.path,
-                path_type.is_unix_absolute_path,
-                !path_type.is_unix_absolute_path);
+                    "Unix absolute path comparison test failed for '%s', got %d instead of expected %d\n",
+                    path_type.path,
+                    path_type.is_unix_absolute_path,
+                    !path_type.is_unix_absolute_path);
             goto fail;
         }
 
         if (imf_uri_is_dos_abs_path(path_type.path) != path_type.is_dos_absolute_path) {
             fprintf(stderr,
-                "DOS absolute path comparison test failed for '%s', got %d instead of expected %d\n",
-                path_type.path,
-                path_type.is_dos_absolute_path,
-                !path_type.is_dos_absolute_path);
+                    "DOS absolute path comparison test failed for '%s', got %d instead of expected %d\n",
+                    path_type.path,
+                    path_type.is_dos_absolute_path,
+                    !path_type.is_dos_absolute_path);
             goto fail;
         }
     }
