@@ -2,7 +2,7 @@
 
 set -e
 
-PATCH_VERSION="13"
+PATCH_VERSION="14"
 
 PATCH_NAME="avformat/imf"
 
@@ -83,7 +83,7 @@ The IMF standard was first introduced in 2013 and is managed by the SMPTE.
 
 CHANGE NOTES:
 
-- added libavformat/tests/imf to FATE
+- improve code style
 "
 
 # add tests back to the Makefile

@@ -1,6 +1,6 @@
 ---
 Language: Cpp
-AlignAfterOpenBracket: false
+AlignAfterOpenBracket: Align
 AlignConsecutiveAssignments: false
 AlignConsecutiveDeclarations: false
 AlignOperands: false
