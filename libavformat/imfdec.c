@@ -352,7 +352,7 @@ static int open_track_resource_context(AVFormatContext *s,
     if ((ret = ff_copy_whiteblacklists(track_resource->ctx, s)) < 0)
         goto cleanup;
 
-    if (ret = av_opt_set(track_resource->ctx, "format_whitelist", "mxf", 0))
+    if ((ret = av_opt_set(track_resource->ctx, "format_whitelist", "mxf", 0)))
         goto cleanup;
 
     if ((ret = av_dict_copy(&opts, c->avio_opts, 0)) < 0)
@@ -638,7 +638,7 @@ static int imf_read_header(AVFormatContext *s)
     while (asset_map_path != NULL) {
         av_log(s, AV_LOG_DEBUG, "start parsing IMF Asset Map: %s\n", asset_map_path);
 
-        if (ret = parse_assetmap(s, asset_map_path))
+        if ((ret = parse_assetmap(s, asset_map_path)))
             return ret;
 
         asset_map_path = av_strtok(NULL, ",", &tmp_str);
@@ -646,7 +646,7 @@ static int imf_read_header(AVFormatContext *s)
 
     av_log(s, AV_LOG_DEBUG, "parsed IMF Asset Maps\n");
 
-    if (ret = open_cpl_tracks(s))
+    if ((ret = open_cpl_tracks(s)))
         return ret;
 
     av_log(s, AV_LOG_DEBUG, "parsed IMF package\n");
