@@ -1,6 +1,23 @@
 /*
  * This file is part of FFmpeg.
  *
+ * FFmpeg is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
+ *
+ * FFmpeg is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with FFmpeg; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+ */
+
+/*
+ *
  * Copyright (c) Sandflow Consulting LLC
  *
  * Redistribution and use in source and binary forms, with or without
@@ -372,7 +389,7 @@ static int open_track_resource_context(AVFormatContext *s,
     }
     av_dict_free(&opts);
 
-    /* Compare the source timebase to the resource edit rate, 
+    /* Compare the source timebase to the resource edit rate,
      * considering the first stream of the source file
      */
     if (av_cmp_q(track_resource->ctx->streams[0]->time_base,
@@ -848,7 +865,6 @@ static int imf_probe(const AVProbeData *p)
     return AVPROBE_SCORE_MAX;
 }
 
-// clang-format off
 static const AVOption imf_options[] = {
     {
         .name        = "assetmaps",
@@ -881,4 +897,3 @@ const AVInputFormat ff_imf_demuxer = {
     .read_packet    = imf_read_packet,
     .read_close     = imf_close,
 };
-// clang-format on

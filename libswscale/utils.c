@@ -268,21 +268,21 @@ static const FormatEntry format_entries[] = {
     [AV_PIX_FMT_Y210LE]      = { 1, 0 },
     [AV_PIX_FMT_X2RGB10LE]   = { 1, 1 },
     [AV_PIX_FMT_X2BGR10LE]   = { 1, 1 },
-    [AV_PIX_FMT_P210BE]      = { 1, 0 },
-    [AV_PIX_FMT_P210LE]      = { 1, 0 },
-    [AV_PIX_FMT_P410BE]      = { 1, 0 },
-    [AV_PIX_FMT_P410LE]      = { 1, 0 },
-    [AV_PIX_FMT_P216BE]      = { 1, 0 },
-    [AV_PIX_FMT_P216LE]      = { 1, 0 },
-    [AV_PIX_FMT_P416BE]      = { 1, 0 },
-    [AV_PIX_FMT_P416LE]      = { 1, 0 },
+    [AV_PIX_FMT_P210BE]      = { 1, 1 },
+    [AV_PIX_FMT_P210LE]      = { 1, 1 },
+    [AV_PIX_FMT_P410BE]      = { 1, 1 },
+    [AV_PIX_FMT_P410LE]      = { 1, 1 },
+    [AV_PIX_FMT_P216BE]      = { 1, 1 },
+    [AV_PIX_FMT_P216LE]      = { 1, 1 },
+    [AV_PIX_FMT_P416BE]      = { 1, 1 },
+    [AV_PIX_FMT_P416LE]      = { 1, 1 },
 };
 
 void ff_shuffle_filter_coefficients(SwsContext *c, int *filterPos, int filterSize, int16_t *filter, int dstW){
 #if ARCH_X86_64
     int i, j, k, l;
     int cpu_flags = av_get_cpu_flags();
-    if (EXTERNAL_AVX2_FAST(cpu_flags)){
+    if (EXTERNAL_AVX2_FAST(cpu_flags) && !(cpu_flags & AV_CPU_FLAG_SLOW_GATHER)) {
         if ((c->srcBpc == 8) && (c->dstBpc <= 14)){
             if (dstW % 16 == 0){
                 if (filter != NULL){

@@ -295,13 +295,15 @@ long ff_dshow_meminputpin_Receive(DShowMemInputPin *this, IMediaSample *sample)
     uint8_t *buf;
     int buf_size; /* todo should be a long? */
     int index;
-    int64_t curtime;
-    int64_t orig_curtime;
-    int64_t graphtime;
+    int64_t chosentime = 0;
+    int64_t sampletime = 0;
+    int64_t graphtime = 0;
+    int use_sample_time = 1;
     const char *devtypename = (devtype == VideoDevice) ? "video" : "audio";
     IReferenceClock *clock = pin->filter->clock;
     int64_t dummy;
     struct dshow_ctx *ctx;
+    HRESULT hr;
 
 
     dshowdebug("ff_dshow_meminputpin_Receive(%p)\n", this);
@@ -309,36 +311,46 @@ long ff_dshow_meminputpin_Receive(DShowMemInputPin *this, IMediaSample *sample)
     if (!sample)
         return E_POINTER;
 
-    IMediaSample_GetTime(sample, &orig_curtime, &dummy);
-    orig_curtime += pin->filter->start_time;
-    IReferenceClock_GetTime(clock, &graphtime);
-    if (devtype == VideoDevice) {
-        /* PTS from video devices is unreliable. */
-        IReferenceClock_GetTime(clock, &curtime);
-    } else {
-        IMediaSample_GetTime(sample, &curtime, &dummy);
-        if(curtime > 400000000000000000LL) {
-            /* initial frames sometimes start < 0 (shown as a very large number here,
-               like 437650244077016960 which FFmpeg doesn't like.
-               TODO figure out math. For now just drop them. */
-            av_log(NULL, AV_LOG_DEBUG,
-                "dshow dropping initial (or ending) audio frame with odd PTS too high %"PRId64"\n", curtime);
-            return S_OK;
-        }
-        curtime += pin->filter->start_time;
-    }
-
-    buf_size = IMediaSample_GetActualDataLength(sample);
-    IMediaSample_GetPointer(sample, &buf);
     priv_data = pin->filter->priv_data;
     s = priv_data;
     ctx = s->priv_data;
+
+    hr = IMediaSample_GetTime(sample, &sampletime, &dummy);
+    IReferenceClock_GetTime(clock, &graphtime);
+    if (devtype == VideoDevice && !ctx->use_video_device_timestamps) {
+        /* PTS from video devices is unreliable. */
+        chosentime = graphtime;
+        use_sample_time = 0;
+    } else {
+        if (hr == VFW_E_SAMPLE_TIME_NOT_SET || sampletime == 0) {
+            chosentime = graphtime;
+            use_sample_time = 0;
+            av_log(s, AV_LOG_DEBUG,
+                "frame with missing sample timestamp encountered, falling back to graph timestamp\n");
+        }
+        else if (sampletime > 400000000000000000LL) {
+            /* initial frames sometimes start < 0 (shown as a very large number here,
+               like 437650244077016960 which FFmpeg doesn't like).
+               TODO figure out math. For now just drop them. */
+            av_log(s, AV_LOG_DEBUG,
+                "dropping initial (or ending) sample with odd PTS too high %"PRId64"\n", sampletime);
+            return S_OK;
+        } else
+            chosentime = sampletime;
+    }
+    // media sample time is relative to graph start time
+    sampletime += pin->filter->start_time;
+    if (use_sample_time)
+        chosentime += pin->filter->start_time;
+
+    buf_size = IMediaSample_GetActualDataLength(sample);
+    IMediaSample_GetPointer(sample, &buf);
     index = pin->filter->stream_index;
 
-    av_log(NULL, AV_LOG_VERBOSE, "dshow passing through packet of type %s size %8d "
+    av_log(s, AV_LOG_VERBOSE, "passing through packet of type %s size %8d "
         "timestamp %"PRId64" orig timestamp %"PRId64" graph timestamp %"PRId64" diff %"PRId64" %s\n",
-        devtypename, buf_size, curtime, orig_curtime, graphtime, graphtime - orig_curtime, ctx->device_name[devtype]);
-    pin->filter->callback(priv_data, index, buf, buf_size, curtime, devtype);
+        devtypename, buf_size, chosentime, sampletime, graphtime, graphtime - sampletime, ctx->device_name[devtype]);
+    pin->filter->callback(priv_data, index, buf, buf_size, chosentime, devtype);
 
     return S_OK;
 }
