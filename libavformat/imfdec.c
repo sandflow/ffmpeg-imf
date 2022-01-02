@@ -81,7 +81,7 @@
  */
 typedef struct IMFAssetLocator {
     FFIMFUUID uuid;
-    char *absolute_uri;
+    char      *absolute_uri;
 } IMFAssetLocator;
 
 /**
@@ -639,12 +639,9 @@ static IMFVirtualTrackPlaybackCtx *get_next_track_with_minimum_timestamp(AVForma
     for (uint32_t i = c->track_count; i > 0; i--) {
         av_log(s, AV_LOG_DEBUG,
                "Compare track %d timestamp " AVRATIONAL_FORMAT
-               " to minimum " AVRATIONAL_FORMAT
-               " (over duration: " AVRATIONAL_FORMAT
-               ")\n", i,
-               AVRATIONAL_ARG(c->tracks[i - 1]->current_timestamp),
-               AVRATIONAL_ARG(minimum_timestamp),
-               AVRATIONAL_ARG(c->tracks[i - 1]->duration));
+               " to minimum " AVRATIONAL_FORMAT " (over duration: " AVRATIONAL_FORMAT ")\n",
+               i, AVRATIONAL_ARG(c->tracks[i - 1]->current_timestamp),
+               AVRATIONAL_ARG(minimum_timestamp), AVRATIONAL_ARG(c->tracks[i - 1]->duration));
 
         if (av_cmp_q(c->tracks[i - 1]->current_timestamp, minimum_timestamp) <= 0) {
             track = c->tracks[i - 1];
