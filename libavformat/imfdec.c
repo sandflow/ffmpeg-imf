@@ -622,11 +622,15 @@ static int imf_read_header(AVFormatContext *s)
     int ret = 0;
 
     c->interrupt_callback = &s->interrupt_callback;
+
     tmp_str = av_strdup(s->url);
     if (!tmp_str)
         return AVERROR(ENOMEM);
+    c->base_url = av_strdup(av_dirname(tmp_str));
+    av_freep(&tmp_str);
+    if (!c->base_url)
+        return AVERROR(ENOMEM);
 
-    c->base_url = av_dirname(tmp_str);
     if ((ret = ffio_copy_url_options(s->pb, &c->avio_opts)) < 0)
         return ret;
 
