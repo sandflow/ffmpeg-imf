@@ -7,7 +7,7 @@ PATCH_MSG="avformat/imf: Fix error handling in set_context_streams_from_tracks()
 BASE_BRANCH="upstream/master"
 PATCH_BRANCH="rd/patches"
 PATCHES_DIR="build/patches"
-PATCHES_ALL="libavformat/tests/.gitignore"
+PATCHES_ALL="libavformat/imfdec.c"
 
 mkdir -p $PATCHES_DIR
 
