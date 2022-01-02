@@ -4,7 +4,7 @@ set -e
 
 PATCH_VERSION="1"
 
-PATCH_MSG="avformat/imf: additional FATE test"
+PATCH_MSG="avformat/imf: add IMF CPL with repeated resources to FATE"
 
 BASE_BRANCH="upstream/master"
 PATCH_BRANCH="rd/patches"
@@ -27,11 +27,11 @@ git reset $BASE_BRANCH
 
 git add -- $PATCHES_ALL
 git commit -m "$PATCH_MSG" -- $PATCHES_ALL
-git notes add -m "The following files would need to be added to FATE samples:
+git notes add -m "The `fate-imf-cpl-with-repeat` target currently references online resources. The following files (<256 kB) will
+need to be added to FATE samples:
     http://ffmpeg-imf-samples-public.s3-website-us-west-1.amazonaws.com/countdown/ASSETMAP.xml
     http://ffmpeg-imf-samples-public.s3-website-us-west-1.amazonaws.com/countdown/CPL_f5095caa-f204-4e1c-8a84-7af48c7ae16b.xml
     http://ffmpeg-imf-samples-public.s3-website-us-west-1.amazonaws.com/countdown/PKL_4671220f-c87a-4660-bf2a-6ef848791a2c.xml
-    http://ffmpeg-imf-samples-public.s3-website-us-west-1.amazonaws.com/countdown/VOLINDEX.xml
     http://ffmpeg-imf-samples-public.s3-website-us-west-1.amazonaws.com/countdown/frame-counter.mxf
 "
 
