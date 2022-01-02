@@ -27,8 +27,8 @@ git reset $BASE_BRANCH
 
 git add -- $PATCHES_ALL
 git commit -m "$PATCH_MSG" -- $PATCHES_ALL
-git notes add -m "The \`fate-imf-cpl-with-repeat\` target currently references online resources. The following files (<256 kB) will
-need to be added to FATE samples:
+git notes add -m "The \`fate-imf-cpl-with-repeat\` target requires following files (<256 kB)
+to placed under \$(TARGET_SAMPLES)/imf/countdown/:
     http://ffmpeg-imf-samples-public.s3-website-us-west-1.amazonaws.com/countdown/ASSETMAP.xml
     http://ffmpeg-imf-samples-public.s3-website-us-west-1.amazonaws.com/countdown/CPL_f5095caa-f204-4e1c-8a84-7af48c7ae16b.xml
     http://ffmpeg-imf-samples-public.s3-website-us-west-1.amazonaws.com/countdown/PKL_4671220f-c87a-4660-bf2a-6ef848791a2c.xml
