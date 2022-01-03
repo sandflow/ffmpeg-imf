@@ -27,5 +27,6 @@ git reset $BASE_BRANCH
 
 git add -- $PATCHES_ALL
 git commit -m "$PATCH_MSG" -- $PATCHES_ALL
+git notes add -m "Found through manual fuzzing."
 
 git format-patch -o $PATCHES_DIR -v $PATCH_VERSION --notes -s $BASE_BRANCH
