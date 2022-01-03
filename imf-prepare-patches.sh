@@ -4,7 +4,7 @@ set -e
 
 PATCH_VERSION="1"
 
-PATCH_MSG="avformat/imf: handle empty/NULL input URL"
+PATCH_MSG="avformat/imf: fix bad free() when directory name of the input url is empty"
 
 BASE_BRANCH="upstream/master"
 PATCH_BRANCH="rd/patches"
