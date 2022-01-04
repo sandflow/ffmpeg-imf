@@ -4,7 +4,7 @@ set -e
 
 PATCH_VERSION="1"
 
-PATCH_MSG="avformat/imf: fix error CPL root element is absent"
+PATCH_MSG="avformat/imf: fix error when the CPL root element is absent"
 
 BASE_BRANCH="issues/handle-empty-input-url"
 PATCH_BRANCH="rd/patches"
