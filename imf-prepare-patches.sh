@@ -4,9 +4,9 @@ set -e
 
 PATCH_VERSION="1"
 
-PATCH_MSG="avformat/imf: fix error when the CPL root element is absent"
+PATCH_MSG="avformat/imf: fix CPL parsing error handling"
 
-BASE_BRANCH="issues/handle-empty-input-url"
+BASE_BRANCH="issues/empty-root-element-segfault"
 PATCH_BRANCH="rd/patches"
 
 PATCHES_DIR="build/patches"
@@ -27,6 +27,5 @@ git reset $BASE_BRANCH
 
 git add -- $PATCHES_ALL
 git commit -m "$PATCH_MSG" -- $PATCHES_ALL
-git notes add -m "Found through manual fuzzing."
 
 git format-patch -o $PATCHES_DIR -v $PATCH_VERSION --notes -s $BASE_BRANCH
