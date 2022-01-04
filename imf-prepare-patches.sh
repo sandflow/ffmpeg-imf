@@ -4,16 +4,16 @@ set -e
 
 PATCH_VERSION="1"
 
-PATCH_MSG="avformat/imf: fix bad free() when directory name of the input url is empty"
+PATCH_MSG="avformat/imf: fix error CPL root element is absent"
 
-BASE_BRANCH="upstream/master"
+BASE_BRANCH="issues/handle-empty-input-url"
 PATCH_BRANCH="rd/patches"
 
 PATCHES_DIR="build/patches"
 
 mkdir -p $PATCHES_DIR
 
-PATCHES_ALL="libavformat/imfdec.c"
+PATCHES_ALL="libavformat/imf_cpl.c"
 
 git fetch --all
 
