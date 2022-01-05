@@ -688,7 +688,7 @@ int ff_imf_parse_cpl_from_xml_dom(xmlDocPtr doc, FFIMFCPL **cpl)
     }
 
     cpl_element = xmlDocGetRootElement(doc);
-    if ((!cpl_element) || xmlStrcmp(cpl_element->name, "CompositionPlaylist")) {
+    if (!cpl_element || xmlStrcmp(cpl_element->name, "CompositionPlaylist")) {
         av_log(NULL, AV_LOG_ERROR, "The root element of the CPL is not CompositionPlaylist\n");
         ret = AVERROR_INVALIDDATA;
         goto cleanup;
@@ -836,7 +836,6 @@ int ff_imf_parse_cpl(AVIOContext *in, FFIMFCPL **cpl)
     }
 
     xmlFreeDoc(doc);
-    
 clean_up:
     av_bprint_finalize(&buf, NULL);
 
