@@ -564,9 +564,8 @@ static int set_context_streams_from_tracks(AVFormatContext *s)
         /* Copy stream information */
         asset_stream = avformat_new_stream(s, NULL);
         if (!asset_stream) {
-            ret = AVERROR(ENOMEM);
             av_log(s, AV_LOG_ERROR, "Could not create stream\n");
-            break;
+            return AVERROR(ENOMEM);
         }
         asset_stream->id = i;
         ret = avcodec_parameters_copy(asset_stream->codecpar, first_resource_stream->codecpar);
@@ -893,6 +892,7 @@ static const AVClass imf_class = {
 const AVInputFormat ff_imf_demuxer = {
     .name           = "imf",
     .long_name      = NULL_IF_CONFIG_SMALL("IMF (Interoperable Master Format)"),
+    .flags          = AVFMT_EXPERIMENTAL,
     .flags_internal = FF_FMT_INIT_CLEANUP,
     .priv_class     = &imf_class,
     .priv_data_size = sizeof(IMFContext),
