@@ -46,7 +46,7 @@ _NOTE_: `-f imf` is required since the IMF demuxer is currently marked as _exper
 
 ### Code style
 
-`.imf/.clang-format`
+`.clang-format`
 
 _NOTE_: This does not enforce all FFmpeg code styles
 
@@ -56,8 +56,8 @@ _NOTE_: This does not enforce all FFmpeg code styles
 
 ```sh
 wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
-sudo add-apt-repository -y "deb https://apt.llvm.org/bionic/ llvm-toolchain-bionic-12 main"
+sudo add-apt-repository -y "deb https://apt.llvm.org/bionic/ llvm-toolchain-bionic-13 main"
 sudo apt update -q
-sudo apt install -y clang-format-12
-sudo update-alternatives --install /usr/bin/clang-format clang-format /usr/bin/clang-format-12 100
+sudo apt install -y clang-format-13
+sudo update-alternatives --install /usr/bin/clang-format clang-format /usr/bin/clang-format-13 101
 ```
