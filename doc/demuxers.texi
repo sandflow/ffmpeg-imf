@@ -792,19 +792,6 @@ MJPEG stream. Turning this option on by setting it to 1 will result in a stricte
 of the boundary value.
 @end table
 
-@section mxf
-
-MXF demuxer.
-
-@table @option
-
-@item -eia608_extract @var{bool}
-Extract EIA-608 captions from SMPTE 436M track
-
-@item -skip_audio_reordering @var{bool}
-This option will disable the audio reordering based on Multi-Channel Audio (MCA) labelling (SMPTE ST-377-4).
-@end table
-
 @section rawvideo
 
 Raw video demuxer.

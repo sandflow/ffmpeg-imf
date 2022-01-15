@@ -42,11 +42,6 @@
 /src
 /mapfile
 /tools/python/__pycache__/
-/tools/enum_options
-/tools/venc_data_dump
 .vscode
-/dist
 /fate-suite
 /build
-libavcodec/tests/avcodec
-tools/scale_slice_test

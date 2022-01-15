@@ -1,46 +1,63 @@
-FFmpeg README
-=============
+# FFmpeg IMF
 
-FFmpeg is a collection of libraries and tools to process multimedia content
-such as audio, video, subtitles and related metadata.
+## Introduction
 
-## Libraries
+This repository is used to refine support for [IMF
+Compositions](https://ieeexplore.ieee.org/document/9097478) in
+[FFMPEG](https://ffmpeg.org).
 
-* `libavcodec` provides implementation of a wider range of codecs.
-* `libavformat` implements streaming protocols, container formats and basic I/O access.
-* `libavutil` includes hashers, decompressors and miscellaneous utility functions.
-* `libavfilter` provides means to alter decoded audio and video through a directed graph of connected filters.
-* `libavdevice` provides an abstraction to access capture and playback devices.
-* `libswresample` implements audio mixing and resampling routines.
-* `libswscale` implements color conversion and scaling routines.
+It is organized around the following branches:
 
-## Tools
+* `main` tracks the `master` branch of the [upstream FFmpeg
+  repository](https://github.com/FFmpeg/FFmpeg.git)
+* `develop` integrates the latest IMF features, which are not yet part of
+  FFmpeg, and includes artifacts useful for development, e.g. continuous
+  integration scripts, under the `.imf` directory
 
-* [ffmpeg](https://ffmpeg.org/ffmpeg.html) is a command line toolbox to
-  manipulate, convert and stream multimedia content.
-* [ffplay](https://ffmpeg.org/ffplay.html) is a minimalistic multimedia player.
-* [ffprobe](https://ffmpeg.org/ffprobe.html) is a simple analysis tool to inspect
-  multimedia content.
-* Additional small tools such as `aviocat`, `ismindex` and `qt-faststart`.
+The original FFmpeg README is moved to [`README-GENERAL.md`](./README-GENERAL.md)
 
-## Documentation
+## Building FFmpeg with IMF support
 
-The offline documentation is available in the **doc/** directory.
+### Release 
 
-The online documentation is available in the main [website](https://ffmpeg.org)
-and in the [wiki](https://trac.ffmpeg.org).
+`./configure --enable-libxml2`
 
-### Examples
+_NOTE_: The IMF demuxer will not be included unless `libxml2` is included, which
+it is not by default.
 
-Coding examples are available in the **doc/examples** directory.
+### Debug
 
-## License
+`./configure --enable-libxml2 --enable-debug --disable-optimizations --disable-stripping`
 
-FFmpeg codebase is mainly LGPL-licensed with optional components licensed under
-GPL. Please refer to the LICENSE file for detailed information.
+## IMF demuxer usage in FFmpeg
 
-## Contributing
+`./ffmpeg -f imf -assetmaps <path of ASSETMAP1>,<path of ASSETMAP2>,... -i <path of CPL>`
 
-Patches should be submitted to the ffmpeg-devel mailing list using
-`git format-patch` or `git send-email`. Github pull requests should be
-avoided because they are not part of our review process and will be ignored.
+If `-assetmaps` is not specified, FFMPEG looks for a file called `ASSETMAP.xml`
+in the same directory as the CPL.
+
+_NOTE_: `-f imf` is required since the IMF demuxer is currently marked as _experimental_.
+
+## Development artifacts
+
+### Unit tests
+
+`.imf/imf-unit-tests.sh`
+
+### Code style
+
+`.clang-format`
+
+_NOTE_: This does not enforce all FFmpeg code styles
+
+### Dependencies
+
+#### clang-format-12
+
+```sh
+wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
+sudo add-apt-repository -y "deb https://apt.llvm.org/bionic/ llvm-toolchain-bionic-13 main"
+sudo apt update -q
+sudo apt install -y clang-format-13
+sudo update-alternatives --install /usr/bin/clang-format clang-format /usr/bin/clang-format-13 101
+```

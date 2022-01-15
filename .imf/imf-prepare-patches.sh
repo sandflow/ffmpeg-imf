@@ -1,5 +1,8 @@
 #!/bin/sh -x
 
+# Sample script to generate patchset for distribution to the FFmpeg devel
+# mailing list
+
 set -e
 
 PATCH_VERSION="4"
