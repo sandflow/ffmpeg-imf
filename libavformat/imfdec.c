@@ -103,7 +103,7 @@ typedef struct IMFVirtualTrackPlaybackCtx {
     int32_t index;                                 /**< Track index in playlist */
     AVRational current_timestamp;                  /**< Current temporal position */
     AVRational duration;                           /**< Overall duration */
-    uint32_t resource_count;                       /**< Number of resources */
+    uint32_t resource_count;                       /**< Number of resources (<= NT32_MAX) */
     unsigned int resources_alloc_sz;               /**< Size of the buffer holding the resource */
     IMFVirtualTrackResourcePlaybackCtx *resources; /**< Buffer holding the resources */
     int32_t current_resource_index;                /**< Index of the current resource in resources,
@@ -452,7 +452,7 @@ static int open_track_file_resource(AVFormatContext *s,
            UID_ARG(asset_locator->uuid),
            asset_locator->absolute_uri);
 
-    if (track->resource_count > UINT32_MAX - track_file_resource->base.repeat_count
+    if (track->resource_count > INT32_MAX - track_file_resource->base.repeat_count
         || (track->resource_count + track_file_resource->base.repeat_count)
             > INT_MAX / sizeof(IMFVirtualTrackResourcePlaybackCtx))
         return AVERROR(ENOMEM);
