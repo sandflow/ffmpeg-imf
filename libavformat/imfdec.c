@@ -106,7 +106,7 @@ typedef struct IMFVirtualTrackPlaybackCtx {
     uint32_t resource_count;                       /**< Number of resources */
     unsigned int resources_alloc_sz;               /**< Size of the buffer holding the resource */
     IMFVirtualTrackResourcePlaybackCtx *resources; /**< Buffer holding the resources */
-    int32_t current_resource_index;               /**< Current resource */
+    uint32_t current_resource_index;               /**< Current resource */
     int64_t last_pts;                              /**< Last timestamp */
 } IMFVirtualTrackPlaybackCtx;
 
@@ -435,6 +435,7 @@ static int open_track_file_resource(AVFormatContext *s,
     IMFContext *c = s->priv_data;
     IMFAssetLocator *asset_locator;
     void *tmp;
+    int ret;
 
     asset_locator = find_asset_map_locator(&c->asset_locator_map, track_file_resource->track_file_uuid);
     if (!asset_locator) {
@@ -469,6 +470,8 @@ static int open_track_file_resource(AVFormatContext *s,
         vt_ctx.locator = asset_locator;
         vt_ctx.resource = track_file_resource;
         vt_ctx.ctx = NULL;
+        if ((ret = open_track_resource_context(s, &vt_ctx)) != 0)
+            return ret;
         track->resources[track->resource_count++] = vt_ctx;
         track->duration = av_add_q(track->duration,
                                    av_make_q((int)track_file_resource->base.duration
@@ -498,7 +501,6 @@ static int open_virtual_track(AVFormatContext *s,
 
     if (!(track = av_mallocz(sizeof(IMFVirtualTrackPlaybackCtx))))
         return AVERROR(ENOMEM);
-    track->current_resource_index = -1;
     track->index = track_index;
     track->duration = av_make_q(0, 1);
 
@@ -738,12 +740,11 @@ static IMFVirtualTrackResourcePlaybackCtx *get_resource_context_for_timestamp(AV
             if (track->current_resource_index != i) {
                 av_log(s,
                        AV_LOG_DEBUG,
-                       "Switch resource on track %d\n",
+                       "Switch resource on track %d: re-open context\n",
                        track->index);
-                if (open_track_resource_context(s, &track->resources[i]) != 0)
+                if (open_track_resource_context(s, &(track->resources[i])) != 0)
                     return NULL;
-                if (track->current_resource_index > 0)
-                    avformat_close_input(&track->resources[track->current_resource_index].ctx);
+                avformat_close_input(&(track->resources[track->current_resource_index].ctx));
                 track->current_resource_index = i;
             }
 
