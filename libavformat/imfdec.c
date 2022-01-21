@@ -106,7 +106,8 @@ typedef struct IMFVirtualTrackPlaybackCtx {
     uint32_t resource_count;                       /**< Number of resources */
     unsigned int resources_alloc_sz;               /**< Size of the buffer holding the resource */
     IMFVirtualTrackResourcePlaybackCtx *resources; /**< Buffer holding the resources */
-    int32_t current_resource_index;               /**< Current resource */
+    int32_t current_resource_index;                /**< Index of the current resource in resources,
+                                                        or < 0 if a current resource has yet to be selected */
     int64_t last_pts;                              /**< Last timestamp */
 } IMFVirtualTrackPlaybackCtx;
 
@@ -738,9 +739,9 @@ static IMFVirtualTrackResourcePlaybackCtx *get_resource_context_for_timestamp(AV
             if (track->current_resource_index != i) {
                 av_log(s,
                        AV_LOG_DEBUG,
-                       "Switch resource on track %d\n",
+                       "Switch resource on track %d: re-open context\n",
                        track->index);
-                if (open_track_resource_context(s, &track->resources[i]) != 0)
+                if (open_track_resource_context(s, &(track->resources[i])) != 0)
                     return NULL;
                 if (track->current_resource_index > 0)
                     avformat_close_input(&track->resources[track->current_resource_index].ctx);
