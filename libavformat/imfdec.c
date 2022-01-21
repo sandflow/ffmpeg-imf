@@ -550,7 +550,9 @@ static int set_context_streams_from_tracks(AVFormatContext *s)
         AVStream *first_resource_stream;
 
         /* Open the first resource of the track to get stream information */
-        open_track_resource_context(s, &c->tracks[i]->resources[0]);
+        ret = open_track_resource_context(s, &c->tracks[i]->resources[0]);
+        if (ret)
+            return ret;
         first_resource_stream = c->tracks[i]->resources[0].ctx->streams[0];
         av_log(s, AV_LOG_DEBUG, "Open the first resource of track %d\n", c->tracks[i]->index);
 
