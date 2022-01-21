@@ -5,7 +5,7 @@
 
 set -e
 
-PATCH_VERSION="4"
+PATCH_VERSION="5"
 
 PATCH_MSG="avformat/imf: add IMF CPL with repeated resources to FATE"
 
