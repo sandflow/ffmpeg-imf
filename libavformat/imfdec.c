@@ -103,7 +103,7 @@ typedef struct IMFVirtualTrackPlaybackCtx {
     int32_t index;                                 /**< Track index in playlist */
     AVRational current_timestamp;                  /**< Current temporal position */
     AVRational duration;                           /**< Overall duration */
-    uint32_t resource_count;                       /**< Number of resources (<= NT32_MAX) */
+    uint32_t resource_count;                       /**< Number of resources (<= INT32_MAX) */
     unsigned int resources_alloc_sz;               /**< Size of the buffer holding the resource */
     IMFVirtualTrackResourcePlaybackCtx *resources; /**< Buffer holding the resources */
     int32_t current_resource_index;                /**< Index of the current resource in resources,
