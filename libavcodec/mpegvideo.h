@@ -201,7 +201,6 @@ typedef struct MpegEncContext {
     int last_pict_type; //FIXME removes
     int last_non_b_pict_type;   ///< used for MPEG-4 gmc B-frames & ratecontrol
     int droppable;
-    int frame_rate_index;
     int last_lambda_for[5];     ///< last lambda for a specific pict type
     int skipdct;                ///< skip dct and code zero residual
 
@@ -384,12 +383,10 @@ typedef struct MpegEncContext {
     int mcsel;
     int quant_precision;
     int quarter_sample;              ///< 1->qpel, 0->half pel ME/MC
-    int aspect_ratio_info; //FIXME remove
     int sprite_warping_accuracy;
     int data_partitioning;           ///< data partitioning flag from header
     int partitioned_frame;           ///< is current frame partitioned
     int low_delay;                   ///< no reordering needed / has no B-frames
-    int vo_type;
     PutBitContext tex_pb;            ///< used for data partitioned VOPs
     PutBitContext pb2;               ///< used for data partitioned VOPs
     int mpeg_quant;
@@ -434,9 +431,8 @@ typedef struct MpegEncContext {
     GetBitContext gb;
 
     /* MPEG-1 specific */
-    int gop_picture_number;  ///< index of the first picture of a GOP based on fake_pic_num & MPEG-1 specific
     int last_mv_dir;         ///< last mv_dir, used for B-frame encoding
-    uint8_t *vbv_delay_ptr;  ///< pointer to vbv_delay in the bitstream
+    int vbv_delay_pos;       ///< offset of vbv_delay in the bitstream
 
     /* MPEG-2-specific - I wished not to have to support this mess. */
     int progressive_sequence;
@@ -445,7 +441,6 @@ typedef struct MpegEncContext {
     // picture structure defines are loaded from mpegutils.h
     int picture_structure;
 
-    int64_t timecode_frame_start; ///< GOP timecode frame start number, in non drop frame format
     int intra_dc_precision;
     int frame_pred_frame_dct;
     int top_field_first;
@@ -486,10 +481,6 @@ typedef struct MpegEncContext {
     int16_t (*block)[64]; ///< points to one of the following blocks
     int16_t (*blocks)[12][64]; // for HQ mode we need to keep the best block
     int (*decode_mb)(struct MpegEncContext *s, int16_t block[12][64]); // used by some codecs to avoid a switch()
-
-    int32_t (*block32)[12][64];
-    int dpcm_direction;          // 0 = DCT, 1 = DPCM top to bottom scan, -1 = DPCM bottom to top scan
-    int16_t (*dpcm_macroblock)[3][256];
 
 #define SLICE_OK         0
 #define SLICE_ERROR     -1

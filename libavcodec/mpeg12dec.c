@@ -65,15 +65,18 @@ typedef struct Mpeg1Context {
     uint8_t afd;
     int has_afd;
     int slice_count;
+    unsigned aspect_ratio_info;
     AVRational save_aspect;
     int save_width, save_height, save_progressive_seq;
     int rc_buffer_size;
     AVRational frame_rate_ext;  /* MPEG-2 specific framerate modificator */
+    unsigned frame_rate_index;
     int sync;                   /* Did we reach a sync point like a GOP/SEQ/KEYFrame? */
     int closed_gop;
     int tmpgexs;
     int first_slice;
     int extradata_decoded;
+    int64_t timecode_frame_start;  /*< GOP timecode frame start number, in non drop frame format */
 } Mpeg1Context;
 
 #define MB_TYPE_ZERO_MV   0x20000000
@@ -1205,13 +1208,13 @@ static int mpeg_decode_postinit(AVCodecContext *avctx)
 
     if (avctx->codec_id == AV_CODEC_ID_MPEG1VIDEO) {
         // MPEG-1 aspect
-        AVRational aspect_inv = av_d2q(ff_mpeg1_aspect[s->aspect_ratio_info], 255);
+        AVRational aspect_inv = av_d2q(ff_mpeg1_aspect[s1->aspect_ratio_info], 255);
         avctx->sample_aspect_ratio = (AVRational) { aspect_inv.den, aspect_inv.num };
     } else { // MPEG-2
         // MPEG-2 aspect
-        if (s->aspect_ratio_info > 1) {
+        if (s1->aspect_ratio_info > 1) {
             AVRational dar =
-                av_mul_q(av_div_q(ff_mpeg2_aspect[s->aspect_ratio_info],
+                av_mul_q(av_div_q(ff_mpeg2_aspect[s1->aspect_ratio_info],
                                   (AVRational) { s1->pan_scan.width,
                                                  s1->pan_scan.height }),
                          (AVRational) { s->width, s->height });
@@ -1224,25 +1227,25 @@ static int mpeg_decode_postinit(AVCodecContext *avctx)
                 (av_cmp_q(dar, (AVRational) { 4, 3 }) &&
                  av_cmp_q(dar, (AVRational) { 16, 9 }))) {
                 s->avctx->sample_aspect_ratio =
-                    av_div_q(ff_mpeg2_aspect[s->aspect_ratio_info],
+                    av_div_q(ff_mpeg2_aspect[s1->aspect_ratio_info],
                              (AVRational) { s->width, s->height });
             } else {
                 s->avctx->sample_aspect_ratio =
-                    av_div_q(ff_mpeg2_aspect[s->aspect_ratio_info],
+                    av_div_q(ff_mpeg2_aspect[s1->aspect_ratio_info],
                              (AVRational) { s1->pan_scan.width, s1->pan_scan.height });
 // issue1613 4/3 16/9 -> 16/9
 // res_change_ffmpeg_aspect.ts 4/3 225/44 ->4/3
 // widescreen-issue562.mpg 4/3 16/9 -> 16/9
 //                s->avctx->sample_aspect_ratio = av_mul_q(s->avctx->sample_aspect_ratio, (AVRational) {s->width, s->height});
                 ff_dlog(avctx, "aspect A %d/%d\n",
-                        ff_mpeg2_aspect[s->aspect_ratio_info].num,
-                        ff_mpeg2_aspect[s->aspect_ratio_info].den);
+                        ff_mpeg2_aspect[s1->aspect_ratio_info].num,
+                        ff_mpeg2_aspect[s1->aspect_ratio_info].den);
                 ff_dlog(avctx, "aspect B %d/%d\n", s->avctx->sample_aspect_ratio.num,
                         s->avctx->sample_aspect_ratio.den);
             }
         } else {
             s->avctx->sample_aspect_ratio =
-                ff_mpeg2_aspect[s->aspect_ratio_info];
+                ff_mpeg2_aspect[s1->aspect_ratio_info];
         }
     } // MPEG-2
 
@@ -1295,7 +1298,7 @@ static int mpeg_decode_postinit(AVCodecContext *avctx)
 
         if (avctx->codec_id == AV_CODEC_ID_MPEG1VIDEO) {
             // MPEG-1 fps
-            avctx->framerate = ff_mpeg12_frame_rate_tab[s->frame_rate_index];
+            avctx->framerate = ff_mpeg12_frame_rate_tab[s1->frame_rate_index];
             avctx->ticks_per_frame     = 1;
 
             avctx->chroma_sample_location = AVCHROMA_LOC_CENTER;
@@ -1303,8 +1306,8 @@ static int mpeg_decode_postinit(AVCodecContext *avctx)
             // MPEG-2 fps
             av_reduce(&s->avctx->framerate.num,
                       &s->avctx->framerate.den,
-                      ff_mpeg12_frame_rate_tab[s->frame_rate_index].num * s1->frame_rate_ext.num,
-                      ff_mpeg12_frame_rate_tab[s->frame_rate_index].den * s1->frame_rate_ext.den,
+                      ff_mpeg12_frame_rate_tab[s1->frame_rate_index].num * s1->frame_rate_ext.num,
+                      ff_mpeg12_frame_rate_tab[s1->frame_rate_index].den * s1->frame_rate_ext.den,
                       1 << 30);
             avctx->ticks_per_frame = 2;
 
@@ -2102,17 +2105,17 @@ static int mpeg1_decode_sequence(AVCodecContext *avctx,
         if (avctx->err_recognition & (AV_EF_BITSTREAM | AV_EF_COMPLIANT))
             return AVERROR_INVALIDDATA;
     }
-    s->aspect_ratio_info = get_bits(&s->gb, 4);
-    if (s->aspect_ratio_info == 0) {
+    s1->aspect_ratio_info = get_bits(&s->gb, 4);
+    if (s1->aspect_ratio_info == 0) {
         av_log(avctx, AV_LOG_ERROR, "aspect ratio has forbidden 0 value\n");
         if (avctx->err_recognition & (AV_EF_BITSTREAM | AV_EF_COMPLIANT))
             return AVERROR_INVALIDDATA;
     }
-    s->frame_rate_index = get_bits(&s->gb, 4);
-    if (s->frame_rate_index == 0 || s->frame_rate_index > 13) {
+    s1->frame_rate_index = get_bits(&s->gb, 4);
+    if (s1->frame_rate_index == 0 || s1->frame_rate_index > 13) {
         av_log(avctx, AV_LOG_WARNING,
-               "frame_rate_index %d is invalid\n", s->frame_rate_index);
-        s->frame_rate_index = 1;
+               "frame_rate_index %d is invalid\n", s1->frame_rate_index);
+        s1->frame_rate_index = 1;
     }
     s->bit_rate = get_bits(&s->gb, 18) * 400LL;
     if (check_marker(s->avctx, &s->gb, "in sequence header") == 0) {
@@ -2168,7 +2171,7 @@ static int mpeg1_decode_sequence(AVCodecContext *avctx,
 
     if (s->avctx->debug & FF_DEBUG_PICT_INFO)
         av_log(s->avctx, AV_LOG_DEBUG, "vbv buffer: %d, bitrate:%"PRId64", aspect_ratio_info: %d \n",
-               s1->rc_buffer_size, s->bit_rate, s->aspect_ratio_info);
+               s1->rc_buffer_size, s->bit_rate, s1->aspect_ratio_info);
 
     return 0;
 }
@@ -2442,7 +2445,7 @@ static void mpeg_decode_gop(AVCodecContext *avctx,
 
     init_get_bits(&s->gb, buf, buf_size * 8);
 
-    tc = s-> timecode_frame_start = get_bits(&s->gb, 25);
+    tc = s1->timecode_frame_start = get_bits(&s->gb, 25);
 
     s1->closed_gop = get_bits1(&s->gb);
     /* broken_link indicates that after editing the
@@ -2853,19 +2856,19 @@ static int mpeg_decode_frame(AVCodecContext *avctx, void *data,
     if (ret<0 || *got_output) {
         s2->current_picture_ptr = NULL;
 
-        if (s2->timecode_frame_start != -1 && *got_output) {
+        if (s->timecode_frame_start != -1 && *got_output) {
             char tcbuf[AV_TIMECODE_STR_SIZE];
             AVFrameSideData *tcside = av_frame_new_side_data(picture,
                                                              AV_FRAME_DATA_GOP_TIMECODE,
                                                              sizeof(int64_t));
             if (!tcside)
                 return AVERROR(ENOMEM);
-            memcpy(tcside->data, &s2->timecode_frame_start, sizeof(int64_t));
+            memcpy(tcside->data, &s->timecode_frame_start, sizeof(int64_t));
 
-            av_timecode_make_mpeg_tc_string(tcbuf, s2->timecode_frame_start);
+            av_timecode_make_mpeg_tc_string(tcbuf, s->timecode_frame_start);
             av_dict_set(&picture->metadata, "timecode", tcbuf, 0);
 
-            s2->timecode_frame_start = -1;
+            s->timecode_frame_start = -1;
         }
     }
 

@@ -12,7 +12,7 @@ fate-matroska-prores-header-insertion-bz2: CMD = framecrc -i $(TARGET_SAMPLES)/m
 FATE_MATROSKA-$(call DEMMUX, MATROSKA, MATROSKA) += fate-matroska-remux
 fate-matroska-remux: CMD = md5pipe -i $(TARGET_SAMPLES)/vp9-test-vectors/vp90-2-2pass-akiyo.webm -color_trc 4 -c:v copy -fflags +bitexact -strict -2 -f matroska
 fate-matroska-remux: CMP = oneline
-fate-matroska-remux: REF = 26fabd90326e3de4bb6afe1b216ce232
+fate-matroska-remux: REF = b9c7b650349972c9dce42ab79b472917
 
 FATE_MATROSKA-$(call ALLYES, MATROSKA_DEMUXER VORBIS_PARSER) += fate-matroska-xiph-lacing
 fate-matroska-xiph-lacing: CMD = framecrc -i $(TARGET_SAMPLES)/mkv/xiph_lacing.mka -c:a copy
@@ -89,6 +89,28 @@ FATE_MATROSKA_FFMPEG_FFPROBE-$(call ALLYES, FILE_PROTOCOL MOV_DEMUXER       \
                                             PIPE_PROTOCOL)                  \
                                += fate-matroska-dovi-write-config7
 fate-matroska-dovi-write-config7: CMD = transcode mov $(TARGET_SAMPLES)/mov/dovi-p7.mp4 matroska "-map 0 -c copy -cues_to_front yes -reserve_index_space 40  -metadata_header_padding 64339" "-map 0 -c copy" "" "-show_entries stream_side_data_list"
+
+FATE_MATROSKA_FFMPEG_FFPROBE-$(call ALLYES, FILE_PROTOCOL PIPE_PROTOCOL \
+                                            MOV_DEMUXER MATROSKA_DEMUXER \
+                                            HEVC_DECODER AAC_DECODER      \
+                                            MATROSKA_MUXER FRAMECRC_MUXER) \
+                               += fate-matroska-dovi-write-config8
+fate-matroska-dovi-write-config8: CMD = transcode mov $(TARGET_SAMPLES)/hevc/dv84.mov matroska "-c copy" "-map 0 -c copy -t 0.4" "" "-show_entries stream_side_data_list -select_streams v"
+
+# This tests the scenario like tickets #4536, #5784 where
+# the first packet (with the overall lowest dts) is a video packet,
+# whereas an audio packet to be muxed later has the overall lowest pts
+# which happens to be negative and therefore needs to be shifted.
+# (-ss 1.09 ensures that a video frame has the lowest dts of all packets;
+# yet there is an audio packet with the overall lowest pts. output_ts_offset
+# makes the pts of the audio packet, but not the leading video packet negative
+# so that we run into the above issue.)
+FATE_MATROSKA-$(call ALLYES, FILE_PROTOCOL MPEGTS_DEMUXER MPEGVIDEO_PARSER  \
+                             MPEG2VIDEO_DECODER EXTRACT_EXTRADATA_BSF       \
+                             MP3FLOAT_DECODER MATROSKA_MUXER                \
+                             MATROSKA_DEMUXER FRAMECRC_MUXER PIPE_PROTOCOL) \
+                += fate-matroska-avoid-negative-ts
+fate-matroska-avoid-negative-ts: CMD = transcode mpegts $(TARGET_SAMPLES)/mpeg2/t.mpg matroska "-c copy -ss 1.09 -output_ts_offset -60ms" "-c copy -t 0.4"
 
 # This tests writing the MS-compatibility modes V_MS/VFW/FOURCC and A_MS/ACM.
 # It furthermore tests writing the Cues at the front if the cues_to_front

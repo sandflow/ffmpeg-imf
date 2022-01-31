@@ -258,7 +258,6 @@ static void update_duplicate_context_after_me(MpegEncContext *dst,
     COPY(lambda);
     COPY(lambda2);
     COPY(picture_in_gop_number);
-    COPY(gop_picture_number);
     COPY(frame_pred_frame_dct); // FIXME don't set in encode_header
     COPY(progressive_frame);    // FIXME don't set in encode_header
     COPY(partitioned_frame);    // FIXME don't set in encode_header
@@ -351,9 +350,18 @@ av_cold int ff_mpv_encode_init(AVCodecContext *avctx)
         av_log(avctx, AV_LOG_ERROR, "Too many B-frames requested, maximum "
                "is %d.\n", MAX_B_FRAMES);
         avctx->max_b_frames = MAX_B_FRAMES;
+    } else if (avctx->max_b_frames < 0) {
+        av_log(avctx, AV_LOG_ERROR,
+               "max b frames must be 0 or positive for mpegvideo based encoders\n");
+        return AVERROR(EINVAL);
     }
     s->max_b_frames = avctx->max_b_frames;
     s->codec_id     = avctx->codec->id;
+    if (s->max_b_frames && !(avctx->codec->capabilities & AV_CODEC_CAP_DELAY)) {
+        av_log(avctx, AV_LOG_ERROR, "B-frames not supported by codec\n");
+        return AVERROR(EINVAL);
+    }
+
     s->strict_std_compliance = avctx->strict_std_compliance;
     s->quarter_sample     = (avctx->flags & AV_CODEC_FLAG_QPEL) != 0;
     s->rtp_mode           = !!s->rtp_payload_size;
@@ -497,19 +505,6 @@ av_cold int ff_mpv_encode_init(AVCodecContext *avctx)
 
     if (s->quarter_sample && s->codec_id != AV_CODEC_ID_MPEG4) {
         av_log(avctx, AV_LOG_ERROR, "qpel not supported by codec\n");
-        return AVERROR(EINVAL);
-    }
-
-    if (s->max_b_frames                    &&
-        s->codec_id != AV_CODEC_ID_MPEG4      &&
-        s->codec_id != AV_CODEC_ID_MPEG1VIDEO &&
-        s->codec_id != AV_CODEC_ID_MPEG2VIDEO) {
-        av_log(avctx, AV_LOG_ERROR, "B-frames not supported by codec\n");
-        return AVERROR(EINVAL);
-    }
-    if (s->max_b_frames < 0) {
-        av_log(avctx, AV_LOG_ERROR,
-               "max b frames must be 0 or positive for mpegvideo based encoders\n");
         return AVERROR(EINVAL);
     }
 
@@ -946,8 +941,7 @@ av_cold int ff_mpv_encode_end(AVCodecContext *avctx)
     for (i = 0; i < FF_ARRAY_ELEMS(s->tmp_frames); i++)
         av_frame_free(&s->tmp_frames[i]);
 
-    ff_free_picture_tables(&s->new_picture);
-    ff_mpeg_unref_picture(avctx, &s->new_picture);
+    ff_mpv_picture_free(avctx, &s->new_picture);
 
     av_freep(&avctx->stats_out);
     av_freep(&s->ac_stats);
@@ -1846,8 +1840,9 @@ vbv_retry:
             double inbits  = avctx->rc_max_rate *
                              av_q2d(avctx->time_base);
             int    minbits = s->frame_bits - 8 *
-                             (s->vbv_delay_ptr - s->pb.buf - 1);
+                             (s->vbv_delay_pos - 1);
             double bits    = s->rc_context.buffer_index + minbits - inbits;
+            uint8_t *const vbv_delay_ptr = s->pb.buf + s->vbv_delay_pos;
 
             if (bits < 0)
                 av_log(avctx, AV_LOG_ERROR,
@@ -1863,11 +1858,11 @@ vbv_retry:
 
             av_assert0(vbv_delay < 0xFFFF);
 
-            s->vbv_delay_ptr[0] &= 0xF8;
-            s->vbv_delay_ptr[0] |= vbv_delay >> 13;
-            s->vbv_delay_ptr[1]  = vbv_delay >> 5;
-            s->vbv_delay_ptr[2] &= 0x07;
-            s->vbv_delay_ptr[2] |= vbv_delay << 3;
+            vbv_delay_ptr[0] &= 0xF8;
+            vbv_delay_ptr[0] |= vbv_delay >> 13;
+            vbv_delay_ptr[1]  = vbv_delay >> 5;
+            vbv_delay_ptr[2] &= 0x07;
+            vbv_delay_ptr[2] |= vbv_delay << 3;
 
             props = av_cpb_properties_alloc(&props_size);
             if (!props)
@@ -2727,7 +2722,6 @@ int ff_mpv_reallocate_putbitbuffer(MpegEncContext *s, size_t threshold, size_t s
         && s->slice_context_count == 1
         && s->pb.buf == s->avctx->internal->byte_buffer) {
         int lastgob_pos = s->ptr_lastgob - s->pb.buf;
-        int vbv_pos     = s->vbv_delay_ptr - s->pb.buf;
 
         uint8_t *new_buffer = NULL;
         int new_buffer_size = 0;
@@ -2750,7 +2744,6 @@ int ff_mpv_reallocate_putbitbuffer(MpegEncContext *s, size_t threshold, size_t s
         s->avctx->internal->byte_buffer_size = new_buffer_size;
         rebase_put_bits(&s->pb, new_buffer, new_buffer_size);
         s->ptr_lastgob   = s->pb.buf + lastgob_pos;
-        s->vbv_delay_ptr = s->pb.buf + vbv_pos;
     }
     if (put_bytes_left(&s->pb, 0) < threshold)
         return AVERROR(EINVAL);
@@ -4557,117 +4550,3 @@ int ff_dct_quantize_c(MpegEncContext *s,
 
     return last_non_zero;
 }
-
-#define OFFSET(x) offsetof(MpegEncContext, x)
-#define VE AV_OPT_FLAG_VIDEO_PARAM | AV_OPT_FLAG_ENCODING_PARAM
-static const AVOption h263_options[] = {
-    { "obmc",         "use overlapped block motion compensation.", OFFSET(obmc), AV_OPT_TYPE_BOOL, { .i64 = 0 }, 0, 1, VE },
-    { "mb_info",      "emit macroblock info for RFC 2190 packetization, the parameter value is the maximum payload size", OFFSET(mb_info), AV_OPT_TYPE_INT, { .i64 = 0 }, 0, INT_MAX, VE },
-    FF_MPV_COMMON_OPTS
-#if FF_API_MPEGVIDEO_OPTS
-    FF_MPV_DEPRECATED_MPEG_QUANT_OPT
-    FF_MPV_DEPRECATED_A53_CC_OPT
-    FF_MPV_DEPRECATED_MATRIX_OPT
-    FF_MPV_DEPRECATED_BFRAME_OPTS
-#endif
-    { NULL },
-};
-
-static const AVClass h263_class = {
-    .class_name = "H.263 encoder",
-    .item_name  = av_default_item_name,
-    .option     = h263_options,
-    .version    = LIBAVUTIL_VERSION_INT,
-};
-
-const AVCodec ff_h263_encoder = {
-    .name           = "h263",
-    .long_name      = NULL_IF_CONFIG_SMALL("H.263 / H.263-1996"),
-    .type           = AVMEDIA_TYPE_VIDEO,
-    .id             = AV_CODEC_ID_H263,
-    .priv_data_size = sizeof(MpegEncContext),
-    .init           = ff_mpv_encode_init,
-    .encode2        = ff_mpv_encode_picture,
-    .close          = ff_mpv_encode_end,
-    .caps_internal  = FF_CODEC_CAP_INIT_THREADSAFE | FF_CODEC_CAP_INIT_CLEANUP,
-    .pix_fmts= (const enum AVPixelFormat[]){AV_PIX_FMT_YUV420P, AV_PIX_FMT_NONE},
-    .priv_class     = &h263_class,
-};
-
-static const AVOption h263p_options[] = {
-    { "umv",        "Use unlimited motion vectors.",    OFFSET(umvplus),       AV_OPT_TYPE_BOOL, { .i64 = 0 }, 0, 1, VE },
-    { "aiv",        "Use alternative inter VLC.",       OFFSET(alt_inter_vlc), AV_OPT_TYPE_BOOL, { .i64 = 0 }, 0, 1, VE },
-    { "obmc",       "use overlapped block motion compensation.", OFFSET(obmc), AV_OPT_TYPE_BOOL, { .i64 = 0 }, 0, 1, VE },
-    { "structured_slices", "Write slice start position at every GOB header instead of just GOB number.", OFFSET(h263_slice_structured), AV_OPT_TYPE_BOOL, { .i64 = 0 }, 0, 1, VE},
-    FF_MPV_COMMON_OPTS
-#if FF_API_MPEGVIDEO_OPTS
-    FF_MPV_DEPRECATED_MPEG_QUANT_OPT
-    FF_MPV_DEPRECATED_A53_CC_OPT
-    FF_MPV_DEPRECATED_MATRIX_OPT
-    FF_MPV_DEPRECATED_BFRAME_OPTS
-#endif
-    { NULL },
-};
-static const AVClass h263p_class = {
-    .class_name = "H.263p encoder",
-    .item_name  = av_default_item_name,
-    .option     = h263p_options,
-    .version    = LIBAVUTIL_VERSION_INT,
-};
-
-const AVCodec ff_h263p_encoder = {
-    .name           = "h263p",
-    .long_name      = NULL_IF_CONFIG_SMALL("H.263+ / H.263-1998 / H.263 version 2"),
-    .type           = AVMEDIA_TYPE_VIDEO,
-    .id             = AV_CODEC_ID_H263P,
-    .priv_data_size = sizeof(MpegEncContext),
-    .init           = ff_mpv_encode_init,
-    .encode2        = ff_mpv_encode_picture,
-    .close          = ff_mpv_encode_end,
-    .capabilities   = AV_CODEC_CAP_SLICE_THREADS,
-    .caps_internal  = FF_CODEC_CAP_INIT_THREADSAFE | FF_CODEC_CAP_INIT_CLEANUP,
-    .pix_fmts       = (const enum AVPixelFormat[]){ AV_PIX_FMT_YUV420P, AV_PIX_FMT_NONE },
-    .priv_class     = &h263p_class,
-};
-
-const AVCodec ff_msmpeg4v2_encoder = {
-    .name           = "msmpeg4v2",
-    .long_name      = NULL_IF_CONFIG_SMALL("MPEG-4 part 2 Microsoft variant version 2"),
-    .type           = AVMEDIA_TYPE_VIDEO,
-    .id             = AV_CODEC_ID_MSMPEG4V2,
-    .priv_class     = &ff_mpv_enc_class,
-    .priv_data_size = sizeof(MpegEncContext),
-    .init           = ff_mpv_encode_init,
-    .encode2        = ff_mpv_encode_picture,
-    .close          = ff_mpv_encode_end,
-    .caps_internal  = FF_CODEC_CAP_INIT_THREADSAFE | FF_CODEC_CAP_INIT_CLEANUP,
-    .pix_fmts       = (const enum AVPixelFormat[]){ AV_PIX_FMT_YUV420P, AV_PIX_FMT_NONE },
-};
-
-const AVCodec ff_msmpeg4v3_encoder = {
-    .name           = "msmpeg4",
-    .long_name      = NULL_IF_CONFIG_SMALL("MPEG-4 part 2 Microsoft variant version 3"),
-    .type           = AVMEDIA_TYPE_VIDEO,
-    .id             = AV_CODEC_ID_MSMPEG4V3,
-    .priv_class     = &ff_mpv_enc_class,
-    .priv_data_size = sizeof(MpegEncContext),
-    .init           = ff_mpv_encode_init,
-    .encode2        = ff_mpv_encode_picture,
-    .close          = ff_mpv_encode_end,
-    .caps_internal  = FF_CODEC_CAP_INIT_THREADSAFE | FF_CODEC_CAP_INIT_CLEANUP,
-    .pix_fmts       = (const enum AVPixelFormat[]){ AV_PIX_FMT_YUV420P, AV_PIX_FMT_NONE },
-};
-
-const AVCodec ff_wmv1_encoder = {
-    .name           = "wmv1",
-    .long_name      = NULL_IF_CONFIG_SMALL("Windows Media Video 7"),
-    .type           = AVMEDIA_TYPE_VIDEO,
-    .id             = AV_CODEC_ID_WMV1,
-    .priv_class     = &ff_mpv_enc_class,
-    .priv_data_size = sizeof(MpegEncContext),
-    .init           = ff_mpv_encode_init,
-    .encode2        = ff_mpv_encode_picture,
-    .close          = ff_mpv_encode_end,
-    .caps_internal  = FF_CODEC_CAP_INIT_THREADSAFE | FF_CODEC_CAP_INIT_CLEANUP,
-    .pix_fmts       = (const enum AVPixelFormat[]){ AV_PIX_FMT_YUV420P, AV_PIX_FMT_NONE },
-};

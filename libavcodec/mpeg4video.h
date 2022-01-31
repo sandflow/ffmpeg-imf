@@ -94,7 +94,6 @@ typedef struct Mpeg4DecContext {
     int new_pred;
     int enhancement_type;
     int scalability;
-    int use_intra_dc_vlc;
 
     /// QP above which the ac VLC should be used for intra dc
     int intra_dc_threshold;
@@ -104,6 +103,8 @@ typedef struct Mpeg4DecContext {
     int divx_build;
     int xvid_build;
     int lavc_build;
+
+    int vo_type;
 
     /// flag for having shown the warning about invalid Divx B-frames
     int showed_packed_warning;
@@ -115,8 +116,17 @@ typedef struct Mpeg4DecContext {
     int cplx_estimation_trash_b;
 
     int rgb;
+
+    int32_t block32[12][64];
+    // 0 = DCT, 1 = DPCM top to bottom scan, -1 = DPCM bottom to top scan
+    int dpcm_direction;
+    int16_t dpcm_macroblock[3][256];
 } Mpeg4DecContext;
 
+
+void ff_mpeg4_decode_studio(MpegEncContext *s, uint8_t *dest_y, uint8_t *dest_cb,
+                            uint8_t *dest_cr, int block_size, int uvlinesize,
+                            int dct_linesize, int dct_offset);
 void ff_mpeg4_encode_mb(MpegEncContext *s,
                         int16_t block[6][64],
                         int motion_x, int motion_y);

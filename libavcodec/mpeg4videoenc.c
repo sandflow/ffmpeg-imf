@@ -961,14 +961,14 @@ static void mpeg4_encode_vol_header(MpegEncContext *s,
                                     int vo_number,
                                     int vol_number)
 {
-    int vo_ver_id;
+    int vo_ver_id, vo_type, aspect_ratio_info;
 
     if (s->max_b_frames || s->quarter_sample) {
         vo_ver_id  = 5;
-        s->vo_type = ADV_SIMPLE_VO_TYPE;
+        vo_type = ADV_SIMPLE_VO_TYPE;
     } else {
         vo_ver_id  = 1;
-        s->vo_type = SIMPLE_VO_TYPE;
+        vo_type = SIMPLE_VO_TYPE;
     }
 
     put_bits(&s->pb, 16, 0);
@@ -977,7 +977,7 @@ static void mpeg4_encode_vol_header(MpegEncContext *s,
     put_bits(&s->pb, 16, 0x120 + vol_number);       /* video obj layer */
 
     put_bits(&s->pb, 1, 0);             /* random access vol */
-    put_bits(&s->pb, 8, s->vo_type);    /* video obj type indication */
+    put_bits(&s->pb, 8, vo_type);       /* video obj type indication */
     if (s->workaround_bugs & FF_BUG_MS) {
         put_bits(&s->pb, 1, 0);         /* is obj layer id= no */
     } else {
@@ -986,10 +986,10 @@ static void mpeg4_encode_vol_header(MpegEncContext *s,
         put_bits(&s->pb, 3, 1);         /* is obj layer priority */
     }
 
-    s->aspect_ratio_info = ff_h263_aspect_to_info(s->avctx->sample_aspect_ratio);
+    aspect_ratio_info = ff_h263_aspect_to_info(s->avctx->sample_aspect_ratio);
 
-    put_bits(&s->pb, 4, s->aspect_ratio_info); /* aspect ratio info */
-    if (s->aspect_ratio_info == FF_ASPECT_EXTENDED) {
+    put_bits(&s->pb, 4, aspect_ratio_info); /* aspect ratio info */
+    if (aspect_ratio_info == FF_ASPECT_EXTENDED) {
         av_reduce(&s->avctx->sample_aspect_ratio.num, &s->avctx->sample_aspect_ratio.den,
                    s->avctx->sample_aspect_ratio.num,  s->avctx->sample_aspect_ratio.den, 255);
         put_bits(&s->pb, 8, s->avctx->sample_aspect_ratio.num);
