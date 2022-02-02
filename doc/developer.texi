@@ -107,7 +107,7 @@ struct MyStructure @{
 
 @subsection Variable declaration
 
-Variables should be declared at the head of the block where they are used. their
+Variables are declared at the head of the block where they are used, and their
 names are not aligned.
 
 @example
