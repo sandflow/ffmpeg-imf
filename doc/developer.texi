@@ -52,7 +52,8 @@ minimize the bug count.
 
 K&R coding style is used.
 
-The presentation is one inspired by @code{indent -i4 -kr -nut}.
+The presentation is one inspired by @code{indent -i4 -kr -nut}. See
+@ref{Editor configuration} for editor-specific configs.
 
 The following clarifies and augments the formatting conventions.
 
@@ -71,7 +72,7 @@ rejected by the git repository.
 You should try to limit your code lines to 80 characters; however, do so if
 and only if this improves readability.
 
-@subsection Function argument alignment
+@subsection Function arguments
 
 Function arguments that span multiple lines are aligned after the open bracket.
 The number of arguments on each line should be chosen for readability. 
@@ -93,7 +94,7 @@ long_function_name("The quick brown fox jumps over the lazy dog",
     variable_name, func2(a, b), c, another_long_variable_name);
 @end example
 
-@subsection Structure member declarations
+@subsection Structure members
 
 Field names should be aligned when declaring structures. 
 
@@ -104,7 +105,7 @@ struct MyStructure @{
 @} MyStructure;
 @end example
 
-@subsection Variable declarations
+@subsection Variable declaration
 
 Variables should be declared at the head of the block where they are used. their
 names are not aligned.
@@ -352,6 +353,7 @@ Casts should be used only when necessary. Unneeded parentheses
 should also be avoided if they don't make the code easier to understand.
 @end itemize
 
+@anchor{Editor configuration}
 @section Editor configuration
 In order to configure Vim to follow FFmpeg formatting conventions, paste
 the following snippet into your @file{.vimrc}:
