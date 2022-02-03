@@ -21,11 +21,6 @@ jobs:
     - name: Build
       run: make -j 8
 
-    - name: Basic tests
-      if: github.ref != 'refs/heads/develop'
-      run: |
-        ./.imf/imf-unit-tests.sh
-
     - name: Cache FATE
       uses: actions/cache@v2
       with:
@@ -35,4 +30,4 @@ jobs:
     - name: Update and run Fate
       run: |
         make fate-rsync SAMPLES=fate-suite/
-        make fate SAMPLES=fate-suite/
+        make fate-imf SAMPLES=fate-suite/

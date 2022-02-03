@@ -42,6 +42,3 @@
 /src
 /mapfile
 /tools/python/__pycache__/
-.vscode
-/fate-suite
-/build
