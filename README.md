@@ -11,8 +11,7 @@ It is organized around the following branches:
 * `main` tracks the `master` branch of the [upstream FFmpeg
   repository](https://github.com/FFmpeg/FFmpeg.git)
 * `develop` integrates the latest IMF features, which are not yet part of
-  FFmpeg, and includes artifacts useful for development, e.g. continuous
-  integration scripts, under the `.imf` directory
+  FFmpeg
 
 The original FFmpeg README is moved to [`README-GENERAL.md`](./README-GENERAL.md)
 
@@ -29,35 +28,22 @@ it is not by default.
 
 `./configure --enable-libxml2 --enable-debug --disable-optimizations --disable-stripping`
 
-## IMF demuxer usage in FFmpeg
+## Usage
 
-`./ffmpeg -f imf -assetmaps <path of ASSETMAP1>,<path of ASSETMAP2>,... -i <path of CPL>`
+`./ffmpeg -f imf -assetmaps <path of ASSETMAP1>,<path of ASSETMAP2>,... -i <path of CPL> ...`
 
 If `-assetmaps` is not specified, FFMPEG looks for a file called `ASSETMAP.xml`
 in the same directory as the CPL.
 
 _NOTE_: `-f imf` is required since the IMF demuxer is currently marked as _experimental_.
 
-## Development artifacts
+For HTJ2K decoding, the `libopenjpeg` decoder must be used:
 
-### Unit tests
+`./ffmpeg -c:v libopenjpeg -f imf -i <path of CPL> ...`
 
-`.imf/imf-unit-tests.sh`
+## Unit tests
 
-### Code style
-
-`.clang-format`
-
-_NOTE_: This does not enforce all FFmpeg code styles
-
-### Dependencies
-
-#### clang-format-12
-
-```sh
-wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
-sudo add-apt-repository -y "deb https://apt.llvm.org/bionic/ llvm-toolchain-bionic-13 main"
-sudo apt update -q
-sudo apt install -y clang-format-13
-sudo update-alternatives --install /usr/bin/clang-format clang-format /usr/bin/clang-format-13 101
+```
+make fate-rsync SAMPLES=fate-suite
+make fate-imf SAMPLES=fate-suite
 ```
