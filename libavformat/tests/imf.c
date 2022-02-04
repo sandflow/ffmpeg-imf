@@ -452,17 +452,17 @@ typedef struct PathTypeTestStruct {
 } PathTypeTestStruct;
 
 static const PathTypeTestStruct PATH_TYPE_TEST_STRUCTS[11] = {
-    {.path = "file://path/to/somewhere", .is_url = 1, .is_unix_absolute_path = 0, .is_dos_absolute_path = 0},
-    {.path = "http://path/to/somewhere", .is_url = 1, .is_unix_absolute_path = 0, .is_dos_absolute_path = 0},
+    {.path = "file://path/to/somewhere",  .is_url = 1, .is_unix_absolute_path = 0, .is_dos_absolute_path = 0},
+    {.path = "http://path/to/somewhere",  .is_url = 1, .is_unix_absolute_path = 0, .is_dos_absolute_path = 0},
     {.path = "https://path/to/somewhere", .is_url = 1, .is_unix_absolute_path = 0, .is_dos_absolute_path = 0},
-    {.path = "s3://path/to/somewhere", .is_url = 1, .is_unix_absolute_path = 0, .is_dos_absolute_path = 0},
-    {.path = "ftp://path/to/somewhere", .is_url = 1, .is_unix_absolute_path = 0, .is_dos_absolute_path = 0},
-    {.path = "/path/to/somewhere", .is_url = 0, .is_unix_absolute_path = 1, .is_dos_absolute_path = 0},
-    {.path = "path/to/somewhere", .is_url = 0, .is_unix_absolute_path = 0, .is_dos_absolute_path = 0},
-    {.path = "C:\\path\\to\\somewhere", .is_url = 0, .is_unix_absolute_path = 0, .is_dos_absolute_path = 1},
-    {.path = "C:/path/to/somewhere", .is_url = 0, .is_unix_absolute_path = 0, .is_dos_absolute_path = 1},
-    {.path = "\\\\path\\to\\somewhere", .is_url = 0, .is_unix_absolute_path = 0, .is_dos_absolute_path = 1},
-    {.path = "path\\to\\somewhere", .is_url = 0, .is_unix_absolute_path = 0, .is_dos_absolute_path = 0},
+    {.path = "s3://path/to/somewhere",    .is_url = 1, .is_unix_absolute_path = 0, .is_dos_absolute_path = 0},
+    {.path = "ftp://path/to/somewhere",   .is_url = 1, .is_unix_absolute_path = 0, .is_dos_absolute_path = 0},
+    {.path = "/path/to/somewhere",        .is_url = 0, .is_unix_absolute_path = 1, .is_dos_absolute_path = 0},
+    {.path = "path/to/somewhere",         .is_url = 0, .is_unix_absolute_path = 0, .is_dos_absolute_path = 0},
+    {.path = "C:\\path\\to\\somewhere",   .is_url = 0, .is_unix_absolute_path = 0, .is_dos_absolute_path = 1},
+    {.path = "C:/path/to/somewhere",      .is_url = 0, .is_unix_absolute_path = 0, .is_dos_absolute_path = 1},
+    {.path = "\\\\path\\to\\somewhere",   .is_url = 0, .is_unix_absolute_path = 0, .is_dos_absolute_path = 1},
+    {.path = "path\\to\\somewhere",       .is_url = 0, .is_unix_absolute_path = 0, .is_dos_absolute_path = 0},
 };
 
 static int test_path_type_functions(void)
@@ -473,27 +473,21 @@ static int test_path_type_functions(void)
         if (imf_uri_is_url(path_type.path) != path_type.is_url) {
             fprintf(stderr,
                     "URL comparison test failed for '%s', got %d instead of expected %d\n",
-                    path_type.path,
-                    path_type.is_url,
-                    !path_type.is_url);
+                    path_type.path, path_type.is_url, !path_type.is_url);
             goto fail;
         }
 
         if (imf_uri_is_unix_abs_path(path_type.path) != path_type.is_unix_absolute_path) {
             fprintf(stderr,
                     "Unix absolute path comparison test failed for '%s', got %d instead of expected %d\n",
-                    path_type.path,
-                    path_type.is_unix_absolute_path,
-                    !path_type.is_unix_absolute_path);
+                    path_type.path, path_type.is_unix_absolute_path, !path_type.is_unix_absolute_path);
             goto fail;
         }
 
         if (imf_uri_is_dos_abs_path(path_type.path) != path_type.is_dos_absolute_path) {
             fprintf(stderr,
                     "DOS absolute path comparison test failed for '%s', got %d instead of expected %d\n",
-                    path_type.path,
-                    path_type.is_dos_absolute_path,
-                    !path_type.is_dos_absolute_path);
+                    path_type.path, path_type.is_dos_absolute_path, !path_type.is_dos_absolute_path);
             goto fail;
         }
     }
