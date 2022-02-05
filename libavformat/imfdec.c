@@ -265,7 +265,7 @@ static void imf_asset_locator_map_init(IMFAssetLocatorMap *asset_map)
  */
 static void imf_asset_locator_map_deinit(IMFAssetLocatorMap *asset_map)
 {
-    for (uint32_t i = 0; i < asset_map->asset_count; ++i)
+    for (uint32_t i = 0; i < asset_map->asset_count; i++)
         av_freep(&asset_map->assets[i].absolute_uri);
 
     av_freep(&asset_map->assets);
@@ -331,7 +331,7 @@ clean_up:
 
 static IMFAssetLocator *find_asset_map_locator(IMFAssetLocatorMap *asset_map, FFIMFUUID uuid)
 {
-    for (uint32_t i = 0; i < asset_map->asset_count; ++i) {
+    for (uint32_t i = 0; i < asset_map->asset_count; i++) {
         if (memcmp(asset_map->assets[i].uuid, uuid, 16) == 0)
             return &(asset_map->assets[i]);
     }
@@ -473,7 +473,7 @@ static int open_track_file_resource(AVFormatContext *s,
         return AVERROR(ENOMEM);
     track->resources = tmp;
 
-    for (uint32_t i = 0; i < track_file_resource->base.repeat_count; ++i) {
+    for (uint32_t i = 0; i < track_file_resource->base.repeat_count; i++) {
         IMFVirtualTrackResourcePlaybackCtx vt_ctx;
 
         vt_ctx.locator = asset_locator;
@@ -496,7 +496,7 @@ static int open_track_file_resource(AVFormatContext *s,
 
 static void imf_virtual_track_playback_context_deinit(IMFVirtualTrackPlaybackCtx *track)
 {
-    for (uint32_t i = 0; i < track->resource_count; ++i)
+    for (uint32_t i = 0; i < track->resource_count; i++)
         avformat_close_input(&track->resources[i].ctx);
 
     av_freep(&track->resources);
@@ -559,7 +559,7 @@ static int set_context_streams_from_tracks(AVFormatContext *s)
     IMFContext *c = s->priv_data;
     int ret = 0;
 
-    for (uint32_t i = 0; i < c->track_count; ++i) {
+    for (uint32_t i = 0; i < c->track_count; i++) {
         AVStream *asset_stream;
         AVStream *first_resource_stream;
 
@@ -609,7 +609,7 @@ static int open_cpl_tracks(AVFormatContext *s)
         }
     }
 
-    for (uint32_t i = 0; i < c->cpl->main_audio_track_count; ++i) {
+    for (uint32_t i = 0; i < c->cpl->main_audio_track_count; i++) {
         if ((ret = open_virtual_track(s, &c->cpl->main_audio_tracks[i], track_index++)) != 0) {
             av_log(s,
                    AV_LOG_ERROR,
@@ -730,7 +730,7 @@ static int get_resource_context_for_timestamp(AVFormatContext *s, IMFVirtualTrac
            track->index,
            av_q2d(track->current_timestamp),
            av_q2d(track->duration));
-    for (uint32_t i = 0; i < track->resource_count; ++i) {
+    for (uint32_t i = 0; i < track->resource_count; i++) {
 
         if (av_cmp_q(track->resources[i].end_time, track->current_timestamp) > 0) {
             av_log(s,
@@ -878,7 +878,7 @@ static int imf_close(AVFormatContext *s)
     imf_asset_locator_map_deinit(&c->asset_locator_map);
     ff_imf_cpl_free(c->cpl);
 
-    for (uint32_t i = 0; i < c->track_count; ++i) {
+    for (uint32_t i = 0; i < c->track_count; i++) {
         imf_virtual_track_playback_context_deinit(c->tracks[i]);
         av_freep(&c->tracks[i]);
     }

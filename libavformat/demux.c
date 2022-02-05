@@ -1346,7 +1346,7 @@ static int read_frame_internal(AVFormatContext *s, AVPacket *pkt)
         if (sti->first_discard_sample && pkt->pts != AV_NOPTS_VALUE) {
             int64_t pts = pkt->pts - (is_relative(pkt->pts) ? RELATIVE_TS_BASE : 0);
             int64_t sample = ts_to_samples(st, pts);
-            int duration = ts_to_samples(st, pkt->duration);
+            int64_t duration = ts_to_samples(st, pkt->duration);
             int64_t end_sample = sample + duration;
             if (duration > 0 && end_sample >= sti->first_discard_sample &&
                 sample < sti->last_discard_sample)
@@ -1354,12 +1354,14 @@ static int read_frame_internal(AVFormatContext *s, AVPacket *pkt)
         }
         if (sti->start_skip_samples && (pkt->pts == 0 || pkt->pts == RELATIVE_TS_BASE))
             sti->skip_samples = sti->start_skip_samples;
+        sti->skip_samples = FFMAX(0, sti->skip_samples);
         if (sti->skip_samples || discard_padding) {
             uint8_t *p = av_packet_new_side_data(pkt, AV_PKT_DATA_SKIP_SAMPLES, 10);
             if (p) {
                 AV_WL32(p, sti->skip_samples);
                 AV_WL32(p + 4, discard_padding);
-                av_log(s, AV_LOG_DEBUG, "demuxer injecting skip %d / discard %d\n", sti->skip_samples, discard_padding);
+                av_log(s, AV_LOG_DEBUG, "demuxer injecting skip %u / discard %u\n",
+                       (unsigned)sti->skip_samples, (unsigned)discard_padding);
             }
             sti->skip_samples = 0;
         }
