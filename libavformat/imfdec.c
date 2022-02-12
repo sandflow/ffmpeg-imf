@@ -68,6 +68,7 @@
 #include "libavcodec/packet.h"
 #include "libavutil/avstring.h"
 #include "libavutil/bprint.h"
+#include "libavutil/intreadwrite.h"
 #include "libavutil/opt.h"
 #include "mxf.h"
 #include "url.h"
@@ -780,14 +781,14 @@ static int imf_time_to_ts(int64_t *ts, AVRational t, AVRational time_base)
     r = av_div_q(t, time_base);
 
     if ((av_reduce(&dst_num, &dst_den, r.num, r.den, INT64_MAX) != 1))
-        return 0;
+        return 1;
 
     if (dst_den != 1)
-        return 0;
+        return 1;
 
     *ts = dst_num;
 
-    return 1;
+    return 0;
 }
 
 static int imf_read_packet(AVFormatContext *s, AVPacket *pkt)
@@ -826,14 +827,18 @@ static int imf_read_packet(AVFormatContext *s, AVPacket *pkt)
 
     /* adjust the packet PTS and DTS based on the temporal position of the resource within the timeline */
 
-    if ((imf_time_to_ts(&delta_ts, resource->ts_offset, st->time_base) == 0))
+    ret = imf_time_to_ts(&delta_ts, resource->ts_offset, st->time_base);
+
+    if (!ret) {
+        if (pkt->pts != AV_NOPTS_VALUE)
+            pkt->pts += delta_ts;
+        if (pkt->dts != AV_NOPTS_VALUE)
+            pkt->dts += delta_ts;
+    } else {
         av_log(s, AV_LOG_WARNING, "Incoherent time stamp " AVRATIONAL_FORMAT " for time base " AVRATIONAL_FORMAT,
                resource->ts_offset.num, resource->ts_offset.den, pkt->time_base.num,
                pkt->time_base.den);
-    if (pkt->pts != AV_NOPTS_VALUE)
-        pkt->pts += delta_ts;
-    if (pkt->dts != AV_NOPTS_VALUE)
-        pkt->dts += delta_ts;
+    }
 
     /* advance the track timestamp by the packet duration */
 
@@ -844,22 +849,57 @@ static int imf_read_packet(AVFormatContext *s, AVPacket *pkt)
 
     if (av_cmp_q(next_timestamp, resource->end_time) > 0) {
 
-        next_timestamp = resource->end_time;
+        int64_t new_pkt_dur;
 
         /* shrink the packet duration */
 
-        if ((imf_time_to_ts(&pkt->duration, av_sub_q(resource->end_time, track->current_timestamp), st->time_base) == 0))
-            av_log(s, AV_LOG_WARNING, "Incoherent time base during packet duration calculation");
+        ret = imf_time_to_ts(&new_pkt_dur,
+                             av_sub_q(resource->end_time, track->current_timestamp),
+                             st->time_base);
 
-        /* shrink the packet size itself for audio samples */
-        /* only AV_CODEC_ID_PCM_S24LE is supported in IMF */
+        if (!ret)
+            pkt->duration = new_pkt_dur;
+        else
+            av_log(s, AV_LOG_WARNING, "Incoherent time base in packet duration calculation");
 
-        if (st->codecpar->codec_id == AV_CODEC_ID_PCM_S24LE) {
-            int bytes_per_sample = av_get_exact_bits_per_sample(st->codecpar->codec_id) >> 3;
-            int64_t nbsamples = av_rescale_q(pkt->duration, st->time_base, av_make_q(1, st->codecpar->sample_rate));
-            av_shrink_packet(pkt, nbsamples * st->codecpar->channels * bytes_per_sample);
+        /* shrink the packet itself for audio essence */
+
+        if (st->codecpar->codec_type == AVMEDIA_TYPE_AUDIO) {
+
+            if (st->codecpar->codec_id == AV_CODEC_ID_PCM_S24LE) {
+                /* AV_CODEC_ID_PCM_S24LE is the only PCM format supported in IMF */
+                /* in this case, explicitly shrink the packet */
+
+                int bytes_per_sample = av_get_exact_bits_per_sample(st->codecpar->codec_id) >> 3;
+                int64_t nbsamples = av_rescale_q(pkt->duration,
+                                                 st->time_base,
+                                                 av_make_q(1, st->codecpar->sample_rate));
+                av_shrink_packet(pkt, nbsamples * st->codecpar->channels * bytes_per_sample);
+
+            } else {
+                /* in all other cases, use side data to skip samples */
+                int64_t skip_samples;
+
+                ret = imf_time_to_ts(&skip_samples,
+                                     av_sub_q(next_timestamp, resource->end_time),
+                                     av_make_q(1, st->codecpar->sample_rate));
+
+                if (ret || skip_samples < 0 || skip_samples > UINT32_MAX) {
+                    av_log(s, AV_LOG_WARNING, "Cannot skip audio samples");
+                } else {
+                    uint8_t *side_data = av_packet_new_side_data(pkt, AV_PKT_DATA_SKIP_SAMPLES, 10);
+                    if (!side_data)
+                        return AVERROR(ENOMEM);
+
+                    AV_WL32(side_data + 4, skip_samples); /* skip from end of this packet */
+                    side_data[6] = 1;                     /* reason for end is convergence */
+                }
+            }
+
+            next_timestamp = resource->end_time;
+
         } else {
-            av_log(s, AV_LOG_WARNING, "Cannot shrink packets for non-PCM essence");
+            av_log(s, AV_LOG_WARNING, "Non-audio packet duration reduced");
         }
     }
 
