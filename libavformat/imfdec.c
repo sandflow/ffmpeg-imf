@@ -736,7 +736,7 @@ static int get_resource_context_for_timestamp(AVFormatContext *s, IMFVirtualTrac
                 av_log(s, AV_LOG_TRACE, "Switch resource on track %d: re-open context\n",
                        track->index);
 
-                ret = open_track_resource_context(s, track->resources + i);
+                ret = open_track_resource_context(s, track, track->resources + i);
                 if (ret != 0)
                     return ret;
                 if (track->current_resource_index > 0)
