@@ -169,8 +169,6 @@ int attribute_align_arg avcodec_open2(AVCodecContext *avctx, const AVCodec *code
     if (avctx->extradata_size < 0 || avctx->extradata_size >= FF_MAX_EXTRADATA_SIZE)
         return AVERROR(EINVAL);
 
-    lock_avcodec(codec);
-
     avci = av_mallocz(sizeof(*avci));
     if (!avci) {
         ret = AVERROR(ENOMEM);
@@ -183,7 +181,8 @@ int attribute_align_arg avcodec_open2(AVCodecContext *avctx, const AVCodec *code
     avci->es.in_frame = av_frame_alloc();
     avci->in_pkt = av_packet_alloc();
     avci->last_pkt_props = av_packet_alloc();
-    avci->pkt_props = av_fifo_alloc(sizeof(*avci->last_pkt_props));
+    avci->pkt_props = av_fifo_alloc2(1, sizeof(*avci->last_pkt_props),
+                                     AV_FIFO_FLAG_AUTO_GROW);
     if (!avci->buffer_frame || !avci->buffer_pkt          ||
         !avci->es.in_frame  || !avci->in_pkt     ||
         !avci->last_pkt_props || !avci->pkt_props) {
@@ -300,16 +299,17 @@ int attribute_align_arg avcodec_open2(AVCodecContext *avctx, const AVCodec *code
         av_log(avctx, AV_LOG_WARNING, "Warning: not compiled with thread support, using thread emulation\n");
 
     if (CONFIG_FRAME_THREAD_ENCODER && av_codec_is_encoder(avctx->codec)) {
-        unlock_avcodec(codec); //we will instantiate a few encoders thus kick the counter to prevent false detection of a problem
         ret = ff_frame_thread_encoder_init(avctx);
-        lock_avcodec(codec);
         if (ret < 0)
             goto free_and_end;
     }
 
     if (HAVE_THREADS
         && !(avci->frame_thread_encoder && (avctx->active_thread_type&FF_THREAD_FRAME))) {
+        /* Frame-threaded decoders call AVCodec.init for their child contexts. */
+        lock_avcodec(codec);
         ret = ff_thread_init(avctx);
+        unlock_avcodec(codec);
         if (ret < 0) {
             goto free_and_end;
         }
@@ -320,7 +320,9 @@ int attribute_align_arg avcodec_open2(AVCodecContext *avctx, const AVCodec *code
     if (!(avctx->active_thread_type & FF_THREAD_FRAME) ||
         avci->frame_thread_encoder) {
         if (avctx->codec->init) {
+            lock_avcodec(codec);
             ret = avctx->codec->init(avctx);
+            unlock_avcodec(codec);
             if (ret < 0) {
                 avci->needs_close = avctx->codec->caps_internal & FF_CODEC_CAP_INIT_CLEANUP;
                 goto free_and_end;
@@ -368,7 +370,6 @@ int attribute_align_arg avcodec_open2(AVCodecContext *avctx, const AVCodec *code
         av_assert0(*(const AVClass **)avctx->priv_data == codec->priv_class);
 
 end:
-    unlock_avcodec(codec);
 
     return ret;
 free_and_end:
@@ -399,13 +400,8 @@ void avcodec_flush_buffers(AVCodecContext *avctx)
     av_packet_unref(avci->buffer_pkt);
 
     av_packet_unref(avci->last_pkt_props);
-    while (av_fifo_size(avci->pkt_props) >= sizeof(*avci->last_pkt_props)) {
-        av_fifo_generic_read(avci->pkt_props,
-                             avci->last_pkt_props, sizeof(*avci->last_pkt_props),
-                             NULL);
+    while (av_fifo_read(avci->pkt_props, avci->last_pkt_props, 1) >= 0)
         av_packet_unref(avci->last_pkt_props);
-    }
-    av_fifo_reset(avci->pkt_props);
 
     av_frame_unref(avci->es.in_frame);
     av_packet_unref(avci->in_pkt);
@@ -464,12 +460,11 @@ av_cold int avcodec_close(AVCodecContext *avctx)
         av_frame_free(&avci->buffer_frame);
         av_packet_free(&avci->buffer_pkt);
         if (avci->pkt_props) {
-            while (av_fifo_size(avci->pkt_props) >= sizeof(*avci->last_pkt_props)) {
+            while (av_fifo_can_read(avci->pkt_props)) {
                 av_packet_unref(avci->last_pkt_props);
-                av_fifo_generic_read(avci->pkt_props, avci->last_pkt_props,
-                                     sizeof(*avci->last_pkt_props), NULL);
+                av_fifo_read(avci->pkt_props, avci->last_pkt_props, 1);
             }
-            av_fifo_freep(&avci->pkt_props);
+            av_fifo_freep2(&avci->pkt_props);
         }
         av_packet_free(&avci->last_pkt_props);
 

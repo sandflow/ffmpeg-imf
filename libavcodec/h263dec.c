@@ -27,11 +27,9 @@
 
 #define UNCHECKED_BITSTREAM_READER 1
 
-#include "libavutil/video_enc_params.h"
-
 #include "avcodec.h"
 #include "error_resilience.h"
-#include "flv.h"
+#include "flvdec.h"
 #include "h263.h"
 #include "h263dec.h"
 #if FF_API_FLAG_TRUNCATED
@@ -41,15 +39,17 @@
 #include "internal.h"
 #include "mpeg_er.h"
 #include "mpeg4video.h"
+#include "mpeg4videodec.h"
 #if FF_API_FLAG_TRUNCATED
 #include "mpeg4video_parser.h"
 #endif
 #include "mpegutils.h"
 #include "mpegvideo.h"
-#include "msmpeg4.h"
+#include "mpegvideodec.h"
+#include "msmpeg4dec.h"
 #include "qpeldsp.h"
 #include "thread.h"
-#include "wmv2.h"
+#include "wmv2dec.h"
 
 static enum AVPixelFormat h263_get_format(AVCodecContext *avctx)
 {
@@ -772,7 +772,8 @@ const AVCodec ff_h263_decoder = {
                       AV_CODEC_CAP_TRUNCATED |
 #endif
                       AV_CODEC_CAP_DELAY,
-    .caps_internal  = FF_CODEC_CAP_SKIP_FRAME_FILL_PARAM,
+    .caps_internal  = FF_CODEC_CAP_INIT_THREADSAFE |
+                      FF_CODEC_CAP_SKIP_FRAME_FILL_PARAM,
     .flush          = ff_mpeg_flush,
     .max_lowres     = 3,
     .pix_fmts       = ff_h263_hwaccel_pixfmt_list_420,
@@ -793,7 +794,8 @@ const AVCodec ff_h263p_decoder = {
                       AV_CODEC_CAP_TRUNCATED |
 #endif
                       AV_CODEC_CAP_DELAY,
-    .caps_internal  = FF_CODEC_CAP_SKIP_FRAME_FILL_PARAM,
+    .caps_internal  = FF_CODEC_CAP_INIT_THREADSAFE |
+                      FF_CODEC_CAP_SKIP_FRAME_FILL_PARAM,
     .flush          = ff_mpeg_flush,
     .max_lowres     = 3,
     .pix_fmts       = ff_h263_hwaccel_pixfmt_list_420,

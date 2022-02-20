@@ -32,6 +32,7 @@
 #include "cavs.h"
 #include "internal.h"
 #include "mpeg12data.h"
+#include "startcode.h"
 
 static const uint8_t mv_scan[4] = {
     MV_FWD_X0, MV_FWD_X1,
@@ -504,7 +505,7 @@ static inline int get_ue_code(GetBitContext *gb, int order)
 {
     unsigned ret = get_ue_golomb(gb);
     if (ret >= ((1U<<31)>>order)) {
-        av_log(NULL, AV_LOG_ERROR, "get_ue_code: value too larger\n");
+        av_log(NULL, AV_LOG_ERROR, "get_ue_code: value too large\n");
         return AVERROR_INVALIDDATA;
     }
     if (order) {
@@ -1318,4 +1319,5 @@ const AVCodec ff_cavs_decoder = {
     .decode         = cavs_decode_frame,
     .capabilities   = AV_CODEC_CAP_DR1 | AV_CODEC_CAP_DELAY,
     .flush          = cavs_flush,
+    .caps_internal  = FF_CODEC_CAP_INIT_THREADSAFE | FF_CODEC_CAP_INIT_CLEANUP,
 };

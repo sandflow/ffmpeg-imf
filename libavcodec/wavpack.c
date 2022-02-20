@@ -29,6 +29,7 @@
 #include "get_bits.h"
 #include "internal.h"
 #include "thread.h"
+#include "threadframe.h"
 #include "unary.h"
 #include "wavpack.h"
 #include "dsd.h"
@@ -1018,7 +1019,7 @@ static int update_thread_context(AVCodecContext *dst, const AVCodecContext *src)
     if (dst == src)
         return 0;
 
-    ff_thread_release_buffer(dst, &fdst->curr_frame);
+    ff_thread_release_ext_buffer(dst, &fdst->curr_frame);
     if (fsrc->curr_frame.f->data[0]) {
         if ((ret = ff_thread_ref_frame(&fdst->curr_frame, &fsrc->curr_frame)) < 0)
             return ret;
@@ -1065,10 +1066,10 @@ static av_cold int wavpack_decode_end(AVCodecContext *avctx)
         av_freep(&s->fdec[i]);
     s->fdec_num = 0;
 
-    ff_thread_release_buffer(avctx, &s->curr_frame);
+    ff_thread_release_ext_buffer(avctx, &s->curr_frame);
     av_frame_free(&s->curr_frame.f);
 
-    ff_thread_release_buffer(avctx, &s->prev_frame);
+    ff_thread_release_ext_buffer(avctx, &s->prev_frame);
     av_frame_free(&s->prev_frame.f);
 
     av_buffer_unref(&s->dsd_ref);
@@ -1302,14 +1303,16 @@ static int wavpack_decode_block(AVCodecContext *avctx, int block_no,
                 av_log(avctx, AV_LOG_ERROR,
                        "Invalid INT32INFO, extra_bits = %d (> 30)\n", val[0]);
                 continue;
-            } else if (val[0]) {
+            } else {
                 s->extra_bits = val[0];
-            } else if (val[1]) {
+            }
+            if (val[1])
                 s->shift = val[1];
-            } else if (val[2]) {
+            if (val[2]) {
                 s->and   = s->or = 1;
                 s->shift = val[2];
-            } else if (val[3]) {
+            }
+            if (val[3]) {
                 s->and   = 1;
                 s->shift = val[3];
             }
@@ -1538,7 +1541,7 @@ static int wavpack_decode_block(AVCodecContext *avctx, int block_no,
                 av_log(avctx, AV_LOG_ERROR, "Error reinitializing the DSD context\n");
                 return ret;
             }
-            ff_thread_release_buffer(avctx, &wc->curr_frame);
+            ff_thread_release_ext_buffer(avctx, &wc->curr_frame);
         }
         avctx->channels            = new_channels;
         avctx->channel_layout      = new_chmask;
@@ -1546,12 +1549,14 @@ static int wavpack_decode_block(AVCodecContext *avctx, int block_no,
         avctx->sample_fmt          = sample_fmt;
         avctx->bits_per_raw_sample = orig_bpp;
 
-        ff_thread_release_buffer(avctx, &wc->prev_frame);
+        ff_thread_release_ext_buffer(avctx, &wc->prev_frame);
         FFSWAP(ThreadFrame, wc->curr_frame, wc->prev_frame);
 
         /* get output buffer */
         wc->curr_frame.f->nb_samples = s->samples;
-        if ((ret = ff_thread_get_buffer(avctx, &wc->curr_frame, AV_GET_BUFFER_FLAG_REF)) < 0)
+        ret = ff_thread_get_ext_buffer(avctx, &wc->curr_frame,
+                                       AV_GET_BUFFER_FLAG_REF);
+        if (ret < 0)
             return ret;
 
         wc->frame = wc->curr_frame.f;
@@ -1675,7 +1680,7 @@ static int wavpack_decode_frame(AVCodecContext *avctx, void *data,
     }
 
     ff_thread_await_progress(&s->prev_frame, INT_MAX, 0);
-    ff_thread_release_buffer(avctx, &s->prev_frame);
+    ff_thread_release_ext_buffer(avctx, &s->prev_frame);
 
     if (s->modulation == MODULATION_DSD)
         avctx->execute2(avctx, dsd_channel, s->frame, NULL, avctx->channels);
@@ -1692,7 +1697,7 @@ static int wavpack_decode_frame(AVCodecContext *avctx, void *data,
 error:
     if (s->frame) {
         ff_thread_await_progress(&s->prev_frame, INT_MAX, 0);
-        ff_thread_release_buffer(avctx, &s->prev_frame);
+        ff_thread_release_ext_buffer(avctx, &s->prev_frame);
         ff_thread_report_progress(&s->curr_frame, INT_MAX, 0);
     }
 

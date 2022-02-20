@@ -2027,7 +2027,6 @@ static int decode_frame(AVCodecContext *avctx, void *data,
 {
     EXRContext *s = avctx->priv_data;
     GetByteContext *gb = &s->gb;
-    ThreadFrame frame = { .f = data };
     AVFrame *picture = data;
     uint8_t *ptr;
 
@@ -2149,7 +2148,7 @@ static int decode_frame(AVCodecContext *avctx, void *data,
         s->scan_lines_per_block;
     }
 
-    if ((ret = ff_thread_get_buffer(avctx, &frame, 0)) < 0)
+    if ((ret = ff_thread_get_buffer(avctx, picture, 0)) < 0)
         return ret;
 
     if (bytestream2_get_bytes_left(gb)/8 < nb_blocks)
@@ -2352,5 +2351,6 @@ const AVCodec ff_exr_decoder = {
     .decode           = decode_frame,
     .capabilities     = AV_CODEC_CAP_DR1 | AV_CODEC_CAP_FRAME_THREADS |
                         AV_CODEC_CAP_SLICE_THREADS,
+    .caps_internal    = FF_CODEC_CAP_INIT_THREADSAFE,
     .priv_class       = &exr_class,
 };

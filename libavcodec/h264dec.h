@@ -109,7 +109,6 @@ typedef struct H264Picture {
     ThreadFrame tf;
 
     AVFrame *f_grain;
-    ThreadFrame tf_grain;
 
     AVBufferRef *qscale_table_buf;
     int8_t *qscale_table;
@@ -139,6 +138,11 @@ typedef struct H264Picture {
     int mbaff;              ///< 1 -> MBAFF frame 0-> not MBAFF
     int field_picture;      ///< whether or not picture was encoded in separate fields
 
+/**
+ * H264Picture.reference has this flag set,
+ * when the picture is held for delayed output.
+ */
+#define DELAYED_PIC_REF  (1 << 2)
     int reference;
     int recovered;          ///< picture at IDR or recovery point + recovery count
     int invalid_gap;

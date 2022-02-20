@@ -1,5 +1,5 @@
 /*
- * XVideo Motion Compensation internal functions
+ * Copyright (c) 2002 The FFmpeg Project
  *
  * This file is part of FFmpeg.
  *
@@ -18,14 +18,14 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#ifndef AVCODEC_XVMC_INTERNAL_H
-#define AVCODEC_XVMC_INTERNAL_H
+#ifndef AVCODEC_WMV2ENC_H
+#define AVCODEC_WMV2ENC_H
 
-#include "avcodec.h"
 #include "mpegvideo.h"
-#include "version.h"
 
-void ff_xvmc_init_block(MpegEncContext *s);
-void ff_xvmc_pack_pblocks(MpegEncContext *s, int cbp);
+int ff_wmv2_encode_picture_header(MpegEncContext * s, int picture_number);
+void ff_wmv2_encode_mb(MpegEncContext * s, int16_t block[6][64],
+                       int motion_x, int motion_y);
 
-#endif /* AVCODEC_XVMC_INTERNAL_H */
+
+#endif

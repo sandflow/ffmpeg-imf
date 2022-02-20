@@ -1900,7 +1900,6 @@ HWACCEL_AUTODETECT_LIBRARY_LIST="
     videotoolbox
     vulkan
     v4l2_m2m
-    xvmc
 "
 
 # catchall list of things that require external libs to link
@@ -3006,7 +3005,6 @@ vaapi_x11_deps="xlib_x11"
 videotoolbox_hwaccel_deps="videotoolbox pthreads"
 videotoolbox_hwaccel_extralibs="-framework QuartzCore"
 vulkan_deps_any="libdl LoadLibrary"
-xvmc_deps="X11_extensions_XvMClib_h"
 
 av1_d3d11va_hwaccel_deps="d3d11va DXVA_PicParams_AV1"
 av1_d3d11va_hwaccel_select="av1_decoder"
@@ -3054,16 +3052,12 @@ mjpeg_nvdec_hwaccel_deps="nvdec"
 mjpeg_nvdec_hwaccel_select="mjpeg_decoder"
 mjpeg_vaapi_hwaccel_deps="vaapi"
 mjpeg_vaapi_hwaccel_select="mjpeg_decoder"
-mpeg_xvmc_hwaccel_deps="xvmc"
-mpeg_xvmc_hwaccel_select="mpeg2video_decoder"
 mpeg1_nvdec_hwaccel_deps="nvdec"
 mpeg1_nvdec_hwaccel_select="mpeg1video_decoder"
 mpeg1_vdpau_hwaccel_deps="vdpau"
 mpeg1_vdpau_hwaccel_select="mpeg1video_decoder"
 mpeg1_videotoolbox_hwaccel_deps="videotoolbox"
 mpeg1_videotoolbox_hwaccel_select="mpeg1video_decoder"
-mpeg1_xvmc_hwaccel_deps="xvmc"
-mpeg1_xvmc_hwaccel_select="mpeg1video_decoder"
 mpeg2_d3d11va_hwaccel_deps="d3d11va"
 mpeg2_d3d11va_hwaccel_select="mpeg2video_decoder"
 mpeg2_d3d11va2_hwaccel_deps="d3d11va"
@@ -3078,8 +3072,6 @@ mpeg2_vdpau_hwaccel_deps="vdpau"
 mpeg2_vdpau_hwaccel_select="mpeg2video_decoder"
 mpeg2_videotoolbox_hwaccel_deps="videotoolbox"
 mpeg2_videotoolbox_hwaccel_select="mpeg2video_decoder"
-mpeg2_xvmc_hwaccel_deps="xvmc"
-mpeg2_xvmc_hwaccel_select="mpeg2video_decoder"
 mpeg4_nvdec_hwaccel_deps="nvdec"
 mpeg4_nvdec_hwaccel_select="mpeg4_decoder"
 mpeg4_vaapi_hwaccel_deps="vaapi"
@@ -3295,7 +3287,6 @@ mp2_at_decoder_select="mpegaudioheader"
 mp3_at_decoder_select="mpegaudioheader"
 pcm_alaw_at_decoder_deps="audiotoolbox"
 pcm_mulaw_at_decoder_deps="audiotoolbox"
-qdmc_decoder_select="fft"
 qdmc_at_decoder_deps="audiotoolbox"
 qdm2_at_decoder_deps="audiotoolbox"
 aac_at_encoder_deps="audiotoolbox"
@@ -3605,15 +3596,11 @@ libzmq_protocol_deps="libzmq"
 libzmq_protocol_select="network"
 
 # filters
-afir_filter_deps="avcodec"
-afir_filter_select="rdft"
 ametadata_filter_deps="avformat"
 amovie_filter_deps="avcodec avformat"
 aresample_filter_deps="swresample"
 asr_filter_deps="pocketsphinx"
 ass_filter_deps="libass"
-atempo_filter_deps="avcodec"
-atempo_filter_select="rdft"
 avgblur_opencl_filter_deps="opencl"
 avgblur_vulkan_filter_deps="vulkan spirv_compiler"
 azmq_filter_deps="libzmq"
@@ -3650,10 +3637,6 @@ drawtext_filter_suggest="libfontconfig libfribidi"
 elbg_filter_deps="avcodec"
 eq_filter_deps="gpl"
 erosion_opencl_filter_deps="opencl"
-fftfilt_filter_deps="avcodec"
-fftfilt_filter_select="rdft"
-fftdnoiz_filter_deps="avcodec"
-fftdnoiz_filter_select="fft"
 find_rect_filter_deps="avcodec avformat gpl"
 firequalizer_filter_deps="avcodec"
 firequalizer_filter_select="rdft"
@@ -3720,8 +3703,6 @@ showcqt_filter_suggest="libfontconfig libfreetype"
 showspatial_filter_deps="avcodec"
 showspatial_filter_select="fft"
 signature_filter_deps="gpl avcodec avformat"
-sinc_filter_deps="avcodec"
-sinc_filter_select="rdft"
 smartblur_filter_deps="gpl swscale"
 sobel_opencl_filter_deps="opencl"
 sofalizer_filter_deps="libmysofa"
@@ -3733,10 +3714,6 @@ stereo3d_filter_deps="gpl"
 subtitles_filter_deps="avformat avcodec libass"
 super2xsai_filter_deps="gpl"
 pixfmts_super2xsai_test_deps="super2xsai_filter"
-superequalizer_filter_deps="avcodec"
-superequalizer_filter_select="rdft"
-surround_filter_deps="avcodec"
-surround_filter_select="rdft"
 tinterlace_filter_deps="gpl"
 tinterlace_merge_test_deps="tinterlace_filter"
 tinterlace_pad_test_deps="tinterlace_filter"
@@ -6265,6 +6242,7 @@ check_func_headers lzo/lzo1x.h lzo1x_999_compress
 check_func_headers mach/mach_time.h mach_absolute_time
 check_func_headers stdlib.h getenv
 check_func_headers sys/stat.h lstat
+check_func_headers sys/auxv.h getauxval
 
 check_func_headers windows.h GetModuleHandle
 check_func_headers windows.h GetProcessAffinityMask
@@ -6320,7 +6298,6 @@ check_headers unistd.h
 check_headers valgrind/valgrind.h
 check_func_headers VideoToolbox/VTCompressionSession.h VTCompressionSessionPrepareToEncodeFrames -framework VideoToolbox
 check_headers windows.h
-check_headers X11/extensions/XvMClib.h
 check_headers asm/types.h
 
 # it seems there are versions of clang in some distros that try to use the
@@ -6509,7 +6486,9 @@ for func in $COMPLEX_FUNCS; do
 done
 
 # these are off by default, so fail if requested and not available
-enabled avisynth          && require_headers "avisynth/avisynth_c.h"
+enabled avisynth          && { require_headers "avisynth/avisynth_c.h avisynth/avs/version.h" &&
+                               { test_cpp_condition avisynth/avs/version.h "AVS_MAJOR_VER >= 3 && AVS_MINOR_VER >= 7 && AVS_BUGFIX_VER >= 1 || AVS_MAJOR_VER >= 3 && AVS_MINOR_VER > 7 || AVS_MAJOR_VER > 3" ||
+                                 die "ERROR: AviSynth+ header version must be >= 3.7.1"; } }
 enabled cuda_nvcc         && { check_nvcc cuda_nvcc || die "ERROR: failed checking for nvcc."; }
 enabled chromaprint       && require chromaprint chromaprint.h chromaprint_get_version -lchromaprint
 enabled decklink          && { require_headers DeckLinkAPI.h &&
@@ -7387,15 +7366,12 @@ done
 enabled zlib && add_cppflags -DZLIB_CONST
 
 # conditional library dependencies, in any order
-enabled afir_filter         && prepend avfilter_deps "avcodec"
 enabled amovie_filter       && prepend avfilter_deps "avformat avcodec"
 enabled aresample_filter    && prepend avfilter_deps "swresample"
-enabled atempo_filter       && prepend avfilter_deps "avcodec"
 enabled bm3d_filter         && prepend avfilter_deps "avcodec"
 enabled cover_rect_filter   && prepend avfilter_deps "avformat avcodec"
 enabled ebur128_filter && enabled swresample && prepend avfilter_deps "swresample"
 enabled elbg_filter         && prepend avfilter_deps "avcodec"
-enabled fftfilt_filter      && prepend avfilter_deps "avcodec"
 enabled find_rect_filter    && prepend avfilter_deps "avformat avcodec"
 enabled firequalizer_filter && prepend avfilter_deps "avcodec"
 enabled mcdeint_filter      && prepend avfilter_deps "avcodec"

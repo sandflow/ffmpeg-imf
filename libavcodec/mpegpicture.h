@@ -27,7 +27,7 @@
 
 #include "avcodec.h"
 #include "motion_est.h"
-#include "thread.h"
+#include "threadframe.h"
 
 #define MPEGVIDEO_MAX_PLANES 4
 #define MAX_PICTURE_COUNT 36
@@ -109,7 +109,7 @@ int ff_mpeg_ref_picture(AVCodecContext *avctx, Picture *dst, Picture *src);
 void ff_mpeg_unref_picture(AVCodecContext *avctx, Picture *picture);
 
 void ff_mpv_picture_free(AVCodecContext *avctx, Picture *pic);
-int ff_update_picture_tables(Picture *dst, Picture *src);
+int ff_update_picture_tables(Picture *dst, const Picture *src);
 
 int ff_find_unused_picture(AVCodecContext *avctx, Picture *picture, int shared);
 

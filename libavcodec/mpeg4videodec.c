@@ -24,7 +24,6 @@
 
 #include "libavutil/internal.h"
 #include "libavutil/opt.h"
-#include "libavutil/pixdesc.h"
 #include "libavutil/thread.h"
 #include "error_resilience.h"
 #include "hwconfig.h"
@@ -33,12 +32,15 @@
 #include "mpegutils.h"
 #include "mpegvideo.h"
 #include "mpegvideodata.h"
+#include "mpegvideodec.h"
 #include "mpeg4video.h"
 #include "mpeg4videodata.h"
+#include "mpeg4videodec.h"
 #include "h263.h"
+#include "h263data.h"
 #include "h263dec.h"
 #include "profiles.h"
-#include "thread.h"
+#include "threadframe.h"
 #include "xvididct.h"
 #include "unary.h"
 
@@ -3672,7 +3674,8 @@ const AVCodec ff_mpeg4_decoder = {
                              AV_CODEC_CAP_TRUNCATED |
 #endif
                              AV_CODEC_CAP_DELAY | AV_CODEC_CAP_FRAME_THREADS,
-    .caps_internal         = FF_CODEC_CAP_SKIP_FRAME_FILL_PARAM |
+    .caps_internal         = FF_CODEC_CAP_INIT_THREADSAFE |
+                             FF_CODEC_CAP_SKIP_FRAME_FILL_PARAM |
                              FF_CODEC_CAP_ALLOCATE_PROGRESS,
     .flush                 = ff_mpeg_flush,
     .max_lowres            = 3,

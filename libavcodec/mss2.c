@@ -27,7 +27,8 @@
 #include "error_resilience.h"
 #include "internal.h"
 #include "mpeg_er.h"
-#include "msmpeg4.h"
+#include "mpegvideodec.h"
+#include "msmpeg4dec.h"
 #include "qpeldsp.h"
 #include "vc1.h"
 #include "wmv2data.h"
@@ -855,4 +856,5 @@ const AVCodec ff_mss2_decoder = {
     .close          = mss2_decode_end,
     .decode         = mss2_decode_frame,
     .capabilities   = AV_CODEC_CAP_DR1,
+    .caps_internal  = FF_CODEC_CAP_INIT_THREADSAFE,
 };

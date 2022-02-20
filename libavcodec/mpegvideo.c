@@ -40,11 +40,11 @@
 #include "mpeg_er.h"
 #include "mpegutils.h"
 #include "mpegvideo.h"
-#include "mpeg4video.h"
+#include "mpeg4videodec.h"
 #include "mpegvideodata.h"
 #include "qpeldsp.h"
-#include "thread.h"
-#include "wmv2.h"
+#include "threadframe.h"
+#include "wmv2dec.h"
 #include <limits.h>
 
 static void dct_unquantize_mpeg1_intra_c(MpegEncContext *s,
@@ -469,7 +469,7 @@ static void backup_duplicate_context(MpegEncContext *bak, MpegEncContext *src)
 #undef COPY
 }
 
-int ff_update_duplicate_context(MpegEncContext *dst, MpegEncContext *src)
+int ff_update_duplicate_context(MpegEncContext *dst, const MpegEncContext *src)
 {
     MpegEncContext bak;
     int i, ret;
@@ -1644,12 +1644,6 @@ skip_idct:
 
 void ff_mpv_reconstruct_mb(MpegEncContext *s, int16_t block[12][64])
 {
-    if (CONFIG_XVMC &&
-        s->avctx->hwaccel && s->avctx->hwaccel->decode_mb) {
-        s->avctx->hwaccel->decode_mb(s); //xvmc uses pblocks
-        return;
-    }
-
     if (s->avctx->debug & FF_DEBUG_DCT_COEFF) {
        /* print DCT coefficients */
        av_log(s->avctx, AV_LOG_DEBUG, "DCT coeffs of MB at %dx%d:\n", s->mb_x, s->mb_y);

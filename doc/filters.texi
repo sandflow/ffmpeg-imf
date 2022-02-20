@@ -4066,6 +4066,10 @@ Set temperature in degrees Celsius. This is the temperature of the environment.
 Default is 20.
 @end table
 
+@subsection Commands
+
+This filter supports the all above options as @ref{commands}.
+
 @section crossfeed
 Apply headphone crossfeed filter.
 
@@ -4177,6 +4181,34 @@ Default value is @var{o}.
 @end table
 
 @end table
+
+@section dialoguenhance
+Enhance dialogue in stereo audio.
+
+This filter accepts stereo input and produce surround (3.0) channels output.
+The newly produced front center channel have enhanced speech dialogue originally
+available in both stereo channels.
+This filter outputs front left and front right channels same as available in stereo input.
+
+The filter accepts the following options:
+
+@table @option
+@item original
+Set the original center factor to keep in front center channel output.
+Allowed range is from 0 to 1. Default value is 1.
+
+@item enhance
+Set the dialogue enhance factor to put in front center channel output.
+Allowed range is from 0 to 3. Default value is 1.
+
+@item voice
+Set the voice detection factor.
+Allowed range is from 2 to 32. Default value is 2.
+@end table
+
+@subsection Commands
+
+This filter supports the all above options as @ref{commands}.
 
 @section drmeter
 Measure audio dynamic range.
@@ -6404,15 +6436,23 @@ Set LFE output volume. By default, this is @var{1}.
 
 @item allx
 Set spread usage of stereo image across X axis for all channels.
+Allowed range is from @var{-1} to @var{15}.
+By default this value is negative @var{-1}, and thus unused.
 
 @item ally
 Set spread usage of stereo image across Y axis for all channels.
+Allowed range is from @var{-1} to @var{15}.
+By default this value is negative @var{-1}, and thus unused.
 
 @item fcx, flx, frx, blx, brx, slx, srx, bcx
 Set spread usage of stereo image across X axis for each channel.
+Allowed range is from @var{0.06} to @var{15}.
+By default this value is @var{0.5}.
 
 @item fcy, fly, fry, bly, bry, sly, sry, bcy
 Set spread usage of stereo image across Y axis for each channel.
+Allowed range is from @var{0.06} to @var{15}.
+By default this value is @var{0.5}.
 
 @item win_size
 Set window size. Allowed range is from @var{1024} to @var{65536}. Default size is @var{4096}.
@@ -15644,6 +15684,9 @@ Specify scale, if it is set it will be multiplied with sum
 of each weight multiplied with pixel values to give final destination
 pixel value. By default @var{scale} is auto scaled to sum of weights.
 
+@item planes
+Set which planes to filter. Default is all. Allowed range is from 0 to 15.
+
 @item duration
 Specify how end of stream is determined.
 @table @samp
@@ -15664,6 +15707,7 @@ This filter supports the following commands:
 @table @option
 @item weights
 @item scale
+@item planes
 Syntax is same as option with same name.
 @end table
 
@@ -21091,6 +21135,9 @@ unset weights.
 Specify scale, if it is set it will be multiplied with sum
 of each weight multiplied with pixel values to give final destination
 pixel value. By default @var{scale} is auto scaled to sum of weights.
+
+@item planes
+Set which planes to filter. Default is all. Allowed range is from 0 to 15.
 @end table
 
 @subsection Examples
@@ -21121,6 +21168,7 @@ This filter supports the following commands:
 @table @option
 @item weights
 @item scale
+@item planes
 Syntax is same as option with same name.
 @end table
 

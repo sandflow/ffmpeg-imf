@@ -22,9 +22,9 @@
 
 #include "h263.h"
 #include "hwconfig.h"
-#include "internal.h"
-#include "mpeg4video.h"
+#include "mpeg4videodec.h"
 #include "mpegvideo.h"
+#include "mpegvideodec.h"
 #include "vaapi_decode.h"
 
 /** Reconstruct bitstream intra_dc_vlc_thr */

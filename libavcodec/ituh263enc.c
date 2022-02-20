@@ -34,11 +34,13 @@
 #include "avcodec.h"
 #include "mpegvideo.h"
 #include "mpegvideodata.h"
+#include "flvenc.h"
+#include "mpegvideoenc.h"
 #include "h263.h"
+#include "h263enc.h"
 #include "h263data.h"
 #include "mathops.h"
 #include "mpegutils.h"
-#include "flv.h"
 #include "internal.h"
 
 /**
@@ -677,7 +679,6 @@ void ff_h263_encode_mb(MpegEncContext * s,
     if(interleaved_stats){
         if (!s->mb_intra) {
             s->p_tex_bits+= get_bits_diff(s);
-            s->f_count++;
         }else{
             s->i_tex_bits+= get_bits_diff(s);
             s->i_count++;
