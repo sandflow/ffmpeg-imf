@@ -47,28 +47,160 @@ and should try to fix issues their commit causes.
 
 @section Code formatting conventions
 
-There are the following guidelines regarding the indentation in files:
+The main priority in FFmpeg is simplicity and small code size in order to
+minimize the bug count.
 
-@itemize @bullet
-@item
+K&R coding style is used.
+
+The presentation is one inspired by @code{indent -i4 -kr -nut}. See
+@ref{Editor configuration} for editor-specific configs.
+
+The following clarifies and augments the formatting conventions.
+
+@subsection Indent size
+
 Indent size is 4.
 
-@item
+@subsection TAB character
+
 The TAB character is forbidden outside of Makefiles as is any
 form of trailing whitespace. Commits containing either will be
 rejected by the git repository.
 
-@item
+@subsection Line width
+
 You should try to limit your code lines to 80 characters; however, do so if
 and only if this improves readability.
 
-@item
-K&R coding style is used.
-@end itemize
-The presentation is one inspired by 'indent -i4 -kr -nut'.
+@subsection Function arguments
 
-The main priority in FFmpeg is simplicity and small code size in order to
-minimize the bug count.
+Function arguments that span multiple lines are aligned after the open bracket.
+The number of arguments on each line should be chosen for readability. 
+
+@example
+/* CORRECT */
+long_function_name("The quick brown fox jumps over the lazy dog", variable_name,
+                   func2(a, b), c, another_long_variable_name);
+
+/* INCORRECT */
+long_function_name("The quick brown fox jumps over the lazy dog",
+                   variable_name,
+                   func2(a, b),
+                   c,
+                   another_long_variable_name);
+
+/* INCORRECT */
+long_function_name("The quick brown fox jumps over the lazy dog",
+    variable_name, func2(a, b), c, another_long_variable_name);
+@end example
+
+@subsection Structure members
+
+Field names should be aligned when declaring structures. 
+
+@example
+struct MyStructure @{
+    int              field_1;
+    MyOtherStructure *field_2;
+@} MyStructure;
+@end example
+
+@subsection Variable declaration
+
+Variables are declared at the head of the block where they are used, and their
+names are not aligned.
+
+@example
+inf func()
+@{
+    int var_1;
+    MyOtherStructure *var_2;
+
+    ...
+
+    if (...) @{
+        int var_3;
+
+        ....
+    @}
+@}
+@end example
+
+@subsection Increment and decrement operators
+
+Pre-decrement and pre-increment operators should not be used unless necessary.
+
+@example
+/* CORRECT */
+for (int i = 0; i < 3; i++) @{
+    ...
+@}
+
+/* INCORRECT */
+for (int i = 0; i < 3; ++i) @{
+    ...
+@}
+@end example
+
+@subsection Control statement brackets
+
+Control statements do not use brackets if all their branches consist of a single
+statement.
+
+@example
+/* brackets since the first branch consists of more than one statement */
+if (...) @{
+    s1;
+    s2;
+@} else @{
+    s3;
+@}
+
+/* no brackets since both branches consists of one statement */
+if (...)
+    s1;
+else
+    s2;
+
+/* no brackets since both branches consists of one statement */
+for (...)
+    s1;
+@end example
+
+@subsection Inline assignments
+
+Wrap the assignment in an extra @samp{()} when using an inline assignment.
+
+@example
+if ((ret = func(a, b))) @{
+    ...
+@}
+@end example
+
+@subsection Initializing structures
+
+When using designated initializers, align the declarations.
+
+@example
+static const AVClass x_class = @{
+    .class_name = "x",
+    .item_name  = av_default_item_name,
+    .option     = options,
+    .version    = LIBAVUTIL_VERSION_INT,
+@};
+@end example
+
+When initializing arrays of structures, align the fields and use one line per
+element if possible.
+
+@example
+static const AVOption options[] = @{
+    @{ "reservoir",    "use bit reservoir", OFFSET(reservoir),    AV_OPT_TYPE_BOOL, @{ .i64 = 1 @}, 0, 1, AE @},
+    @{ "joint_stereo", "use joint stereo",  OFFSET(joint_stereo), AV_OPT_TYPE_BOOL, @{ .i64 = 1 @}, 0, 1, AE @},
+    @{ "abr",          "use ABR",           OFFSET(abr),          AV_OPT_TYPE_BOOL, @{ .i64 = 0 @}, 0, 1, AE @},
+    @{ NULL @},
+@};
+@end example
 
 @section Comments
 Use the JavaDoc/Doxygen  format (see examples below) so that code documentation
@@ -156,6 +288,9 @@ mixing statements and declarations;
 @samp{long long} (use @samp{int64_t} instead);
 
 @item
+@samp{"%lu"} (use @samp{PRIu64} instead);
+
+@item
 @samp{__attribute__} not protected by @samp{#ifdef __GNUC__} or similar;
 
 @item
@@ -218,6 +353,7 @@ Casts should be used only when necessary. Unneeded parentheses
 should also be avoided if they don't make the code easier to understand.
 @end itemize
 
+@anchor{Editor configuration}
 @section Editor configuration
 In order to configure Vim to follow FFmpeg formatting conventions, paste
 the following snippet into your @file{.vimrc}:
