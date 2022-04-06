@@ -27,7 +27,7 @@
 #include "mathops.h"
 #include "avcodec.h"
 #include "bytestream.h"
-#include "internal.h"
+#include "codec_internal.h"
 #include "lzf.h"
 #include "texturedsp.h"
 #include "thread.h"
@@ -1038,11 +1038,10 @@ static int dxv_decompress_raw(AVCodecContext *avctx)
     return 0;
 }
 
-static int dxv_decode(AVCodecContext *avctx, void *data,
+static int dxv_decode(AVCodecContext *avctx, AVFrame *frame,
                       int *got_frame, AVPacket *avpkt)
 {
     DXVContext *ctx = avctx->priv_data;
-    AVFrame *const frame = data;
     GetByteContext *gbc = &ctx->gbc;
     int (*decompress_tex)(AVCodecContext *avctx);
     const char *msgcomp, *msgtext;
@@ -1261,16 +1260,16 @@ static int dxv_close(AVCodecContext *avctx)
     return 0;
 }
 
-const AVCodec ff_dxv_decoder = {
-    .name           = "dxv",
-    .long_name      = NULL_IF_CONFIG_SMALL("Resolume DXV"),
-    .type           = AVMEDIA_TYPE_VIDEO,
-    .id             = AV_CODEC_ID_DXV,
+const FFCodec ff_dxv_decoder = {
+    .p.name         = "dxv",
+    .p.long_name    = NULL_IF_CONFIG_SMALL("Resolume DXV"),
+    .p.type         = AVMEDIA_TYPE_VIDEO,
+    .p.id           = AV_CODEC_ID_DXV,
     .init           = dxv_init,
-    .decode         = dxv_decode,
+    FF_CODEC_DECODE_CB(dxv_decode),
     .close          = dxv_close,
     .priv_data_size = sizeof(DXVContext),
-    .capabilities   = AV_CODEC_CAP_DR1 |
+    .p.capabilities = AV_CODEC_CAP_DR1 |
                       AV_CODEC_CAP_SLICE_THREADS |
                       AV_CODEC_CAP_FRAME_THREADS,
     .caps_internal  = FF_CODEC_CAP_INIT_THREADSAFE |

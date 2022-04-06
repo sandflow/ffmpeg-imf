@@ -96,6 +96,8 @@ typedef struct OptionsContext {
 
     SpecifierOpt *codec_names;
     int        nb_codec_names;
+    SpecifierOpt *audio_ch_layouts;
+    int        nb_audio_ch_layouts;
     SpecifierOpt *audio_channels;
     int        nb_audio_channels;
     SpecifierOpt *audio_sample_rate;
@@ -250,8 +252,7 @@ typedef struct InputFilter {
     AVRational sample_aspect_ratio;
 
     int sample_rate;
-    int channels;
-    uint64_t channel_layout;
+    AVChannelLayout ch_layout;
 
     AVBufferRef *hw_frames_ctx;
     int32_t *displaymatrix;
@@ -274,12 +275,12 @@ typedef struct OutputFilter {
     AVRational frame_rate;
     int format;
     int sample_rate;
-    uint64_t channel_layout;
+    AVChannelLayout ch_layout;
 
     // those are only set if no format is specified and the encoder gives us multiple options
     // They point directly to the relevant lists of the encoder.
     const int *formats;
-    const uint64_t *channel_layouts;
+    const AVChannelLayout *ch_layouts;
     const int *sample_rates;
 } OutputFilter;
 
@@ -307,6 +308,7 @@ typedef struct InputStream {
     int decoding_needed;     /* non zero if the packets must be decoded in 'raw_fifo', see DECODING_FOR_* */
 #define DECODING_FOR_OST    1
 #define DECODING_FOR_FILTER 2
+    int processing_needed;   /* non zero if the packets must be processed */
 
     AVCodecContext *dec_ctx;
     const AVCodec *dec;
@@ -534,6 +536,7 @@ typedef struct OutputStream {
     int inputs_done;
 
     const char *attachment_filename;
+    int seen_kf;
     int copy_initial_nonkeyframes;
     int copy_prior_start;
     char *disposition;

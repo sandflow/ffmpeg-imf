@@ -20,6 +20,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+#include "config_components.h"
+
 #include "libavutil/avstring.h"
 #include "libavutil/channel_layout.h"
 #include "avformat.h"
@@ -182,8 +184,7 @@ static int argo_cvg_read_header(AVFormatContext *s)
         break;
     }
 
-    par->channels               = 1;
-    par->channel_layout         = AV_CH_LAYOUT_MONO;
+    par->ch_layout              = (AVChannelLayout)AV_CHANNEL_LAYOUT_MONO;
 
     par->bits_per_coded_sample  = 4;
     par->block_align            = ARGO_CVG_BLOCK_ALIGN;
@@ -275,7 +276,7 @@ static int argo_cvg_write_init(AVFormatContext *s)
         return AVERROR(EINVAL);
     }
 
-    if (par->channels != 1) {
+    if (par->ch_layout.nb_channels != 1) {
         av_log(s, AV_LOG_ERROR, "CVG files only support 1 channel\n");
         return AVERROR(EINVAL);
     }
@@ -345,7 +346,7 @@ static int argo_cvg_write_trailer(AVFormatContext *s)
 
     avio_wl32(s->pb, ctx->checksum);
 
-    if ((ret = avio_seek(s->pb, 0, SEEK_SET) < 0))
+    if ((ret = avio_seek(s->pb, 0, SEEK_SET)) < 0)
         return ret;
 
     avio_wl32(s->pb, (uint32_t)ctx->size);

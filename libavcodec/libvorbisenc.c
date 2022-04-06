@@ -26,8 +26,10 @@
 #include "libavutil/opt.h"
 #include "avcodec.h"
 #include "audio_frame_queue.h"
+#include "codec_internal.h"
 #include "encode.h"
 #include "internal.h"
+#include "version.h"
 #include "vorbis.h"
 #include "vorbis_parser.h"
 
@@ -60,7 +62,7 @@ static const AVOption options[] = {
     { NULL }
 };
 
-static const AVCodecDefault defaults[] = {
+static const FFCodecDefault defaults[] = {
     { "b",  "0" },
     { NULL },
 };
@@ -96,6 +98,7 @@ static int vorbis_error_to_averror(int ov_err)
 static av_cold int libvorbis_setup(vorbis_info *vi, AVCodecContext *avctx)
 {
     LibvorbisEncContext *s = avctx->priv_data;
+    int channels = avctx->ch_layout.nb_channels;
     double cfreq;
     int ret;
 
@@ -108,7 +111,7 @@ static av_cold int libvorbis_setup(vorbis_info *vi, AVCodecContext *avctx)
         /* default to 3 if the user did not set quality or bitrate */
         if (!(avctx->flags & AV_CODEC_FLAG_QSCALE))
             q = 3.0;
-        if ((ret = vorbis_encode_setup_vbr(vi, avctx->channels,
+        if ((ret = vorbis_encode_setup_vbr(vi, channels,
                                            avctx->sample_rate,
                                            q / 10.0)))
             goto error;
@@ -117,7 +120,7 @@ static av_cold int libvorbis_setup(vorbis_info *vi, AVCodecContext *avctx)
         int maxrate = avctx->rc_max_rate > 0 ? avctx->rc_max_rate : -1;
 
         /* average bitrate */
-        if ((ret = vorbis_encode_setup_managed(vi, avctx->channels,
+        if ((ret = vorbis_encode_setup_managed(vi, channels,
                                                avctx->sample_rate, maxrate,
                                                avctx->bit_rate, minrate)))
             goto error;
@@ -141,32 +144,31 @@ static av_cold int libvorbis_setup(vorbis_info *vi, AVCodecContext *avctx)
             goto error;
     }
 
-    if (avctx->channels == 3 &&
-            avctx->channel_layout != (AV_CH_LAYOUT_STEREO|AV_CH_FRONT_CENTER) ||
-        avctx->channels == 4 &&
-            avctx->channel_layout != AV_CH_LAYOUT_2_2 &&
-            avctx->channel_layout != AV_CH_LAYOUT_QUAD ||
-        avctx->channels == 5 &&
-            avctx->channel_layout != AV_CH_LAYOUT_5POINT0 &&
-            avctx->channel_layout != AV_CH_LAYOUT_5POINT0_BACK ||
-        avctx->channels == 6 &&
-            avctx->channel_layout != AV_CH_LAYOUT_5POINT1 &&
-            avctx->channel_layout != AV_CH_LAYOUT_5POINT1_BACK ||
-        avctx->channels == 7 &&
-            avctx->channel_layout != (AV_CH_LAYOUT_5POINT1|AV_CH_BACK_CENTER) ||
-        avctx->channels == 8 &&
-            avctx->channel_layout != AV_CH_LAYOUT_7POINT1) {
-        if (avctx->channel_layout) {
+    if ((channels == 3 &&
+         av_channel_layout_compare(&avctx->ch_layout, &(AVChannelLayout)AV_CHANNEL_LAYOUT_SURROUND)) ||
+        (channels == 4 &&
+         av_channel_layout_compare(&avctx->ch_layout, &(AVChannelLayout)AV_CHANNEL_LAYOUT_2_2) &&
+         av_channel_layout_compare(&avctx->ch_layout, &(AVChannelLayout)AV_CHANNEL_LAYOUT_QUAD)) ||
+        (channels == 5 &&
+         av_channel_layout_compare(&avctx->ch_layout, &(AVChannelLayout)AV_CHANNEL_LAYOUT_5POINT0) &&
+         av_channel_layout_compare(&avctx->ch_layout, &(AVChannelLayout)AV_CHANNEL_LAYOUT_5POINT0_BACK)) ||
+        (channels == 6 &&
+         av_channel_layout_compare(&avctx->ch_layout, &(AVChannelLayout)AV_CHANNEL_LAYOUT_5POINT1) &&
+         av_channel_layout_compare(&avctx->ch_layout, &(AVChannelLayout)AV_CHANNEL_LAYOUT_5POINT1_BACK)) ||
+        (channels == 7 &&
+         av_channel_layout_compare(&avctx->ch_layout, &(AVChannelLayout)AV_CHANNEL_LAYOUT_6POINT1)) ||
+        (channels == 8 &&
+         av_channel_layout_compare(&avctx->ch_layout, &(AVChannelLayout)AV_CHANNEL_LAYOUT_7POINT1))) {
+        if (avctx->ch_layout.order != AV_CHANNEL_ORDER_UNSPEC) {
             char name[32];
-            av_get_channel_layout_string(name, sizeof(name), avctx->channels,
-                                         avctx->channel_layout);
+            av_channel_layout_describe(&avctx->ch_layout, name, sizeof(name));
             av_log(avctx, AV_LOG_ERROR, "%s not supported by Vorbis: "
                                              "output stream will have incorrect "
                                              "channel layout.\n", name);
         } else {
             av_log(avctx, AV_LOG_WARNING, "No channel layout specified. The encoder "
                                                "will use Vorbis channel layout for "
-                                               "%d channels.\n", avctx->channels);
+                                               "%d channels.\n", channels);
         }
     }
 
@@ -373,20 +375,20 @@ static int libvorbis_encode_frame(AVCodecContext *avctx, AVPacket *avpkt,
     return 0;
 }
 
-const AVCodec ff_libvorbis_encoder = {
-    .name           = "libvorbis",
-    .long_name      = NULL_IF_CONFIG_SMALL("libvorbis"),
-    .type           = AVMEDIA_TYPE_AUDIO,
-    .id             = AV_CODEC_ID_VORBIS,
-    .capabilities   = AV_CODEC_CAP_DR1 | AV_CODEC_CAP_DELAY |
+const FFCodec ff_libvorbis_encoder = {
+    .p.name         = "libvorbis",
+    .p.long_name    = NULL_IF_CONFIG_SMALL("libvorbis"),
+    .p.type         = AVMEDIA_TYPE_AUDIO,
+    .p.id           = AV_CODEC_ID_VORBIS,
+    .p.capabilities = AV_CODEC_CAP_DR1 | AV_CODEC_CAP_DELAY |
                       AV_CODEC_CAP_SMALL_LAST_FRAME,
     .priv_data_size = sizeof(LibvorbisEncContext),
     .init           = libvorbis_encode_init,
-    .encode2        = libvorbis_encode_frame,
+    FF_CODEC_ENCODE_CB(libvorbis_encode_frame),
     .close          = libvorbis_encode_close,
-    .sample_fmts    = (const enum AVSampleFormat[]) { AV_SAMPLE_FMT_FLTP,
+    .p.sample_fmts  = (const enum AVSampleFormat[]) { AV_SAMPLE_FMT_FLTP,
                                                       AV_SAMPLE_FMT_NONE },
-    .priv_class     = &vorbis_class,
+    .p.priv_class   = &vorbis_class,
     .defaults       = defaults,
-    .wrapper_name   = "libvorbis",
+    .p.wrapper_name = "libvorbis",
 };

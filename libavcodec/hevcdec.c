@@ -23,6 +23,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+#include "config_components.h"
+
 #include "libavutil/attributes.h"
 #include "libavutil/common.h"
 #include "libavutil/display.h"
@@ -38,6 +40,7 @@
 #include "bswapdsp.h"
 #include "bytestream.h"
 #include "cabac_functions.h"
+#include "codec_internal.h"
 #include "golomb.h"
 #include "hevc.h"
 #include "hevc_data.h"
@@ -2984,6 +2987,17 @@ static int set_side_data(HEVCContext *s)
     if ((ret = ff_dovi_attach_side_data(&s->dovi_ctx, out)) < 0)
         return ret;
 
+    if (s->sei.dynamic_hdr_vivid.info) {
+        AVBufferRef *info_ref = av_buffer_ref(s->sei.dynamic_hdr_vivid.info);
+        if (!info_ref)
+            return AVERROR(ENOMEM);
+
+        if (!av_frame_new_side_data_from_buf(out, AV_FRAME_DATA_DYNAMIC_HDR_VIVID, info_ref)) {
+            av_buffer_unref(&info_ref);
+            return AVERROR(ENOMEM);
+        }
+    }
+
     return 0;
 }
 
@@ -3460,8 +3474,8 @@ static int hevc_decode_extradata(HEVCContext *s, uint8_t *buf, int length, int f
     return 0;
 }
 
-static int hevc_decode_frame(AVCodecContext *avctx, void *data, int *got_output,
-                             AVPacket *avpkt)
+static int hevc_decode_frame(AVCodecContext *avctx, AVFrame *rframe,
+                             int *got_output, AVPacket *avpkt)
 {
     int ret;
     uint8_t *sd;
@@ -3469,7 +3483,7 @@ static int hevc_decode_frame(AVCodecContext *avctx, void *data, int *got_output,
     HEVCContext *s = avctx->priv_data;
 
     if (!avpkt->size) {
-        ret = ff_hevc_output_frame(s, data, 1);
+        ret = ff_hevc_output_frame(s, rframe, 1);
         if (ret < 0)
             return ret;
 
@@ -3519,7 +3533,7 @@ static int hevc_decode_frame(AVCodecContext *avctx, void *data, int *got_output,
     }
 
     if (s->output_frame->buf[0]) {
-        av_frame_move_ref(data, s->output_frame);
+        av_frame_move_ref(rframe, s->output_frame);
         *got_output = 1;
     }
 
@@ -3777,6 +3791,10 @@ static int hevc_update_thread_context(AVCodecContext *dst,
     if (ret < 0)
         return ret;
 
+    ret = av_buffer_replace(&s->sei.dynamic_hdr_vivid.info, s0->sei.dynamic_hdr_vivid.info);
+    if (ret < 0)
+        return ret;
+
     s->sei.frame_packing        = s0->sei.frame_packing;
     s->sei.display_orientation  = s0->sei.display_orientation;
     s->sei.mastering_display    = s0->sei.mastering_display;
@@ -3857,23 +3875,23 @@ static const AVClass hevc_decoder_class = {
     .version    = LIBAVUTIL_VERSION_INT,
 };
 
-const AVCodec ff_hevc_decoder = {
-    .name                  = "hevc",
-    .long_name             = NULL_IF_CONFIG_SMALL("HEVC (High Efficiency Video Coding)"),
-    .type                  = AVMEDIA_TYPE_VIDEO,
-    .id                    = AV_CODEC_ID_HEVC,
+const FFCodec ff_hevc_decoder = {
+    .p.name                = "hevc",
+    .p.long_name           = NULL_IF_CONFIG_SMALL("HEVC (High Efficiency Video Coding)"),
+    .p.type                = AVMEDIA_TYPE_VIDEO,
+    .p.id                  = AV_CODEC_ID_HEVC,
     .priv_data_size        = sizeof(HEVCContext),
-    .priv_class            = &hevc_decoder_class,
+    .p.priv_class          = &hevc_decoder_class,
     .init                  = hevc_decode_init,
     .close                 = hevc_decode_free,
-    .decode                = hevc_decode_frame,
+    FF_CODEC_DECODE_CB(hevc_decode_frame),
     .flush                 = hevc_decode_flush,
     .update_thread_context = ONLY_IF_THREADS_ENABLED(hevc_update_thread_context),
-    .capabilities          = AV_CODEC_CAP_DR1 | AV_CODEC_CAP_DELAY |
+    .p.capabilities        = AV_CODEC_CAP_DR1 | AV_CODEC_CAP_DELAY |
                              AV_CODEC_CAP_SLICE_THREADS | AV_CODEC_CAP_FRAME_THREADS,
     .caps_internal         = FF_CODEC_CAP_INIT_THREADSAFE | FF_CODEC_CAP_EXPORTS_CROPPING |
                              FF_CODEC_CAP_ALLOCATE_PROGRESS | FF_CODEC_CAP_INIT_CLEANUP,
-    .profiles              = NULL_IF_CONFIG_SMALL(ff_hevc_profiles),
+    .p.profiles            = NULL_IF_CONFIG_SMALL(ff_hevc_profiles),
     .hw_configs            = (const AVCodecHWConfigInternal *const []) {
 #if CONFIG_HEVC_DXVA2_HWACCEL
                                HWACCEL_DXVA2(hevc),

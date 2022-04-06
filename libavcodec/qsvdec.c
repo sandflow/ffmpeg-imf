@@ -21,6 +21,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+#include "config_components.h"
+
 #include <stdint.h>
 #include <string.h>
 #include <sys/types.h>
@@ -41,6 +43,7 @@
 #include "libavutil/film_grain_params.h"
 
 #include "avcodec.h"
+#include "codec_internal.h"
 #include "internal.h"
 #include "decode.h"
 #include "hwconfig.h"
@@ -423,12 +426,12 @@ static int alloc_frame(AVCodecContext *avctx, QSVContext *q, QSVFrame *frame)
     if (frame->frame->format == AV_PIX_FMT_QSV) {
         frame->surface = *(mfxFrameSurface1*)frame->frame->data[3];
     } else {
-        frame->surface.Info = q->frame_info;
-
         frame->surface.Data.PitchLow = frame->frame->linesize[0];
         frame->surface.Data.Y        = frame->frame->data[0];
         frame->surface.Data.UV       = frame->frame->data[1];
     }
+
+    frame->surface.Info = q->frame_info;
 
     if (q->frames_ctx.mids) {
         ret = ff_qsv_find_surface_idx(&q->frames_ctx, frame);
@@ -907,11 +910,10 @@ fail:
     return ret;
 }
 
-static int qsv_decode_frame(AVCodecContext *avctx, void *data,
+static int qsv_decode_frame(AVCodecContext *avctx, AVFrame *frame,
                             int *got_frame, AVPacket *avpkt)
 {
     QSVDecContext *s = avctx->priv_data;
-    AVFrame *frame    = data;
     int ret;
 
     /* buffer the input packet */
@@ -975,25 +977,25 @@ static const AVClass x##_qsv_class = { \
     .option     = opt, \
     .version    = LIBAVUTIL_VERSION_INT, \
 }; \
-const AVCodec ff_##x##_qsv_decoder = { \
-    .name           = #x "_qsv", \
-    .long_name      = NULL_IF_CONFIG_SMALL(#X " video (Intel Quick Sync Video acceleration)"), \
+const FFCodec ff_##x##_qsv_decoder = { \
+    .p.name         = #x "_qsv", \
+    .p.long_name    = NULL_IF_CONFIG_SMALL(#X " video (Intel Quick Sync Video acceleration)"), \
     .priv_data_size = sizeof(QSVDecContext), \
-    .type           = AVMEDIA_TYPE_VIDEO, \
-    .id             = AV_CODEC_ID_##X, \
+    .p.type         = AVMEDIA_TYPE_VIDEO, \
+    .p.id           = AV_CODEC_ID_##X, \
     .init           = qsv_decode_init, \
-    .decode         = qsv_decode_frame, \
+    FF_CODEC_DECODE_CB(qsv_decode_frame), \
     .flush          = qsv_decode_flush, \
     .close          = qsv_decode_close, \
     .bsfs           = bsf_name, \
-    .capabilities   = AV_CODEC_CAP_DELAY | AV_CODEC_CAP_DR1 | AV_CODEC_CAP_AVOID_PROBING | AV_CODEC_CAP_HYBRID, \
-    .priv_class     = &x##_qsv_class, \
-    .pix_fmts       = (const enum AVPixelFormat[]){ AV_PIX_FMT_NV12, \
+    .p.capabilities = AV_CODEC_CAP_DELAY | AV_CODEC_CAP_DR1 | AV_CODEC_CAP_AVOID_PROBING | AV_CODEC_CAP_HYBRID, \
+    .p.priv_class   = &x##_qsv_class, \
+    .p.pix_fmts     = (const enum AVPixelFormat[]){ AV_PIX_FMT_NV12, \
                                                     AV_PIX_FMT_P010, \
                                                     AV_PIX_FMT_QSV, \
                                                     AV_PIX_FMT_NONE }, \
     .hw_configs     = qsv_hw_configs, \
-    .wrapper_name   = "qsv", \
+    .p.wrapper_name = "qsv", \
 }; \
 
 #define DEFINE_QSV_DECODER(x, X, bsf_name) DEFINE_QSV_DECODER_WITH_OPTION(x, X, bsf_name, options)

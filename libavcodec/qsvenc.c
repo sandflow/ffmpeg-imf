@@ -21,6 +21,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+#include "config_components.h"
+
 #include <string.h>
 #include <sys/types.h>
 #include <mfx/mfxvideo.h>
@@ -616,7 +618,8 @@ static int init_video_param_jpeg(AVCodecContext *avctx, QSVEncContext *q)
     q->param.mfx.FrameInfo.CropH          = avctx->height;
     q->param.mfx.FrameInfo.AspectRatioW   = avctx->sample_aspect_ratio.num;
     q->param.mfx.FrameInfo.AspectRatioH   = avctx->sample_aspect_ratio.den;
-    q->param.mfx.FrameInfo.ChromaFormat   = MFX_CHROMAFORMAT_YUV420;
+    q->param.mfx.FrameInfo.ChromaFormat   = MFX_CHROMAFORMAT_YUV420 +
+                                            !desc->log2_chroma_w + !desc->log2_chroma_h;
     q->param.mfx.FrameInfo.BitDepthLuma   = desc->comp[0].depth;
     q->param.mfx.FrameInfo.BitDepthChroma = desc->comp[0].depth;
     q->param.mfx.FrameInfo.Shift          = desc->comp[0].depth > 8;
@@ -877,8 +880,6 @@ static int init_video_param(AVCodecContext *avctx, QSVEncContext *q)
         if (avctx->codec_id == AV_CODEC_ID_H264) {
             if (q->bitrate_limit >= 0)
                 q->extco2.BitrateLimit = q->bitrate_limit ? MFX_CODINGOPTION_ON : MFX_CODINGOPTION_OFF;
-            if (q->mbbrc >= 0)
-                q->extco2.MBBRC = q->mbbrc ? MFX_CODINGOPTION_ON : MFX_CODINGOPTION_OFF;
 
 #if QSV_HAVE_TRELLIS
             if (avctx->trellis >= 0)
@@ -935,6 +936,9 @@ static int init_video_param(AVCodecContext *avctx, QSVEncContext *q)
                 q->extco2.MaxQPP = q->extco2.MaxQPB = q->extco2.MaxQPI;
             }
 #endif
+            if (q->mbbrc >= 0)
+                q->extco2.MBBRC = q->mbbrc ? MFX_CODINGOPTION_ON : MFX_CODINGOPTION_OFF;
+
             q->extco2.Header.BufferId = MFX_EXTBUFF_CODING_OPTION2;
             q->extco2.Header.BufferSz = sizeof(q->extco2);
 
@@ -1616,6 +1620,14 @@ static int submit_frame(QSVEncContext *q, const AVFrame *frame,
             qf->surface.Data.V     = qf->surface.Data.UV + 2;
             break;
 
+        case AV_PIX_FMT_X2RGB10:
+        case AV_PIX_FMT_BGRA:
+            qf->surface.Data.B         = qf->frame->data[0];
+            qf->surface.Data.G         = qf->frame->data[0] + 1;
+            qf->surface.Data.R         = qf->frame->data[0] + 2;
+            qf->surface.Data.A         = qf->frame->data[0] + 3;
+            break;
+
         default:
             /* should not reach here */
             av_assert0(0);
@@ -1726,7 +1738,7 @@ static int encode_frame(AVCodecContext *avctx, QSVEncContext *q,
         goto free;
     }
 
-    if (ret == MFX_WRN_INCOMPATIBLE_VIDEO_PARAM && frame->interlaced_frame)
+    if (ret == MFX_WRN_INCOMPATIBLE_VIDEO_PARAM && frame && frame->interlaced_frame)
         print_interlace_msg(avctx, q);
 
     ret = 0;

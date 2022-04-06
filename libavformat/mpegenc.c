@@ -19,6 +19,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+#include "config_components.h"
+
 #include <stdint.h>
 
 #include "libavutil/attributes.h"
@@ -380,14 +382,14 @@ static av_cold int mpeg_mux_init(AVFormatContext *ctx)
                     av_log(ctx, AV_LOG_INFO, "\n");
                     return AVERROR(EINVAL);
                 }
-                if (st->codecpar->channels > 8) {
+                if (st->codecpar->ch_layout.nb_channels > 8) {
                     av_log(ctx, AV_LOG_ERROR, "At most 8 channels allowed for LPCM streams.\n");
                     return AVERROR(EINVAL);
                 }
                 stream->lpcm_header[0] = 0x0c;
-                stream->lpcm_header[1] = (st->codecpar->channels - 1) | (j << 4);
+                stream->lpcm_header[1] = (st->codecpar->ch_layout.nb_channels - 1) | (j << 4);
                 stream->lpcm_header[2] = 0x80;
-                stream->lpcm_align     = st->codecpar->channels * 2;
+                stream->lpcm_align     = st->codecpar->ch_layout.nb_channels * 2;
             } else if (st->codecpar->codec_id == AV_CODEC_ID_PCM_DVD) {
                 int freq;
 
@@ -404,10 +406,10 @@ static av_cold int mpeg_mux_init(AVFormatContext *ctx)
                 stream->lpcm_header[0] = 0x0c;
                 stream->lpcm_header[1] = (freq << 4) |
                                          (((st->codecpar->bits_per_coded_sample - 16) / 4) << 6) |
-                                         st->codecpar->channels - 1;
+                                         st->codecpar->ch_layout.nb_channels - 1;
                 stream->lpcm_header[2] = 0x80;
                 stream->id = lpcm_id++;
-                stream->lpcm_align = st->codecpar->channels * st->codecpar->bits_per_coded_sample / 8;
+                stream->lpcm_align = st->codecpar->ch_layout.nb_channels * st->codecpar->bits_per_coded_sample / 8;
             } else if (st->codecpar->codec_id == AV_CODEC_ID_MLP ||
                        st->codecpar->codec_id == AV_CODEC_ID_TRUEHD) {
                        av_log(ctx, AV_LOG_ERROR, "Support for muxing audio codec %s not implemented.\n",
@@ -1150,6 +1152,7 @@ static int mpeg_mux_write_packet(AVFormatContext *ctx, AVPacket *pkt)
     int64_t pts, dts;
     PacketDesc *pkt_desc;
     int preload, ret;
+    size_t can_write;
     const int is_iframe = st->codecpar->codec_type == AVMEDIA_TYPE_VIDEO &&
                           (pkt->flags & AV_PKT_FLAG_KEY);
 
@@ -1190,6 +1193,14 @@ static int mpeg_mux_write_packet(AVFormatContext *ctx, AVPacket *pkt)
         size -= 3;
     }
 
+    /* Enlarge the FIFO before adding a new PacketDesc
+     * in order to avoid inconsistencies on failure. */
+    can_write = av_fifo_can_write(stream->fifo);
+    if (can_write < size) {
+        ret = av_fifo_grow2(stream->fifo, size - can_write);
+        if (ret < 0)
+            return ret;
+    }
     pkt_desc                 = av_mallocz(sizeof(PacketDesc));
     if (!pkt_desc)
         return AVERROR(ENOMEM);
@@ -1204,10 +1215,6 @@ static int mpeg_mux_write_packet(AVFormatContext *ctx, AVPacket *pkt)
     pkt_desc->dts            = dts;
     pkt_desc->unwritten_size =
     pkt_desc->size           = size;
-
-    ret = av_fifo_grow2(stream->fifo, size);
-    if (ret < 0)
-        return ret;
 
     if (s->is_dvd) {
         // min VOBU length 0.4 seconds (mpucoder)

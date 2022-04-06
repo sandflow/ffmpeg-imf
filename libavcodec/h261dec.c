@@ -28,6 +28,7 @@
 #include "libavutil/avassert.h"
 #include "libavutil/thread.h"
 #include "avcodec.h"
+#include "codec_internal.h"
 #include "mpeg_er.h"
 #include "mpegutils.h"
 #include "mpegvideo.h"
@@ -593,7 +594,7 @@ static int get_consumed_bytes(MpegEncContext *s, int buf_size)
     return pos;
 }
 
-static int h261_decode_frame(AVCodecContext *avctx, void *data,
+static int h261_decode_frame(AVCodecContext *avctx, AVFrame *pict,
                              int *got_frame, AVPacket *avpkt)
 {
     H261DecContext *const h = avctx->priv_data;
@@ -601,7 +602,6 @@ static int h261_decode_frame(AVCodecContext *avctx, void *data,
     int buf_size       = avpkt->size;
     MpegEncContext *s  = &h->s;
     int ret;
-    AVFrame *pict = data;
 
     ff_dlog(avctx, "*****frame %d size=%d\n", avctx->frame_number, buf_size);
     ff_dlog(avctx, "bytes=%x %x %x %x\n", buf[0], buf[1], buf[2], buf[3]);
@@ -680,16 +680,16 @@ static av_cold int h261_decode_end(AVCodecContext *avctx)
     return 0;
 }
 
-const AVCodec ff_h261_decoder = {
-    .name           = "h261",
-    .long_name      = NULL_IF_CONFIG_SMALL("H.261"),
-    .type           = AVMEDIA_TYPE_VIDEO,
-    .id             = AV_CODEC_ID_H261,
+const FFCodec ff_h261_decoder = {
+    .p.name         = "h261",
+    .p.long_name    = NULL_IF_CONFIG_SMALL("H.261"),
+    .p.type         = AVMEDIA_TYPE_VIDEO,
+    .p.id           = AV_CODEC_ID_H261,
     .priv_data_size = sizeof(H261DecContext),
     .init           = h261_decode_init,
     .close          = h261_decode_end,
-    .decode         = h261_decode_frame,
-    .capabilities   = AV_CODEC_CAP_DR1,
+    FF_CODEC_DECODE_CB(h261_decode_frame),
+    .p.capabilities = AV_CODEC_CAP_DR1,
     .caps_internal  = FF_CODEC_CAP_INIT_THREADSAFE,
-    .max_lowres     = 3,
+    .p.max_lowres   = 3,
 };

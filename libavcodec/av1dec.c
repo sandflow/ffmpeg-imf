@@ -18,12 +18,15 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+#include "config_components.h"
+
 #include "libavutil/film_grain_params.h"
 #include "libavutil/pixdesc.h"
 #include "libavutil/opt.h"
 #include "avcodec.h"
 #include "av1dec.h"
 #include "bytestream.h"
+#include "codec_internal.h"
 #include "hwconfig.h"
 #include "internal.h"
 #include "profiles.h"
@@ -500,9 +503,8 @@ static int get_pixel_format(AVCodecContext *avctx)
 
     if (pix_fmt == AV_PIX_FMT_NONE)
         return -1;
-    s->pix_fmt = pix_fmt;
 
-    switch (s->pix_fmt) {
+    switch (pix_fmt) {
     case AV_PIX_FMT_YUV420P:
 #if CONFIG_AV1_DXVA2_HWACCEL
         *fmtp++ = AV_PIX_FMT_DXVA2_VLD;
@@ -545,7 +547,7 @@ static int get_pixel_format(AVCodecContext *avctx)
         break;
     }
 
-    *fmtp++ = s->pix_fmt;
+    *fmtp++ = pix_fmt;
     *fmtp = AV_PIX_FMT_NONE;
 
     ret = ff_thread_get_format(avctx, pix_fmts);
@@ -563,6 +565,7 @@ static int get_pixel_format(AVCodecContext *avctx)
         return AVERROR(ENOSYS);
     }
 
+    s->pix_fmt = pix_fmt;
     avctx->pix_fmt = ret;
 
     return 0;
@@ -996,7 +999,7 @@ static int get_current_frame(AVCodecContext *avctx)
     return ret;
 }
 
-static int av1_decode_frame(AVCodecContext *avctx, void *frame,
+static int av1_decode_frame(AVCodecContext *avctx, AVFrame *frame,
                             int *got_frame, AVPacket *pkt)
 {
     AV1DecContext *s = avctx->priv_data;
@@ -1235,22 +1238,22 @@ static const AVClass av1_class = {
     .version    = LIBAVUTIL_VERSION_INT,
 };
 
-const AVCodec ff_av1_decoder = {
-    .name                  = "av1",
-    .long_name             = NULL_IF_CONFIG_SMALL("Alliance for Open Media AV1"),
-    .type                  = AVMEDIA_TYPE_VIDEO,
-    .id                    = AV_CODEC_ID_AV1,
+const FFCodec ff_av1_decoder = {
+    .p.name                = "av1",
+    .p.long_name           = NULL_IF_CONFIG_SMALL("Alliance for Open Media AV1"),
+    .p.type                = AVMEDIA_TYPE_VIDEO,
+    .p.id                  = AV_CODEC_ID_AV1,
     .priv_data_size        = sizeof(AV1DecContext),
     .init                  = av1_decode_init,
     .close                 = av1_decode_free,
-    .decode                = av1_decode_frame,
-    .capabilities          = AV_CODEC_CAP_DR1 | AV_CODEC_CAP_AVOID_PROBING,
+    FF_CODEC_DECODE_CB(av1_decode_frame),
+    .p.capabilities        = AV_CODEC_CAP_DR1 | AV_CODEC_CAP_AVOID_PROBING,
     .caps_internal         = FF_CODEC_CAP_INIT_THREADSAFE |
                              FF_CODEC_CAP_INIT_CLEANUP |
                              FF_CODEC_CAP_SETS_PKT_DTS,
     .flush                 = av1_decode_flush,
-    .profiles              = NULL_IF_CONFIG_SMALL(ff_av1_profiles),
-    .priv_class            = &av1_class,
+    .p.profiles            = NULL_IF_CONFIG_SMALL(ff_av1_profiles),
+    .p.priv_class          = &av1_class,
     .bsfs                  = "av1_frame_split",
     .hw_configs            = (const AVCodecHWConfigInternal *const []) {
 #if CONFIG_AV1_DXVA2_HWACCEL

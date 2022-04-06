@@ -28,6 +28,7 @@
 #define BITSTREAM_READER_LE
 #include "avcodec.h"
 #include "bytestream.h"
+#include "codec_internal.h"
 #include "get_bits.h"
 #include "unary.h"
 #include "thread.h"
@@ -783,10 +784,9 @@ static int dxtory_decode_v2_444(AVCodecContext *avctx, AVFrame *pic,
                             AV_PIX_FMT_YUV444P, vflipped);
 }
 
-static int decode_frame(AVCodecContext *avctx, void *data, int *got_frame,
-                        AVPacket *avpkt)
+static int decode_frame(AVCodecContext *avctx, AVFrame *pic,
+                        int *got_frame, AVPacket *avpkt)
 {
-    AVFrame *pic = data;
     const uint8_t *src = avpkt->data;
     uint32_t type;
     int vflipped, ret;
@@ -870,11 +870,11 @@ static int decode_frame(AVCodecContext *avctx, void *data, int *got_frame,
     return avpkt->size;
 }
 
-const AVCodec ff_dxtory_decoder = {
-    .name           = "dxtory",
-    .long_name      = NULL_IF_CONFIG_SMALL("Dxtory"),
-    .type           = AVMEDIA_TYPE_VIDEO,
-    .id             = AV_CODEC_ID_DXTORY,
-    .decode         = decode_frame,
-    .capabilities   = AV_CODEC_CAP_DR1 | AV_CODEC_CAP_FRAME_THREADS,
+const FFCodec ff_dxtory_decoder = {
+    .p.name         = "dxtory",
+    .p.long_name    = NULL_IF_CONFIG_SMALL("Dxtory"),
+    .p.type         = AVMEDIA_TYPE_VIDEO,
+    .p.id           = AV_CODEC_ID_DXTORY,
+    FF_CODEC_DECODE_CB(decode_frame),
+    .p.capabilities = AV_CODEC_CAP_DR1 | AV_CODEC_CAP_FRAME_THREADS,
 };

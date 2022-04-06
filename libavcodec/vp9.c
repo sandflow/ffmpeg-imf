@@ -21,7 +21,10 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+#include "config_components.h"
+
 #include "avcodec.h"
+#include "codec_internal.h"
 #include "get_bits.h"
 #include "hwconfig.h"
 #include "internal.h"
@@ -1547,7 +1550,7 @@ static int vp9_export_enc_params(VP9Context *s, VP9Frame *frame)
     return 0;
 }
 
-static int vp9_decode_frame(AVCodecContext *avctx, void *frame,
+static int vp9_decode_frame(AVCodecContext *avctx, AVFrame *frame,
                             int *got_frame, AVPacket *pkt)
 {
     const uint8_t *data = pkt->data;
@@ -1567,8 +1570,8 @@ static int vp9_decode_frame(AVCodecContext *avctx, void *frame,
         }
         if ((ret = av_frame_ref(frame, s->s.refs[ref].f)) < 0)
             return ret;
-        ((AVFrame *)frame)->pts = pkt->pts;
-        ((AVFrame *)frame)->pkt_dts = pkt->dts;
+        frame->pts     = pkt->pts;
+        frame->pkt_dts = pkt->dts;
         for (i = 0; i < 8; i++) {
             if (s->next_refs[i].f->buf[0])
                 ff_thread_release_ext_buffer(avctx, &s->next_refs[i]);
@@ -1863,22 +1866,22 @@ static int vp9_decode_update_thread_context(AVCodecContext *dst, const AVCodecCo
 }
 #endif
 
-const AVCodec ff_vp9_decoder = {
-    .name                  = "vp9",
-    .long_name             = NULL_IF_CONFIG_SMALL("Google VP9"),
-    .type                  = AVMEDIA_TYPE_VIDEO,
-    .id                    = AV_CODEC_ID_VP9,
+const FFCodec ff_vp9_decoder = {
+    .p.name                = "vp9",
+    .p.long_name           = NULL_IF_CONFIG_SMALL("Google VP9"),
+    .p.type                = AVMEDIA_TYPE_VIDEO,
+    .p.id                  = AV_CODEC_ID_VP9,
     .priv_data_size        = sizeof(VP9Context),
     .init                  = vp9_decode_init,
     .close                 = vp9_decode_free,
-    .decode                = vp9_decode_frame,
-    .capabilities          = AV_CODEC_CAP_DR1 | AV_CODEC_CAP_FRAME_THREADS | AV_CODEC_CAP_SLICE_THREADS,
+    FF_CODEC_DECODE_CB(vp9_decode_frame),
+    .p.capabilities        = AV_CODEC_CAP_DR1 | AV_CODEC_CAP_FRAME_THREADS | AV_CODEC_CAP_SLICE_THREADS,
     .caps_internal         = FF_CODEC_CAP_INIT_THREADSAFE | FF_CODEC_CAP_INIT_CLEANUP |
                              FF_CODEC_CAP_SLICE_THREAD_HAS_MF |
                              FF_CODEC_CAP_ALLOCATE_PROGRESS,
     .flush                 = vp9_decode_flush,
     .update_thread_context = ONLY_IF_THREADS_ENABLED(vp9_decode_update_thread_context),
-    .profiles              = NULL_IF_CONFIG_SMALL(ff_vp9_profiles),
+    .p.profiles            = NULL_IF_CONFIG_SMALL(ff_vp9_profiles),
     .bsfs                  = "vp9_superframe_split",
     .hw_configs            = (const AVCodecHWConfigInternal *const []) {
 #if CONFIG_VP9_DXVA2_HWACCEL

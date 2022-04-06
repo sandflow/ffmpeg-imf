@@ -354,13 +354,14 @@ static IMFAssetLocator *find_asset_map_locator(IMFAssetLocatorMap *asset_map, FF
 
 static int open_track_resource_context(AVFormatContext *s,
                                        IMFVirtualTrackPlaybackCtx *track,
-                                       IMFVirtualTrackResourcePlaybackCtx *track_resource)
+                                       int32_t resource_index)
 {
     IMFContext *c = s->priv_data;
     int ret = 0;
     int64_t seek_offset = 0;
     AVDictionary *opts = NULL;
     AVStream *st;
+    IMFVirtualTrackResourcePlaybackCtx *track_resource = track->resources + resource_index;
 
     if (track_resource->ctx) {
         av_log(s, AV_LOG_DEBUG, "Input context already opened for %s.\n",
@@ -566,7 +567,7 @@ static int set_context_streams_from_tracks(AVFormatContext *s)
         AVStream *first_resource_stream;
 
         /* Open the first resource of the track to get stream information */
-        ret = open_track_resource_context(s, c->tracks[i], &c->tracks[i]->resources[0]);
+        ret = open_track_resource_context(s, c->tracks[i], 0);
         if (ret)
             return ret;
         first_resource_stream = c->tracks[i]->resources[0].ctx->streams[0];
@@ -736,7 +737,7 @@ static int get_resource_context_for_timestamp(AVFormatContext *s, IMFVirtualTrac
                 av_log(s, AV_LOG_TRACE, "Switch resource on track %d: re-open context\n",
                        track->index);
 
-                ret = open_track_resource_context(s, track, track->resources + i);
+                ret = open_track_resource_context(s, track, i);
                 if (ret != 0)
                     return ret;
                 if (track->current_resource_index > 0)
@@ -835,7 +836,7 @@ static int imf_read_packet(AVFormatContext *s, AVPacket *pkt)
                 int64_t nbsamples = av_rescale_q(pkt->duration,
                                                  st->time_base,
                                                  av_make_q(1, st->codecpar->sample_rate));
-                av_shrink_packet(pkt, nbsamples * st->codecpar->channels * bytes_per_sample);
+                av_shrink_packet(pkt, nbsamples * st->codecpar->ch_layout.nb_channels * bytes_per_sample);
 
             } else {
                 /* in all other cases, use side data to skip samples */
@@ -903,14 +904,6 @@ static int imf_probe(const AVProbeData *p)
     return AVPROBE_SCORE_MAX;
 }
 
-static void rescale_interval(AVRational tb_in, AVRational tb_out,
-                             int64_t *min_ts, int64_t *ts, int64_t *max_ts)
-{
-    *ts = av_rescale_q(*ts, tb_in, tb_out);
-    *min_ts = av_rescale_q_rnd(*min_ts, tb_in, tb_out, AV_ROUND_DOWN | AV_ROUND_PASS_MINMAX);
-    *max_ts = av_rescale_q_rnd(*max_ts, tb_in, tb_out, AV_ROUND_UP | AV_ROUND_PASS_MINMAX);
-}
-
 static int coherent_ts(int64_t ts, AVRational in_tb, AVRational out_tb)
 {
     int dst_num;
@@ -918,7 +911,7 @@ static int coherent_ts(int64_t ts, AVRational in_tb, AVRational out_tb)
     int ret;
 
     ret = av_reduce(&dst_num, &dst_den, ts * in_tb.num * out_tb.den,
-                    in_tb.den * out_tb.num, INT32_MAX);
+                    in_tb.den * out_tb.num, INT64_MAX);
     if (!ret || dst_den != 1)
         return 0;
 
@@ -929,7 +922,6 @@ static int imf_seek(AVFormatContext *s, int stream_index, int64_t min_ts,
                     int64_t ts, int64_t max_ts, int flags)
 {
     IMFContext *c = s->priv_data;
-    AVRational requested_time;
     uint32_t i;
 
     if (flags & (AVSEEK_FLAG_BYTE | AVSEEK_FLAG_FRAME))
@@ -937,23 +929,22 @@ static int imf_seek(AVFormatContext *s, int stream_index, int64_t min_ts,
 
     /* rescale timestamps to Composition edit units */
     if (stream_index < 0)
-        rescale_interval(AV_TIME_BASE_Q,
-                         av_make_q(c->cpl->edit_rate.den, c->cpl->edit_rate.num),
-                         &min_ts, &ts, &max_ts);
+        ff_rescale_interval(AV_TIME_BASE_Q,
+                            av_make_q(c->cpl->edit_rate.den, c->cpl->edit_rate.num),
+                            &min_ts, &ts, &max_ts);
     else
-        rescale_interval(s->streams[stream_index]->time_base,
-                         av_make_q(c->cpl->edit_rate.den, c->cpl->edit_rate.num),
-                         &min_ts, &ts, &max_ts);
+        ff_rescale_interval(s->streams[stream_index]->time_base,
+                            av_make_q(c->cpl->edit_rate.den, c->cpl->edit_rate.num),
+                            &min_ts, &ts, &max_ts);
 
     /* requested timestamp bounds are too close */
-    if (ts < min_ts || ts > max_ts)
+    if (max_ts < min_ts)
         return -1;
 
-    /* compute temporal offset into composition timeline */
-    requested_time = av_div_q(av_make_q(ts, 1), c->cpl->edit_rate);
+    /* clamp requested timestamp to provided bounds */
+    ts = FFMAX(FFMIN(ts, max_ts), min_ts);
 
-    av_log(s, AV_LOG_DEBUG, "Seeking to temporal offset " AVRATIONAL_FORMAT "\n",
-           AVRATIONAL_ARG(requested_time));
+    av_log(s, AV_LOG_DEBUG, "Seeking to Composition Playlist edit unit %" PRIi64 "\n", ts);
 
     /* set the dts of each stream and temporal offset of each track */
     for (i = 0; i < c->track_count; i++) {

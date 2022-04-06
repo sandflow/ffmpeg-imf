@@ -33,11 +33,11 @@
 #include "libavutil/attributes.h"
 #include "libavutil/avutil.h"
 #include "libavutil/thread.h"
+#include "codec_internal.h"
 #include "mpegvideo.h"
 #include "mpegvideoenc.h"
 #include "h263.h"
 #include "h263data.h"
-#include "internal.h"
 #include "mpeg4video.h"
 #include "msmpeg4.h"
 #include "msmpeg4data.h"
@@ -676,44 +676,44 @@ void ff_msmpeg4_encode_block(MpegEncContext * s, int16_t * block, int n)
     }
 }
 
-const AVCodec ff_msmpeg4v2_encoder = {
-    .name           = "msmpeg4v2",
-    .long_name      = NULL_IF_CONFIG_SMALL("MPEG-4 part 2 Microsoft variant version 2"),
-    .type           = AVMEDIA_TYPE_VIDEO,
-    .id             = AV_CODEC_ID_MSMPEG4V2,
-    .pix_fmts       = (const enum AVPixelFormat[]){ AV_PIX_FMT_YUV420P, AV_PIX_FMT_NONE },
-    .priv_class     = &ff_mpv_enc_class,
+const FFCodec ff_msmpeg4v2_encoder = {
+    .p.name         = "msmpeg4v2",
+    .p.long_name    = NULL_IF_CONFIG_SMALL("MPEG-4 part 2 Microsoft variant version 2"),
+    .p.type         = AVMEDIA_TYPE_VIDEO,
+    .p.id           = AV_CODEC_ID_MSMPEG4V2,
+    .p.pix_fmts     = (const enum AVPixelFormat[]){ AV_PIX_FMT_YUV420P, AV_PIX_FMT_NONE },
+    .p.priv_class   = &ff_mpv_enc_class,
     .caps_internal  = FF_CODEC_CAP_INIT_THREADSAFE | FF_CODEC_CAP_INIT_CLEANUP,
     .priv_data_size = sizeof(MSMPEG4EncContext),
     .init           = ff_mpv_encode_init,
-    .encode2        = ff_mpv_encode_picture,
+    FF_CODEC_ENCODE_CB(ff_mpv_encode_picture),
     .close          = ff_mpv_encode_end,
 };
 
-const AVCodec ff_msmpeg4v3_encoder = {
-    .name           = "msmpeg4",
-    .long_name      = NULL_IF_CONFIG_SMALL("MPEG-4 part 2 Microsoft variant version 3"),
-    .type           = AVMEDIA_TYPE_VIDEO,
-    .id             = AV_CODEC_ID_MSMPEG4V3,
-    .pix_fmts       = (const enum AVPixelFormat[]){ AV_PIX_FMT_YUV420P, AV_PIX_FMT_NONE },
-    .priv_class     = &ff_mpv_enc_class,
+const FFCodec ff_msmpeg4v3_encoder = {
+    .p.name         = "msmpeg4",
+    .p.long_name    = NULL_IF_CONFIG_SMALL("MPEG-4 part 2 Microsoft variant version 3"),
+    .p.type         = AVMEDIA_TYPE_VIDEO,
+    .p.id           = AV_CODEC_ID_MSMPEG4V3,
+    .p.pix_fmts     = (const enum AVPixelFormat[]){ AV_PIX_FMT_YUV420P, AV_PIX_FMT_NONE },
+    .p.priv_class   = &ff_mpv_enc_class,
     .caps_internal  = FF_CODEC_CAP_INIT_THREADSAFE | FF_CODEC_CAP_INIT_CLEANUP,
     .priv_data_size = sizeof(MSMPEG4EncContext),
     .init           = ff_mpv_encode_init,
-    .encode2        = ff_mpv_encode_picture,
+    FF_CODEC_ENCODE_CB(ff_mpv_encode_picture),
     .close          = ff_mpv_encode_end,
 };
 
-const AVCodec ff_wmv1_encoder = {
-    .name           = "wmv1",
-    .long_name      = NULL_IF_CONFIG_SMALL("Windows Media Video 7"),
-    .type           = AVMEDIA_TYPE_VIDEO,
-    .id             = AV_CODEC_ID_WMV1,
-    .pix_fmts       = (const enum AVPixelFormat[]){ AV_PIX_FMT_YUV420P, AV_PIX_FMT_NONE },
-    .priv_class     = &ff_mpv_enc_class,
+const FFCodec ff_wmv1_encoder = {
+    .p.name         = "wmv1",
+    .p.long_name    = NULL_IF_CONFIG_SMALL("Windows Media Video 7"),
+    .p.type         = AVMEDIA_TYPE_VIDEO,
+    .p.id           = AV_CODEC_ID_WMV1,
+    .p.pix_fmts     = (const enum AVPixelFormat[]){ AV_PIX_FMT_YUV420P, AV_PIX_FMT_NONE },
+    .p.priv_class   = &ff_mpv_enc_class,
     .caps_internal  = FF_CODEC_CAP_INIT_THREADSAFE | FF_CODEC_CAP_INIT_CLEANUP,
     .priv_data_size = sizeof(MSMPEG4EncContext),
     .init           = ff_mpv_encode_init,
-    .encode2        = ff_mpv_encode_picture,
+    FF_CODEC_ENCODE_CB(ff_mpv_encode_picture),
     .close          = ff_mpv_encode_end,
 };

@@ -32,6 +32,7 @@
 
 #include "avcodec.h"
 #include "bytestream.h"
+#include "codec_internal.h"
 #include "get_bits.h"
 #include "internal.h"
 #include "thread.h"
@@ -372,13 +373,12 @@ static int alloc_buffers(AVCodecContext *avctx)
     return 0;
 }
 
-static int cfhd_decode(AVCodecContext *avctx, void *data, int *got_frame,
-                       AVPacket *avpkt)
+static int cfhd_decode(AVCodecContext *avctx, AVFrame *pic,
+                       int *got_frame, AVPacket *avpkt)
 {
     CFHDContext *s = avctx->priv_data;
     CFHDDSPContext *dsp = &s->dsp;
     GetByteContext gb;
-    AVFrame *const pic = data;
     int ret = 0, i, j, plane, got_buffer = 0;
     int16_t *coeff_data;
 
@@ -1455,16 +1455,16 @@ static int update_thread_context(AVCodecContext *dst, const AVCodecContext *src)
 }
 #endif
 
-const AVCodec ff_cfhd_decoder = {
-    .name             = "cfhd",
-    .long_name        = NULL_IF_CONFIG_SMALL("GoPro CineForm HD"),
-    .type             = AVMEDIA_TYPE_VIDEO,
-    .id               = AV_CODEC_ID_CFHD,
+const FFCodec ff_cfhd_decoder = {
+    .p.name           = "cfhd",
+    .p.long_name      = NULL_IF_CONFIG_SMALL("GoPro CineForm HD"),
+    .p.type           = AVMEDIA_TYPE_VIDEO,
+    .p.id             = AV_CODEC_ID_CFHD,
     .priv_data_size   = sizeof(CFHDContext),
     .init             = cfhd_init,
     .close            = cfhd_close,
-    .decode           = cfhd_decode,
+    FF_CODEC_DECODE_CB(cfhd_decode),
     .update_thread_context = ONLY_IF_THREADS_ENABLED(update_thread_context),
-    .capabilities     = AV_CODEC_CAP_DR1 | AV_CODEC_CAP_FRAME_THREADS,
+    .p.capabilities   = AV_CODEC_CAP_DR1 | AV_CODEC_CAP_FRAME_THREADS,
     .caps_internal    = FF_CODEC_CAP_INIT_THREADSAFE | FF_CODEC_CAP_INIT_CLEANUP,
 };

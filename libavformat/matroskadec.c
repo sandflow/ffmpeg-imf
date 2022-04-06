@@ -29,6 +29,7 @@
  */
 
 #include "config.h"
+#include "config_components.h"
 
 #include <inttypes.h>
 #include <stdio.h>
@@ -1684,7 +1685,6 @@ static int matroska_decode_buffer(uint8_t **buf, int *buf_size,
         memcpy(pkt_data + header_size, data, isize);
         break;
     }
-#if CONFIG_LZO
     case MATROSKA_TRACK_ENCODING_COMP_LZO:
         do {
             int insize = isize;
@@ -1704,7 +1704,6 @@ static int matroska_decode_buffer(uint8_t **buf, int *buf_size,
         }
         pkt_size -= olen;
         break;
-#endif
 #if CONFIG_ZLIB
     case MATROSKA_TRACK_ENCODING_COMP_ZLIB:
     {
@@ -2084,7 +2083,7 @@ static int matroska_parse_flac(AVFormatContext *s,
                     av_log(s, AV_LOG_WARNING,
                            "Invalid value of WAVEFORMATEXTENSIBLE_CHANNEL_MASK\n");
                 } else
-                    st->codecpar->channel_layout = mask;
+                    av_channel_layout_from_mask(&st->codecpar->ch_layout, mask);
             }
             av_dict_free(&dict);
         }
@@ -2527,9 +2526,7 @@ static int matroska_parse_tracks(AVFormatContext *s)
 #if CONFIG_BZLIB
                  encodings[0].compression.algo != MATROSKA_TRACK_ENCODING_COMP_BZLIB &&
 #endif
-#if CONFIG_LZO
                  encodings[0].compression.algo != MATROSKA_TRACK_ENCODING_COMP_LZO   &&
-#endif
                  encodings[0].compression.algo != MATROSKA_TRACK_ENCODING_COMP_HEADERSTRIP) {
                 encodings[0].scope = 0;
                 av_log(matroska->ctx, AV_LOG_ERROR,
@@ -2949,7 +2946,11 @@ static int matroska_parse_tracks(AVFormatContext *s)
             st->codecpar->codec_type  = AVMEDIA_TYPE_AUDIO;
             st->codecpar->codec_tag   = fourcc;
             st->codecpar->sample_rate = track->audio.out_samplerate;
-            st->codecpar->channels    = track->audio.channels;
+            // channel layout may be already set by codec private checks above
+            if (st->codecpar->ch_layout.order == AV_CHANNEL_ORDER_NATIVE &&
+                !st->codecpar->ch_layout.u.mask)
+                st->codecpar->ch_layout.order = AV_CHANNEL_ORDER_UNSPEC;
+            st->codecpar->ch_layout.nb_channels = track->audio.channels;
             if (!st->codecpar->bits_per_coded_sample)
                 st->codecpar->bits_per_coded_sample = track->audio.bitdepth;
             if (st->codecpar->codec_id == AV_CODEC_ID_MP3 ||
@@ -3065,6 +3066,8 @@ static int matroska_read_header(AVFormatContext *s)
 
     if (!matroska->time_scale)
         matroska->time_scale = 1000000;
+    if (isnan(matroska->duration))
+        matroska->duration = 0;
     if (matroska->duration)
         matroska->ctx->duration = matroska->duration * matroska->time_scale *
                                   1000 / AV_TIME_BASE;
@@ -4010,7 +4013,8 @@ static CueDesc get_cue_desc(AVFormatContext *s, int64_t ts, int64_t cues_start) 
     CueDesc cue_desc;
     int i;
 
-    if (ts >= matroska->duration * matroska->time_scale) return (CueDesc) {-1, -1, -1, -1};
+    if (ts >= (int64_t)(matroska->duration * matroska->time_scale))
+        return (CueDesc) {-1, -1, -1, -1};
     for (i = 1; i < nb_index_entries; i++) {
         if (index_entries[i - 1].timestamp * matroska->time_scale <= ts &&
             index_entries[i].timestamp * matroska->time_scale > ts) {
@@ -4205,6 +4209,8 @@ static int64_t webm_dash_manifest_compute_bandwidth(AVFormatContext *s, int64_t 
             // prebuffered.
             pre_bytes = desc_end.end_offset - desc_end.start_offset;
             pre_ns = desc_end.end_time_ns - desc_end.start_time_ns;
+            if (pre_ns <= 0)
+                return -1;
             pre_sec = pre_ns / nano_seconds_per_second;
             prebuffer_bytes +=
                 pre_bytes * ((temp_prebuffer_ns / nano_seconds_per_second) / pre_sec);
