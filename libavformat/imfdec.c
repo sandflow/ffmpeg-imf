@@ -580,11 +580,16 @@ static int set_context_streams_from_tracks(AVFormatContext *s)
             return AVERROR(ENOMEM);
         }
         asset_stream->id = i;
+        asset_stream->r_frame_rate = first_resource_stream->r_frame_rate;
+        asset_stream->avg_frame_rate = first_resource_stream->avg_frame_rate;
+        asset_stream->sample_aspect_ratio = first_resource_stream->sample_aspect_ratio;
         ret = avcodec_parameters_copy(asset_stream->codecpar, first_resource_stream->codecpar);
         if (ret < 0) {
             av_log(s, AV_LOG_ERROR, "Could not copy stream parameters\n");
             return ret;
         }
+        av_dict_copy(&asset_stream->metadata, first_resource_stream->metadata, 0);
+        ff_stream_side_data_copy(asset_stream, first_resource_stream);
         avpriv_set_pts_info(asset_stream,
                             first_resource_stream->pts_wrap_bits,
                             first_resource_stream->time_base.num,
