@@ -509,7 +509,7 @@ static int fifo_mux_init(AVFormatContext *avf, const AVOutputFormat *oformat,
         if (!st)
             return AVERROR(ENOMEM);
 
-        ret = ff_stream_encode_params_copy(st, avf->streams[i]);
+        ret = ff_stream_params_copy(st, avf->streams[i]);
         if (ret < 0)
             return ret;
     }
