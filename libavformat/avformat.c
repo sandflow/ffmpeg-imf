@@ -240,7 +240,6 @@ int ff_stream_params_copy(AVStream *dst, const AVStream *src)
     int ret;
 
     dst->id                  = src->id;
-    dst->index               = src->index;
     dst->time_base           = src->time_base;
     dst->start_time          = src->start_time;
     dst->duration            = src->duration;
