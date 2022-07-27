@@ -205,6 +205,14 @@ static int digit_to_int(char digit)
     return -1;
 }
 
+/**
+ * Parses a string that conform to the TimecodeType used in IMF CPL and defined
+ * in SMPTE ST 2067-3.
+ * @param[in] s string to parse
+ * @param[out] tc_comps pointer to an array of 4 integers where the parsed HH,
+ *                      MM, SS and FF fields of the timecode are returned.
+ * @return 0 on success, < 0 AVERROR code on error.
+ */
 static int parse_cpl_tc_type(const char *s, int *tc_comps)
 {
     int i;
@@ -222,7 +230,7 @@ static int parse_cpl_tc_type(const char *s, int *tc_comps)
         if (hi == -1 || lo == -1)
             return AVERROR(EINVAL);
 
-        tc_comps[i] = (hi << 4) + lo;
+        tc_comps[i] = 10 * hi + lo;
     }
 
     return 0;
