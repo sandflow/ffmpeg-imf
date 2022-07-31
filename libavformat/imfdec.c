@@ -579,12 +579,15 @@ static int set_context_streams_from_tracks(AVFormatContext *s)
             av_log(s, AV_LOG_ERROR, "Could not create stream\n");
             return AVERROR(ENOMEM);
         }
-        asset_stream->id = i;
-        ret = avcodec_parameters_copy(asset_stream->codecpar, first_resource_stream->codecpar);
+
+        ret = ff_stream_params_copy(asset_stream, first_resource_stream);
         if (ret < 0) {
             av_log(s, AV_LOG_ERROR, "Could not copy stream parameters\n");
             return ret;
         }
+
+        asset_stream->id = i;
+        asset_stream->nb_frames = 0;
         avpriv_set_pts_info(asset_stream,
                             first_resource_stream->pts_wrap_bits,
                             first_resource_stream->time_base.num,
