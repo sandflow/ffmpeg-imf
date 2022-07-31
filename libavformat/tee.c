@@ -289,7 +289,7 @@ static int open_slave(AVFormatContext *avf, char *slave, TeeSlave *tee_slave)
             goto end;
         }
 
-        ret = ff_stream_encode_params_copy(st2, st);
+        ret = ff_stream_params_copy(st2, st);
         if (ret < 0)
             goto end;
     }

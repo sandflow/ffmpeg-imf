@@ -94,7 +94,7 @@ static int webm_chunk_init(AVFormatContext *s)
     if (!(st = avformat_new_stream(oc, NULL)))
         return AVERROR(ENOMEM);
 
-    if ((ret = ff_stream_encode_params_copy(st, ost)) < 0)
+    if ((ret = ff_stream_params_copy(st, ost)) < 0)
         return ret;
 
     if (wc->http_method)

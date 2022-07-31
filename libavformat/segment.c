@@ -169,7 +169,7 @@ static int segment_mux_init(AVFormatContext *s)
 
         if (!(st = avformat_new_stream(oc, NULL)))
             return AVERROR(ENOMEM);
-        ret = ff_stream_encode_params_copy(st, ist);
+        ret = ff_stream_params_copy(st, ist);
         if (ret < 0)
             return ret;
         opar = st->codecpar;
