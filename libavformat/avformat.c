@@ -235,6 +235,47 @@ int ff_stream_side_data_copy(AVStream *dst, const AVStream *src)
     return 0;
 }
 
+int ff_stream_params_copy(AVStream *dst, const AVStream *src)
+{
+    int ret;
+
+    dst->id                  = src->id;
+    dst->time_base           = src->time_base;
+    dst->start_time          = src->start_time;
+    dst->duration            = src->duration;
+    dst->nb_frames           = src->nb_frames;
+    dst->disposition         = src->disposition;
+    dst->discard             = src->discard;
+    dst->sample_aspect_ratio = src->sample_aspect_ratio;
+    dst->avg_frame_rate      = src->avg_frame_rate;
+    dst->event_flags         = src->event_flags;
+    dst->r_frame_rate        = src->r_frame_rate;
+    dst->pts_wrap_bits       = src->pts_wrap_bits;
+
+    av_dict_free(&dst->metadata);
+    ret = av_dict_copy(&dst->metadata, src->metadata, 0);
+    if (ret < 0)
+        return ret;
+
+    ret = avcodec_parameters_copy(dst->codecpar, src->codecpar);
+    if (ret < 0)
+        return ret;
+
+    ret = ff_stream_side_data_copy(dst, src);
+    if (ret < 0)
+        return ret;
+
+    if (src->attached_pic.size > 0) {
+        ret = av_packet_ref(&dst->attached_pic, &src->attached_pic);
+        if (ret < 0)
+            return ret;
+    } else {
+        av_packet_unref(&dst->attached_pic);
+    }
+
+    return 0;
+}
+
 AVProgram *av_new_program(AVFormatContext *ac, int id)
 {
     AVProgram *program = NULL;
