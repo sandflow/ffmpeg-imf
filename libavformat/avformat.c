@@ -269,7 +269,10 @@ int ff_stream_params_copy(AVStream *dst, const AVStream *src)
         ret = av_packet_ref(&dst->attached_pic, &src->attached_pic);
         if (ret < 0)
             return ret;
+    } else {
+        av_packet_unref(&dst->attached_pic);
     }
+    
 
     return 0;
 }
