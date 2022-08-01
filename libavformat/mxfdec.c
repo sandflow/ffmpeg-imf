@@ -2908,6 +2908,8 @@ static int mxf_parse_structural_metadata(MXFContext *mxf)
                     goto fail_and_free;
                 descriptor->coll = NULL;
             }
+            st->avg_frame_rate = material_track->edit_rate;
+            st->r_frame_rate = material_track->edit_rate;
         } else if (st->codecpar->codec_type == AVMEDIA_TYPE_AUDIO) {
             container_ul = mxf_get_codec_ul(mxf_sound_essence_container_uls, essence_container_ul);
             /* Only overwrite existing codec ID if it is unset or A-law, which is the default according to SMPTE RP 224. */

@@ -591,6 +591,8 @@ static int set_context_streams_from_tracks(AVFormatContext *s)
                             first_resource_stream->time_base.den);
         asset_stream->duration = (int64_t)av_q2d(av_mul_q(c->tracks[i]->duration,
                                                           av_inv_q(asset_stream->time_base)));
+        asset_stream->avg_frame_rate = first_resource_stream->avg_frame_rate;
+        asset_stream->r_frame_rate = first_resource_stream->r_frame_rate;
     }
 
     return 0;
