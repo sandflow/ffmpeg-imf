@@ -573,16 +573,9 @@ static int set_context_streams_from_tracks(AVFormatContext *s)
         first_resource_stream = c->tracks[i]->resources[0].ctx->streams[0];
         av_log(s, AV_LOG_DEBUG, "Open the first resource of track %d\n", c->tracks[i]->index);
 
-        /* Copy stream information */
-        asset_stream = avformat_new_stream(s, NULL);
-        if (!asset_stream) {
-            av_log(s, AV_LOG_ERROR, "Could not create stream\n");
-            return AVERROR(ENOMEM);
-        }
-
-        ret = ff_stream_params_copy(asset_stream, first_resource_stream);
+        ret = ff_stream_clone(s, &asset_stream, first_resource_stream);
         if (ret < 0) {
-            av_log(s, AV_LOG_ERROR, "Could not copy stream parameters\n");
+            av_log(s, AV_LOG_ERROR, "Could not clone stream\n");
             return ret;
         }
 

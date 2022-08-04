@@ -167,9 +167,7 @@ static int segment_mux_init(AVFormatContext *s)
         AVStream *st, *ist = s->streams[i];
         AVCodecParameters *ipar = ist->codecpar, *opar;
 
-        if (!(st = avformat_new_stream(oc, NULL)))
-            return AVERROR(ENOMEM);
-        ret = ff_stream_params_copy(st, ist);
+        ret = ff_stream_clone(oc, &st, ist);
         if (ret < 0)
             return ret;
         opar = st->codecpar;

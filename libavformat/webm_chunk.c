@@ -91,10 +91,8 @@ static int webm_chunk_init(AVFormatContext *s)
     if ((ret = av_dict_copy(&oc->metadata, s->metadata, 0)) < 0)
         return ret;
 
-    if (!(st = avformat_new_stream(oc, NULL)))
-        return AVERROR(ENOMEM);
-
-    if ((ret = ff_stream_params_copy(st, ost)) < 0)
+    ret = ff_stream_clone(oc, &st, ost);
+    if (ret < 0)
         return ret;
 
     if (wc->http_method)

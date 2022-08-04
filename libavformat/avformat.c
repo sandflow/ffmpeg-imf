@@ -235,7 +235,17 @@ int ff_stream_side_data_copy(AVStream *dst, const AVStream *src)
     return 0;
 }
 
-int ff_stream_params_copy(AVStream *dst, const AVStream *src)
+/**
+ * Copy all stream parameters from source to destination stream, with the
+ * exception of:
+ *  * the index field, which is usually set by avformat_new_stream()
+ *  * the attached_pic field, if attached_pic.size is 0 or less
+ *
+ * @param dst pointer to destination AVStream
+ * @param src pointer to source AVStream
+ * @return >=0 on success, AVERROR code on error
+ */
+static int stream_params_copy(AVStream *dst, const AVStream *src)
 {
     int ret;
 
@@ -271,6 +281,24 @@ int ff_stream_params_copy(AVStream *dst, const AVStream *src)
         if (ret < 0)
             return ret;
     }
+
+    return 0;
+}
+
+int ff_stream_clone(AVFormatContext *s, AVStream **dst, const AVStream *src)
+{
+    AVStream *st;
+    int ret;
+
+    st = avformat_new_stream(s, NULL);
+    if (!st)
+        return AVERROR(ENOMEM);
+
+    ret = stream_params_copy(st, src);
+    if (ret < 0)
+        return ret;
+
+    *dst = st;
 
     return 0;
 }

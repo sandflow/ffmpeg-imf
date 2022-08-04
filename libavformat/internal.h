@@ -626,16 +626,17 @@ enum AVCodecID ff_get_pcm_codec_id(int bps, int flt, int be, int sflags);
 int ff_stream_side_data_copy(AVStream *dst, const AVStream *src);
 
 /**
- * Copy all stream parameters from source to destination stream, with the
- * exception of:
- *  * the index field, which is usually set by avformat_new_stream()
+ * Create a new stream and copy to it all parameters from a source stream,
+ * with the exception of:
+ *  * the index field, which is set when the new stream is created
  *  * the attached_pic field, if attached_pic.size is 0 or less
  *
- * @param dst pointer to destination AVStream
+ * @param dst *dst is set a pointer to the new stream if no error occurs,
+ *             otherwise it remains unchanged
  * @param src pointer to source AVStream
  * @return >=0 on success, AVERROR code on error
  */
-int ff_stream_params_copy(AVStream *dst, const AVStream *src);
+int ff_stream_clone(AVFormatContext *s, AVStream **dst, const AVStream *src);
 
 /**
  * Wrap ffurl_move() and log if error happens.
