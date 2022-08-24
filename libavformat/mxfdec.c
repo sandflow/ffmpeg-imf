@@ -2911,6 +2911,7 @@ static int mxf_parse_structural_metadata(MXFContext *mxf)
                 case 5: /* F1: Field-wrapped Picture Element */
                     st->avg_frame_rate = av_mul_q(av_make_q(2, 1), source_track->edit_rate);
                     st->r_frame_rate = st->avg_frame_rate;
+                    break;
                 default:
                     break;
                 }
