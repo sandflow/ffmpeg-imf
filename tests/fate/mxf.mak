@@ -29,6 +29,10 @@ FATE_MXF_PROBE-$(call ENCDEC, DNXHD, MXF) += fate-mxf-probe-dnxhd
 fate-mxf-probe-dnxhd: SRC = $(TARGET_SAMPLES)/mxf/multiple_components.mxf
 fate-mxf-probe-dnxhd: CMD = run $(PROBE_FORMAT_STREAMS_COMMAND) -i "$(SRC)"
 
+FATE_MXF_PROBE-$(call ENCDEC, JPEG2000, MXF) += fate-mxf-probe-j2k
+fate-mxf-probe-j2k: SRC = $(TARGET_SAMPLES)/imf/countdown/countdown-small.mxf
+fate-mxf-probe-j2k: CMD = run $(PROBE_FORMAT_STREAMS_COMMAND) -i "$(SRC)"
+
 FATE_MXF_PROBE-$(call ENCDEC2, DVVIDEO, PCM_S16LE, MXF) += fate-mxf-probe-dv25
 fate-mxf-probe-dv25: SRC = $(TARGET_SAMPLES)/mxf/Avid-00005.mxf
 fate-mxf-probe-dv25: CMD = run $(PROBE_FORMAT_STREAMS_COMMAND) -i "$(SRC)"
