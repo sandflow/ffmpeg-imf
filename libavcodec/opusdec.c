@@ -44,9 +44,7 @@
 
 #include "avcodec.h"
 #include "codec_internal.h"
-#include "get_bits.h"
-#include "internal.h"
-#include "mathops.h"
+#include "decode.h"
 #include "opus.h"
 #include "opustab.h"
 #include "opus_celt.h"
@@ -642,7 +640,7 @@ static av_cold int opus_decode_init(AVCodecContext *avctx)
 
     for (i = 0; i < c->nb_streams; i++) {
         OpusStreamContext *s = &c->streams[i];
-        uint64_t layout;
+        AVChannelLayout layout;
 
         s->output_channels = (i < c->nb_stereo_streams) ? 2 : 1;
 
@@ -660,11 +658,12 @@ static av_cold int opus_decode_init(AVCodecContext *avctx)
         if (!s->swr)
             return AVERROR(ENOMEM);
 
-        layout = (s->output_channels == 1) ? AV_CH_LAYOUT_MONO : AV_CH_LAYOUT_STEREO;
+        layout = (s->output_channels == 1) ? (AVChannelLayout)AV_CHANNEL_LAYOUT_MONO :
+                                             (AVChannelLayout)AV_CHANNEL_LAYOUT_STEREO;
         av_opt_set_int(s->swr, "in_sample_fmt",      avctx->sample_fmt,  0);
         av_opt_set_int(s->swr, "out_sample_fmt",     avctx->sample_fmt,  0);
-        av_opt_set_int(s->swr, "in_channel_layout",  layout,             0);
-        av_opt_set_int(s->swr, "out_channel_layout", layout,             0);
+        av_opt_set_chlayout(s->swr, "in_chlayout",   &layout,            0);
+        av_opt_set_chlayout(s->swr, "out_chlayout",  &layout,            0);
         av_opt_set_int(s->swr, "out_sample_rate",    avctx->sample_rate, 0);
         av_opt_set_int(s->swr, "filter_size",        16,                 0);
 
@@ -706,7 +705,7 @@ static const AVClass opus_class = {
 
 const FFCodec ff_opus_decoder = {
     .p.name          = "opus",
-    .p.long_name     = NULL_IF_CONFIG_SMALL("Opus"),
+    CODEC_LONG_NAME("Opus"),
     .p.priv_class    = &opus_class,
     .p.type          = AVMEDIA_TYPE_AUDIO,
     .p.id            = AV_CODEC_ID_OPUS,

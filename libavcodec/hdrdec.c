@@ -18,13 +18,10 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#include <stdlib.h>
-
-#include "libavutil/imgutils.h"
 #include "avcodec.h"
-#include "internal.h"
 #include "bytestream.h"
 #include "codec_internal.h"
+#include "decode.h"
 #include "thread.h"
 
 #define MINELEN 8
@@ -73,8 +70,8 @@ static int decompress(uint8_t *scanline, int w, GetByteContext *gb, const uint8_
             for (int i = run << rshift; i > 0 && w > 0 && scanline >= start + 4; i--) {
                 memcpy(scanline, scanline - 4, 4);
                 scanline += 4;
+                w -= 4;
             }
-            w -= run << rshift;
             rshift += 8;
             if (rshift > 16)
                 break;
@@ -91,14 +88,13 @@ static int decompress(uint8_t *scanline, int w, GetByteContext *gb, const uint8_
 static int hdr_decode_frame(AVCodecContext *avctx, AVFrame *p,
                             int *got_frame, AVPacket *avpkt)
 {
-    const uint8_t *buf = avpkt->data;
-    int ret, buf_size = avpkt->size;
     int width = 0, height = 0;
     GetByteContext gb;
     uint8_t line[512];
     float sar;
+    int ret;
 
-    bytestream2_init(&gb, buf, buf_size);
+    bytestream2_init(&gb, avpkt->data, avpkt->size);
     hdr_get_line(&gb, line, sizeof(line));
     if (memcmp("#?RADIANCE\n", line, 11))
         return AVERROR_INVALIDDATA;
@@ -132,6 +128,10 @@ static int hdr_decode_frame(AVCodecContext *avctx, AVFrame *p,
         return ret;
 
     avctx->pix_fmt = AV_PIX_FMT_GBRPF32;
+
+    if (avctx->skip_frame >= AVDISCARD_ALL)
+        return avpkt->size;
+
     if ((ret = ff_thread_get_buffer(avctx, p, 0)) < 0)
         return ret;
 
@@ -209,14 +209,15 @@ convert:
 
     *got_frame   = 1;
 
-    return buf_size;
+    return avpkt->size;
 }
 
 const FFCodec ff_hdr_decoder = {
     .p.name         = "hdr",
-    .p.long_name    = NULL_IF_CONFIG_SMALL("HDR (Radiance RGBE format) image"),
+    CODEC_LONG_NAME("HDR (Radiance RGBE format) image"),
     .p.type         = AVMEDIA_TYPE_VIDEO,
     .p.id           = AV_CODEC_ID_RADIANCE_HDR,
     .p.capabilities = AV_CODEC_CAP_DR1 | AV_CODEC_CAP_FRAME_THREADS,
+    .caps_internal  = FF_CODEC_CAP_SKIP_FRAME_FILL_PARAM,
     FF_CODEC_DECODE_CB(hdr_decode_frame),
 };

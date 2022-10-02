@@ -32,6 +32,7 @@
 #include "libavutil/attributes.h"
 #include "libavutil/bprint.h"
 #include "libavutil/channel_layout.h"
+#include "libavutil/dict_internal.h"
 #include "libavutil/internal.h"
 #include "libavutil/intreadwrite.h"
 #include "libavutil/intfloat.h"
@@ -1519,10 +1520,6 @@ static int mov_read_mvhd(MOVContext *c, AVIOContext *pb, MOVAtom atom)
     av_log(c->fc, AV_LOG_TRACE, "time scale = %i\n", c->time_scale);
 
     c->duration = (version == 1) ? avio_rb64(pb) : avio_rb32(pb); /* duration */
-    // set the AVFormatContext duration because the duration of individual tracks
-    // may be inaccurate
-    if (!c->trex_data)
-        c->fc->duration = av_rescale(c->duration, AV_TIME_BASE, c->time_scale);
     avio_rb32(pb); /* preferred scale */
 
     avio_rb16(pb); /* preferred volume */
@@ -2430,6 +2427,11 @@ static int mov_finalize_stsd_codec(MOVContext *c, AVIOContext *pb,
     switch (st->codecpar->codec_id) {
 #if CONFIG_DV_DEMUXER
     case AV_CODEC_ID_DVAUDIO:
+        if (c->dv_fctx) {
+            avpriv_request_sample(c->fc, "multiple DV audio streams");
+            return AVERROR(ENOSYS);
+        }
+
         c->dv_fctx = avformat_alloc_context();
         if (!c->dv_fctx) {
             av_log(c->fc, AV_LOG_ERROR, "dv demux context alloc error\n");
@@ -3967,8 +3969,11 @@ static int build_open_gop_key_points(AVStream *st)
 
     /* Build an unrolled index of the samples */
     sc->sample_offsets_count = 0;
-    for (uint32_t i = 0; i < sc->ctts_count; i++)
+    for (uint32_t i = 0; i < sc->ctts_count; i++) {
+        if (sc->ctts_data[i].count > INT_MAX - sc->sample_offsets_count)
+            return AVERROR(ENOMEM);
         sc->sample_offsets_count += sc->ctts_data[i].count;
+    }
     av_freep(&sc->sample_offsets);
     sc->sample_offsets = av_calloc(sc->sample_offsets_count, sizeof(*sc->sample_offsets));
     if (!sc->sample_offsets)
@@ -3987,8 +3992,11 @@ static int build_open_gop_key_points(AVStream *st)
     /* Build a list of open-GOP key samples */
     sc->open_key_samples_count = 0;
     for (uint32_t i = 0; i < sc->sync_group_count; i++)
-        if (sc->sync_group[i].index == cra_index)
+        if (sc->sync_group[i].index == cra_index) {
+            if (sc->sync_group[i].count > INT_MAX - sc->open_key_samples_count)
+                return AVERROR(ENOMEM);
             sc->open_key_samples_count += sc->sync_group[i].count;
+        }
     av_freep(&sc->open_key_samples);
     sc->open_key_samples = av_calloc(sc->open_key_samples_count, sizeof(*sc->open_key_samples));
     if (!sc->open_key_samples)
@@ -3999,6 +4007,8 @@ static int build_open_gop_key_points(AVStream *st)
         if (sg->index == cra_index)
             for (uint32_t j = 0; j < sg->count; j++)
                 sc->open_key_samples[k++] = sample_id;
+        if (sg->count > INT_MAX - sample_id)
+            return AVERROR_PATCHWELCOME;
         sample_id += sg->count;
     }
 
@@ -4948,9 +4958,10 @@ static int mov_read_tfhd(MOVContext *c, AVIOContext *pb, MOVAtom atom)
     av_log(c->fc, AV_LOG_TRACE, "frag flags 0x%x\n", frag->flags);
 
     frag_stream_info = get_current_frag_stream_info(&c->frag_index);
-    if (frag_stream_info)
+    if (frag_stream_info) {
         frag_stream_info->next_trun_dts = AV_NOPTS_VALUE;
-
+        frag_stream_info->stsd_id = frag->stsd_id;
+    }
     return 0;
 }
 
@@ -7215,7 +7226,7 @@ static int cenc_filter(MOVContext *mov, AVStream* st, MOVStreamContext *sc, AVPa
     encryption_index = NULL;
     if (frag_stream_info) {
         // Note this only supports encryption info in the first sample descriptor.
-        if (mov->fragment.stsd_id == 1) {
+        if (frag_stream_info->stsd_id == 1) {
             if (frag_stream_info->encryption_index) {
                 encrypted_index = current_index - frag_stream_info->index_base;
                 encryption_index = frag_stream_info->encryption_index;
@@ -8768,7 +8779,7 @@ static int mov_read_packet(AVFormatContext *s, AVPacket *pkt)
         }
 #if CONFIG_DV_DEMUXER
         if (mov->dv_demux && sc->dv_audio_container) {
-            ret = avpriv_dv_produce_packet(mov->dv_demux, pkt, pkt->data, pkt->size, pkt->pos);
+            ret = avpriv_dv_produce_packet(mov->dv_demux, NULL, pkt->data, pkt->size, pkt->pos);
             av_packet_unref(pkt);
             if (ret < 0)
                 return ret;

@@ -25,7 +25,7 @@
 
 #include "avcodec.h"
 #include "codec_internal.h"
-#include "internal.h"
+#include "decode.h"
 #include "put_bits.h"
 #include "pnm.h"
 
@@ -58,6 +58,9 @@ static int pnm_decode_frame(AVCodecContext *avctx, AVFrame *p,
 
     if ((ret = ff_pnm_decode_header(avctx, s)) < 0)
         return ret;
+
+    if (avctx->skip_frame >= AVDISCARD_ALL)
+        return avpkt->size;
 
     if ((ret = ff_get_buffer(avctx, p, 0)) < 0)
         return ret;
@@ -403,11 +406,12 @@ static int pnm_decode_frame(AVCodecContext *avctx, AVFrame *p,
 #if CONFIG_PGM_DECODER
 const FFCodec ff_pgm_decoder = {
     .p.name         = "pgm",
-    .p.long_name    = NULL_IF_CONFIG_SMALL("PGM (Portable GrayMap) image"),
+    CODEC_LONG_NAME("PGM (Portable GrayMap) image"),
     .p.type         = AVMEDIA_TYPE_VIDEO,
     .p.id           = AV_CODEC_ID_PGM,
     .p.capabilities = AV_CODEC_CAP_DR1,
     .priv_data_size = sizeof(PNMContext),
+    .caps_internal  = FF_CODEC_CAP_SKIP_FRAME_FILL_PARAM,
     FF_CODEC_DECODE_CB(pnm_decode_frame),
 };
 #endif
@@ -415,11 +419,12 @@ const FFCodec ff_pgm_decoder = {
 #if CONFIG_PGMYUV_DECODER
 const FFCodec ff_pgmyuv_decoder = {
     .p.name         = "pgmyuv",
-    .p.long_name    = NULL_IF_CONFIG_SMALL("PGMYUV (Portable GrayMap YUV) image"),
+    CODEC_LONG_NAME("PGMYUV (Portable GrayMap YUV) image"),
     .p.type         = AVMEDIA_TYPE_VIDEO,
     .p.id           = AV_CODEC_ID_PGMYUV,
     .p.capabilities = AV_CODEC_CAP_DR1,
     .priv_data_size = sizeof(PNMContext),
+    .caps_internal  = FF_CODEC_CAP_SKIP_FRAME_FILL_PARAM,
     FF_CODEC_DECODE_CB(pnm_decode_frame),
 };
 #endif
@@ -427,11 +432,12 @@ const FFCodec ff_pgmyuv_decoder = {
 #if CONFIG_PPM_DECODER
 const FFCodec ff_ppm_decoder = {
     .p.name         = "ppm",
-    .p.long_name    = NULL_IF_CONFIG_SMALL("PPM (Portable PixelMap) image"),
+    CODEC_LONG_NAME("PPM (Portable PixelMap) image"),
     .p.type         = AVMEDIA_TYPE_VIDEO,
     .p.id           = AV_CODEC_ID_PPM,
     .p.capabilities = AV_CODEC_CAP_DR1,
     .priv_data_size = sizeof(PNMContext),
+    .caps_internal  = FF_CODEC_CAP_SKIP_FRAME_FILL_PARAM,
     FF_CODEC_DECODE_CB(pnm_decode_frame),
 };
 #endif
@@ -439,11 +445,12 @@ const FFCodec ff_ppm_decoder = {
 #if CONFIG_PBM_DECODER
 const FFCodec ff_pbm_decoder = {
     .p.name         = "pbm",
-    .p.long_name    = NULL_IF_CONFIG_SMALL("PBM (Portable BitMap) image"),
+    CODEC_LONG_NAME("PBM (Portable BitMap) image"),
     .p.type         = AVMEDIA_TYPE_VIDEO,
     .p.id           = AV_CODEC_ID_PBM,
     .p.capabilities = AV_CODEC_CAP_DR1,
     .priv_data_size = sizeof(PNMContext),
+    .caps_internal  = FF_CODEC_CAP_SKIP_FRAME_FILL_PARAM,
     FF_CODEC_DECODE_CB(pnm_decode_frame),
 };
 #endif
@@ -451,11 +458,12 @@ const FFCodec ff_pbm_decoder = {
 #if CONFIG_PAM_DECODER
 const FFCodec ff_pam_decoder = {
     .p.name         = "pam",
-    .p.long_name    = NULL_IF_CONFIG_SMALL("PAM (Portable AnyMap) image"),
+    CODEC_LONG_NAME("PAM (Portable AnyMap) image"),
     .p.type         = AVMEDIA_TYPE_VIDEO,
     .p.id           = AV_CODEC_ID_PAM,
     .p.capabilities = AV_CODEC_CAP_DR1,
     .priv_data_size = sizeof(PNMContext),
+    .caps_internal  = FF_CODEC_CAP_SKIP_FRAME_FILL_PARAM,
     FF_CODEC_DECODE_CB(pnm_decode_frame),
 };
 #endif
@@ -463,11 +471,12 @@ const FFCodec ff_pam_decoder = {
 #if CONFIG_PFM_DECODER
 const FFCodec ff_pfm_decoder = {
     .p.name         = "pfm",
-    .p.long_name    = NULL_IF_CONFIG_SMALL("PFM (Portable FloatMap) image"),
+    CODEC_LONG_NAME("PFM (Portable FloatMap) image"),
     .p.type         = AVMEDIA_TYPE_VIDEO,
     .p.id           = AV_CODEC_ID_PFM,
     .p.capabilities = AV_CODEC_CAP_DR1,
     .priv_data_size = sizeof(PNMContext),
+    .caps_internal  = FF_CODEC_CAP_SKIP_FRAME_FILL_PARAM,
     FF_CODEC_DECODE_CB(pnm_decode_frame),
 };
 #endif
@@ -484,12 +493,13 @@ static av_cold int phm_dec_init(AVCodecContext *avctx)
 
 const FFCodec ff_phm_decoder = {
     .p.name         = "phm",
-    .p.long_name    = NULL_IF_CONFIG_SMALL("PHM (Portable HalfFloatMap) image"),
+    CODEC_LONG_NAME("PHM (Portable HalfFloatMap) image"),
     .p.type         = AVMEDIA_TYPE_VIDEO,
     .p.id           = AV_CODEC_ID_PHM,
     .p.capabilities = AV_CODEC_CAP_DR1,
     .priv_data_size = sizeof(PNMContext),
     .init           = phm_dec_init,
+    .caps_internal  = FF_CODEC_CAP_SKIP_FRAME_FILL_PARAM,
     FF_CODEC_DECODE_CB(pnm_decode_frame),
 };
 #endif

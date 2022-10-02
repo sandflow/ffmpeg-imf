@@ -37,7 +37,7 @@
 #include "avcodec.h"
 #include "bytestream.h"
 #include "codec_internal.h"
-#include "internal.h"
+#include "decode.h"
 #include "thread.h"
 #include "jpeg2000.h"
 #include "jpeg2000dsp.h"
@@ -2519,6 +2519,15 @@ static int jpeg2000_decode_frame(AVCodecContext *avctx, AVFrame *picture,
     if (ret = jpeg2000_read_main_headers(s))
         goto end;
 
+    if (s->sar.num && s->sar.den)
+        avctx->sample_aspect_ratio = s->sar;
+    s->sar.num = s->sar.den = 0;
+
+    if (avctx->skip_frame >= AVDISCARD_ALL) {
+        jpeg2000_dec_cleanup(s);
+        return avpkt->size;
+    }
+
     /* get picture buffer */
     if ((ret = ff_thread_get_buffer(avctx, picture, 0)) < 0)
         goto end;
@@ -2547,9 +2556,6 @@ static int jpeg2000_decode_frame(AVCodecContext *avctx, AVFrame *picture,
 
     if (s->avctx->pix_fmt == AV_PIX_FMT_PAL8)
         memcpy(picture->data[1], s->palette, 256 * sizeof(uint32_t));
-    if (s->sar.num && s->sar.den)
-        avctx->sample_aspect_ratio = s->sar;
-    s->sar.num = s->sar.den = 0;
 
     return bytestream2_tell(&s->g);
 
@@ -2576,7 +2582,7 @@ static const AVClass jpeg2000_class = {
 
 const FFCodec ff_jpeg2000_decoder = {
     .p.name           = "jpeg2000",
-    .p.long_name      = NULL_IF_CONFIG_SMALL("JPEG 2000"),
+    CODEC_LONG_NAME("JPEG 2000"),
     .p.type           = AVMEDIA_TYPE_VIDEO,
     .p.id             = AV_CODEC_ID_JPEG2000,
     .p.capabilities   = AV_CODEC_CAP_SLICE_THREADS | AV_CODEC_CAP_FRAME_THREADS | AV_CODEC_CAP_DR1,
@@ -2586,4 +2592,5 @@ const FFCodec ff_jpeg2000_decoder = {
     .p.priv_class     = &jpeg2000_class,
     .p.max_lowres     = 5,
     .p.profiles       = NULL_IF_CONFIG_SMALL(ff_jpeg2000_profiles),
+    .caps_internal    = FF_CODEC_CAP_SKIP_FRAME_FILL_PARAM,
 };

@@ -35,12 +35,11 @@
 
 #include "avcodec.h"
 #include "codec_internal.h"
+#include "decode.h"
 #include "get_bits.h"
 #include "hwconfig.h"
 #include "idctdsp.h"
-#include "internal.h"
 #include "profiles.h"
-#include "simple_idct.h"
 #include "proresdec.h"
 #include "proresdata.h"
 #include "thread.h"
@@ -178,7 +177,7 @@ static av_cold int decode_init(AVCodecContext *avctx)
         av_log(avctx, AV_LOG_DEBUG, "Auto bitdepth precision. Use 12b decoding based on codec tag.\n");
     }
 
-    ff_blockdsp_init(&ctx->bdsp, avctx);
+    ff_blockdsp_init(&ctx->bdsp);
     ret = ff_proresdsp_init(&ctx->prodsp, avctx);
     if (ret < 0) {
         av_log(avctx, AV_LOG_ERROR, "Fail to init proresdsp for bits per raw sample %d\n", avctx->bits_per_raw_sample);
@@ -872,14 +871,14 @@ static int update_thread_context(AVCodecContext *dst, const AVCodecContext *src)
 
 const FFCodec ff_prores_decoder = {
     .p.name         = "prores",
-    .p.long_name    = NULL_IF_CONFIG_SMALL("Apple ProRes (iCodec Pro)"),
+    CODEC_LONG_NAME("Apple ProRes (iCodec Pro)"),
     .p.type         = AVMEDIA_TYPE_VIDEO,
     .p.id           = AV_CODEC_ID_PRORES,
     .priv_data_size = sizeof(ProresContext),
     .init           = decode_init,
     .close          = decode_close,
     FF_CODEC_DECODE_CB(decode_frame),
-    .update_thread_context = ONLY_IF_THREADS_ENABLED(update_thread_context),
+    UPDATE_THREAD_CONTEXT(update_thread_context),
     .p.capabilities = AV_CODEC_CAP_DR1 | AV_CODEC_CAP_SLICE_THREADS | AV_CODEC_CAP_FRAME_THREADS,
     .p.profiles     = NULL_IF_CONFIG_SMALL(ff_prores_profiles),
     .hw_configs     = (const AVCodecHWConfigInternal *const []) {

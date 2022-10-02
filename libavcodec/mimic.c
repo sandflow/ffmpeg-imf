@@ -19,8 +19,6 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#include <stdlib.h>
-#include <string.h>
 #include <stdint.h>
 
 #include "libavutil/mem_internal.h"
@@ -29,7 +27,7 @@
 #include "avcodec.h"
 #include "blockdsp.h"
 #include "codec_internal.h"
-#include "internal.h"
+#include "decode.h"
 #include "get_bits.h"
 #include "bytestream.h"
 #include "bswapdsp.h"
@@ -135,7 +133,7 @@ static av_cold int mimic_decode_init(AVCodecContext *avctx)
     ctx->prev_index = 0;
     ctx->cur_index  = 15;
 
-    ff_blockdsp_init(&ctx->bdsp, avctx);
+    ff_blockdsp_init(&ctx->bdsp);
     ff_bswapdsp_init(&ctx->bbdsp);
     ff_hpeldsp_init(&ctx->hdsp, avctx->flags);
     ff_idctdsp_init(&ctx->idsp, avctx);
@@ -440,7 +438,7 @@ static int mimic_decode_frame(AVCodecContext *avctx, AVFrame *rframe,
 
 const FFCodec ff_mimic_decoder = {
     .p.name                = "mimic",
-    .p.long_name           = NULL_IF_CONFIG_SMALL("Mimic"),
+    CODEC_LONG_NAME("Mimic"),
     .p.type                = AVMEDIA_TYPE_VIDEO,
     .p.id                  = AV_CODEC_ID_MIMIC,
     .priv_data_size        = sizeof(MimicContext),
@@ -448,7 +446,7 @@ const FFCodec ff_mimic_decoder = {
     .close                 = mimic_decode_end,
     FF_CODEC_DECODE_CB(mimic_decode_frame),
     .p.capabilities        = AV_CODEC_CAP_DR1 | AV_CODEC_CAP_FRAME_THREADS,
-    .update_thread_context = ONLY_IF_THREADS_ENABLED(mimic_decode_update_thread_context),
+    UPDATE_THREAD_CONTEXT(mimic_decode_update_thread_context),
     .caps_internal         = FF_CODEC_CAP_ALLOCATE_PROGRESS |
                              FF_CODEC_CAP_INIT_CLEANUP,
 };

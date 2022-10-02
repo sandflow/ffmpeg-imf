@@ -119,7 +119,7 @@ static const FFCodecDefault libgsm_defaults[] = {
 #if CONFIG_LIBGSM_ENCODER
 const FFCodec ff_libgsm_encoder = {
     .p.name         = "libgsm",
-    .p.long_name    = NULL_IF_CONFIG_SMALL("libgsm GSM"),
+    CODEC_LONG_NAME("libgsm GSM"),
     .p.type         = AVMEDIA_TYPE_AUDIO,
     .p.id           = AV_CODEC_ID_GSM,
     .p.capabilities = AV_CODEC_CAP_DR1,
@@ -127,9 +127,7 @@ const FFCodec ff_libgsm_encoder = {
     FF_CODEC_ENCODE_CB(libgsm_encode_frame),
     .close          = libgsm_encode_close,
     .defaults       = libgsm_defaults,
-#if FF_API_OLD_CHANNEL_LAYOUT
-    .p.channel_layouts = (const uint64_t[]) { AV_CH_LAYOUT_MONO, 0 },
-#endif
+    CODEC_OLD_CHANNEL_LAYOUTS(AV_CH_LAYOUT_MONO)
     .p.ch_layouts   = (const AVChannelLayout[]) { AV_CHANNEL_LAYOUT_MONO, { 0 } },
     .p.sample_fmts  = (const enum AVSampleFormat[]){ AV_SAMPLE_FMT_S16,
                                                      AV_SAMPLE_FMT_NONE },
@@ -140,7 +138,7 @@ const FFCodec ff_libgsm_encoder = {
 #if CONFIG_LIBGSM_MS_ENCODER
 const FFCodec ff_libgsm_ms_encoder = {
     .p.name         = "libgsm_ms",
-    .p.long_name    = NULL_IF_CONFIG_SMALL("libgsm GSM Microsoft variant"),
+    CODEC_LONG_NAME("libgsm GSM Microsoft variant"),
     .p.type         = AVMEDIA_TYPE_AUDIO,
     .p.id           = AV_CODEC_ID_GSM_MS,
     .p.capabilities = AV_CODEC_CAP_DR1,
@@ -148,9 +146,7 @@ const FFCodec ff_libgsm_ms_encoder = {
     FF_CODEC_ENCODE_CB(libgsm_encode_frame),
     .close          = libgsm_encode_close,
     .defaults       = libgsm_defaults,
-#if FF_API_OLD_CHANNEL_LAYOUT
-    .p.channel_layouts = (const uint64_t[]) { AV_CH_LAYOUT_MONO, 0 },
-#endif
+    CODEC_OLD_CHANNEL_LAYOUTS(AV_CH_LAYOUT_MONO)
     .p.ch_layouts   = (const AVChannelLayout[]) { AV_CHANNEL_LAYOUT_MONO, { 0 } },
     .p.sample_fmts  = (const enum AVSampleFormat[]){ AV_SAMPLE_FMT_S16,
                                                      AV_SAMPLE_FMT_NONE },
