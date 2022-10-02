@@ -116,8 +116,8 @@ int ff_imf_xml_read_uint32(xmlNodePtr element, uint32_t *number)
 static int ff_imf_xml_read_boolean(xmlNodePtr element, int *value)
 {
     int ret = 0;
-    xmlChar *element_text = xmlNodeListGetString(element->doc, element->xmlChildrenNode, 1);
 
+    xmlChar *element_text = xmlNodeListGetString(element->doc, element->xmlChildrenNode, 1);
     if (xmlStrcmp(element_text, "true") == 0 || xmlStrcmp(element_text, "1") == 0)
         *value = 1;
     else if (xmlStrcmp(element_text, "false") == 0 || xmlStrcmp(element_text, "0") == 0)
