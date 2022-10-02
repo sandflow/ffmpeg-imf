@@ -644,8 +644,7 @@ static int imf_read_header(AVFormatContext *s)
         return ret;
 
     tcr = av_dict_get(s->metadata, "timecode", NULL, 0);
-
-    if ((! tcr) && c->cpl->tc) {
+    if (!tcr && c->cpl->tc) {
         ret = av_dict_set(&s->metadata, "timecode",
                           av_timecode_make_string(c->cpl->tc, tc_buf, 0), 0);
         if (ret)

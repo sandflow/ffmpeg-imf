@@ -215,12 +215,10 @@ static int digit_to_int(char digit)
  */
 static int parse_cpl_tc_type(const char *s, int *tc_comps)
 {
-    int i;
-
     if (av_strnlen(s, 11) != 11)
         return AVERROR(EINVAL);
 
-    for (i = 0; i < 4; i++) {
+    for (int i = 0; i < 4; i++) {
         int hi;
         int lo;
 
@@ -246,11 +244,11 @@ static int fill_timecode(xmlNodePtr cpl_element, FFIMFCPL *cpl)
     int ret = 0;
 
     tc_element = ff_imf_xml_get_child_element_by_name(cpl_element, "CompositionTimecode");
-    if (! tc_element)
+    if (!tc_element)
        return 0;
 
     element = ff_imf_xml_get_child_element_by_name(tc_element, "TimecodeDropFrame");
-    if (! element) {
+    if (!element) {
         av_log(NULL, AV_LOG_ERROR, "CompositionTimecode element is missing\
                                     a TimecodeDropFrame child element\n");
         return AVERROR_INVALIDDATA;
@@ -261,7 +259,7 @@ static int fill_timecode(xmlNodePtr cpl_element, FFIMFCPL *cpl)
         return AVERROR_INVALIDDATA;
     }
     element = ff_imf_xml_get_child_element_by_name(tc_element, "TimecodeStartAddress");
-    if (! element) {
+    if (!element) {
         av_log(NULL, AV_LOG_ERROR, "CompositionTimecode element is missing\
                                     a TimecodeStartAddress child element\n");
         return AVERROR_INVALIDDATA;
@@ -272,8 +270,9 @@ static int fill_timecode(xmlNodePtr cpl_element, FFIMFCPL *cpl)
     xmlFree(tc_str);
     if (ret)
         return ret;
+
     cpl->tc = av_malloc(sizeof(AVTimecode));
-    if (! cpl->tc)
+    if (!cpl->tc)
         return AVERROR(ENOMEM);
     ret = av_timecode_init_from_components(cpl->tc, cpl->edit_rate,
                                            df ? AV_TIMECODE_FLAG_DROPFRAME : 0,
