@@ -141,6 +141,7 @@ static int qsv_get_continuous_buffer(AVCodecContext *avctx, AVFrame *frame,
         frame->linesize[0] = 2 * FFALIGN(avctx->width, 128);
         break;
     case AV_PIX_FMT_Y210:
+    case AV_PIX_FMT_VUYX:
         frame->linesize[0] = 4 * FFALIGN(avctx->width, 128);
         break;
     default:
@@ -1026,7 +1027,7 @@ static const AVClass x##_qsv_class = { \
 }; \
 const FFCodec ff_##x##_qsv_decoder = { \
     .p.name         = #x "_qsv", \
-    .p.long_name    = NULL_IF_CONFIG_SMALL(#X " video (Intel Quick Sync Video acceleration)"), \
+    CODEC_LONG_NAME(#X " video (Intel Quick Sync Video acceleration)"), \
     .priv_data_size = sizeof(QSVDecContext), \
     .p.type         = AVMEDIA_TYPE_VIDEO, \
     .p.id           = AV_CODEC_ID_##X, \
@@ -1041,6 +1042,7 @@ const FFCodec ff_##x##_qsv_decoder = { \
                                                     AV_PIX_FMT_P010, \
                                                     AV_PIX_FMT_YUYV422, \
                                                     AV_PIX_FMT_Y210, \
+                                                    AV_PIX_FMT_VUYX, \
                                                     AV_PIX_FMT_QSV, \
                                                     AV_PIX_FMT_NONE }, \
     .hw_configs     = qsv_hw_configs, \

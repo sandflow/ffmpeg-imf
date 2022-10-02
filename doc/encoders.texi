@@ -3244,9 +3244,9 @@ the average bitrate.
 than the average bitrate.
 
 @item
-@var{AVBR} - average VBR mode, when @option{maxrate} is not specified. This mode
-is further configured by the @option{avbr_accuracy} and
-@option{avbr_convergence} options.
+@var{AVBR} - average VBR mode, when @option{maxrate} is not specified, both
+@option{avbr_accuracy} and @option{avbr_convergence} are set to non-zero. This
+mode is available for H264 and HEVC on Windows.
 @end itemize
 @end itemize
 
@@ -3299,19 +3299,6 @@ Following options are used by all qsv encoders.
 Specifies how many asynchronous operations an application performs
 before the application explicitly synchronizes the result. If zero,
 the value is not specified.
-
-@item @var{avbr_accuracy}
-Accuracy of the AVBR ratecontrol (unit of tenth of percent).
-
-@item @var{avbr_convergence}
-Convergence of the AVBR ratecontrol (unit of 100 frames)
-
-The parameters @var{avbr_accuracy} and @var{avbr_convergence} are for the
-average variable bitrate control (AVBR) algorithm.
-The algorithm focuses on overall encoding quality while meeting the specified
-bitrate, @var{target_bitrate}, within the accuracy range @var{avbr_accuracy},
-after a @var{avbr_Convergence} period. This method does not follow HRD and the
-instant bitrate is not capped or padded.
 
 @item @var{preset}
 This option itemizes a range of choices from veryfast (best speed) to veryslow
@@ -3503,6 +3490,34 @@ Maximum video quantizer scale for B frame.
 
 @item @var{min_qp_b}
 Minimum video quantizer scale for B frame.
+
+@item @var{scenario}
+Provides a hint to encoder about the scenario for the encoding session.
+@table @samp
+@item unknown
+@item displayremoting
+@item videoconference
+@item archive
+@item livestreaming
+@item cameracapture
+@item videosurveillance
+@item gamestreaming
+@item remotegaming
+@end table
+
+@item @var{avbr_accuracy}
+Accuracy of the AVBR ratecontrol (unit of tenth of percent).
+
+@item @var{avbr_convergence}
+Convergence of the AVBR ratecontrol (unit of 100 frames)
+
+The parameters @var{avbr_accuracy} and @var{avbr_convergence} are for the
+average variable bitrate control (AVBR) algorithm.
+The algorithm focuses on overall encoding quality while meeting the specified
+bitrate, @var{target_bitrate}, within the accuracy range @var{avbr_accuracy},
+after a @var{avbr_Convergence} period. This method does not follow HRD and the
+instant bitrate is not capped or padded.
+
 @end table
 
 @subsection HEVC Options
@@ -3542,6 +3557,13 @@ on performance and objective visual quality metric.
 Setting this flag turns on or off LowDelayBRC feautre in qsv plugin, which provides
 more accurate bitrate control to minimize the variance of bitstream size frame
 by frame. Value: -1-default 0-off 1-on
+
+@item @var{adaptive_i}
+This flag controls insertion of I frames by the QSV encoder. Turn ON this flag
+to allow changing of frame type from P and B to I.
+
+@item @var{adaptive_b}
+This flag controls changing of frame type from B to P.
 
 @item @var{p_strategy}
 Enable P-pyramid: 0-default 1-simple 2-pyramid(bf need to be set to 0).
@@ -3644,6 +3666,34 @@ Maximum video quantizer scale for B frame.
 
 @item @var{min_qp_b}
 Minimum video quantizer scale for B frame.
+
+@item @var{scenario}
+Provides a hint to encoder about the scenario for the encoding session.
+@table @samp
+@item unknown
+@item displayremoting
+@item videoconference
+@item archive
+@item livestreaming
+@item cameracapture
+@item videosurveillance
+@item gamestreaming
+@item remotegaming
+@end table
+
+@item @var{avbr_accuracy}
+Accuracy of the AVBR ratecontrol (unit of tenth of percent).
+
+@item @var{avbr_convergence}
+Convergence of the AVBR ratecontrol (unit of 100 frames)
+
+The parameters @var{avbr_accuracy} and @var{avbr_convergence} are for the
+average variable bitrate control (AVBR) algorithm.
+The algorithm focuses on overall encoding quality while meeting the specified
+bitrate, @var{target_bitrate}, within the accuracy range @var{avbr_accuracy},
+after a @var{avbr_Convergence} period. This method does not follow HRD and the
+instant bitrate is not capped or padded.
+
 @end table
 
 @subsection MPEG2 Options

@@ -1076,7 +1076,6 @@ retry:
     } else {
         ret = encode_rgb_frame(fs, planes, width, height, p->linesize);
     }
-    emms_c();
 
     if (ret < 0) {
         av_assert0(fs->slice_coding_mode == 0);
@@ -1269,14 +1268,15 @@ static const AVClass ffv1_class = {
 
 const FFCodec ff_ffv1_encoder = {
     .p.name         = "ffv1",
-    .p.long_name    = NULL_IF_CONFIG_SMALL("FFmpeg video codec #1"),
+    CODEC_LONG_NAME("FFmpeg video codec #1"),
     .p.type         = AVMEDIA_TYPE_VIDEO,
     .p.id           = AV_CODEC_ID_FFV1,
+    .p.capabilities = AV_CODEC_CAP_DR1 | AV_CODEC_CAP_DELAY |
+                      AV_CODEC_CAP_SLICE_THREADS,
     .priv_data_size = sizeof(FFV1Context),
     .init           = encode_init,
     FF_CODEC_ENCODE_CB(encode_frame),
     .close          = ff_ffv1_close,
-    .p.capabilities = AV_CODEC_CAP_SLICE_THREADS | AV_CODEC_CAP_DELAY,
     .p.pix_fmts     = (const enum AVPixelFormat[]) {
         AV_PIX_FMT_YUV420P,   AV_PIX_FMT_YUVA420P,  AV_PIX_FMT_YUVA422P,  AV_PIX_FMT_YUV444P,
         AV_PIX_FMT_YUVA444P,  AV_PIX_FMT_YUV440P,   AV_PIX_FMT_YUV422P,   AV_PIX_FMT_YUV411P,
