@@ -124,7 +124,6 @@ static int ff_imf_xml_read_boolean(xmlNodePtr element, int *value)
         *value = 0;
     else
         ret = 1;
-
     xmlFree(element_text);
 
     return ret;
