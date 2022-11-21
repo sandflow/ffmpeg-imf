@@ -189,6 +189,9 @@ typedef struct Jpeg2000Cblk {
     Jpeg2000Pass *passes;
     Jpeg2000Layer *layers;
     int coord[2][2]; // border coordinates {{x0, x1}, {y0, y1}}
+    /*HTJ2K settings */
+    int zbp;
+    int pass_lengths[2];
 } Jpeg2000Cblk; // code block
 
 typedef struct Jpeg2000Prec {
