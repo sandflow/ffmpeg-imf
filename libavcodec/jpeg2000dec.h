@@ -121,6 +121,8 @@ typedef struct Jpeg2000DecoderContext {
 
     /*options parameters*/
     int             reduction_factor;
+    /*HTJ2K params*/
+    uint8_t         is_htj2k;
 } Jpeg2000DecoderContext;
 
 #endif //AVCODEC_JPEG2000DEC_H
