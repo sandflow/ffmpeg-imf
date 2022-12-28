@@ -36,7 +36,7 @@
 /**
  * @brief Table 2 in clause 7.3.3
  */
-const static uint8_t MEL_E[13] = {0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 4, 5};
+const static uint8_t mel_e[13] = {0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 4, 5};
 // Decode tables, found at the end of this
 static const uint16_t dec_cxt_vlc_table1[1024];
 static const uint16_t dec_cxt_vlc_table0[1024];
@@ -156,7 +156,6 @@ static int jpeg2000_bitbuf_refill_backwards(StateVars *buffer,
     tmp &= mask;
 
     // unstuff  bits
-
     // load temporary byte, which preceeds the position we
     // currently at, to ensure that we can also un-stuff if the
     // stuffed bit is the bottom most bits
@@ -465,7 +464,7 @@ static int jpeg2000_decode_mel_sym(MelDecoderState *mel_state,
         uint8_t eval;
         uint8_t bit;
 
-        eval = MEL_E[mel_state->k];
+        eval = mel_e[mel_state->k];
         bit = jpeg2000_import_bit(mel_stream, Dcup, Lcup);
         if (bit == 1) {
             mel_state->run = 1 << eval;
@@ -930,7 +929,7 @@ jpeg2000_decode_ht_cleanup_segment(const Jpeg2000DecoderContext *s, Jpeg2000Cblk
     for (int y = 0; y < quad_height; y++) {
         for (int x = 0; x < quad_width; x++) {
             int j1, j2;
-            int x1 = 0, x2 = 0, x3 = 0;
+            int x1, x2 , x3;
 
             j1 = 2 * y;
             j2 = 2 * x;
@@ -1014,10 +1013,10 @@ jpeg2000_process_stripes_block(StateVars *sig_prop, int i_s, int j_s, int width,
     for (int j = j_s; j < j_s + width; j++) {
         uint32_t  mbr_info = 0;
         for (int i = i_s; i < i_s + height; i++) {
-            int modify_state,cond;
-            uint8_t  bit;
-            uint8_t  causal_cond = i != (i_s + height - 1);
-            int32_t  *sp = &sample_buf[j + (i * (stride - 2))];
+            int modify_state, cond;
+            uint8_t bit;
+            uint8_t causal_cond = i != (i_s + height - 1);
+            int32_t *sp = &sample_buf[j + (i * (stride - 2))];
             uint8_t mbr = 0;
 
             if (jpeg2000_get_state(i, j, stride - 2, HT_SHIFT_SIGMA, block_states) == 0)
