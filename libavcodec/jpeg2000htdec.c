@@ -38,8 +38,8 @@
  */
 const static uint8_t MEL_E[13] = {0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 4, 5};
 // Decode tables, found at the end of this
-static const uint16_t dec_CxtVLC_table1[1024];
-static const uint16_t dec_CxtVLC_table0[1024];
+static const uint16_t dec_cxt_vlc_table1[1024];
+static const uint16_t dec_cxt_vlc_table0[1024];
 
 typedef struct StateVars {
     int32_t pos;
@@ -152,10 +152,10 @@ static int jpeg2000_bitbuf_refill_backwards(StateVars *buffer,
 
     position -= 4;
     mask = (UINT64_C(1) << (FFMIN(4, buffer->pos + 1)) * 8) - 1;
-    tmp  = AV_RB32(&array[position+1]);
+    tmp  = AV_RB32(&array[position + 1]);
     tmp &= mask;
 
-    // Branchlessly unstuff  bits
+    // unstuff  bits
 
     // load temporary byte, which preceeds the position we
     // currently at, to ensure that we can also un-stuff if the
@@ -585,9 +585,6 @@ jpeg2000_decode_ht_cleanup_segment(const Jpeg2000DecoderContext *s, Jpeg2000Cblk
     const uint16_t is_border_x = width % 2;
     const uint16_t is_border_y = height % 2;
 
-    int j1, j2;
-    int x1 = 0, x2 = 0, x3 = 0;
-
     const uint16_t quad_width = ff_jpeg2000_ceildivpow2(width, 1);
     const uint16_t quad_height = ff_jpeg2000_ceildivpow2(height, 1);
 
@@ -610,7 +607,7 @@ jpeg2000_decode_ht_cleanup_segment(const Jpeg2000DecoderContext *s, Jpeg2000Cblk
         q2 = q1 + 1;
 
         if ((ret = jpeg2000_decode_sig_emb(s, mel_state, mel_stream, vlc_stream,
-                                           dec_CxtVLC_table0, Dcup, sig_pat, res_off,
+                                           dec_cxt_vlc_table0, Dcup, sig_pat, res_off,
                                            emb_pat_k, emb_pat_1, J2K_Q1, context, Lcup,
                                            Pcup)) < 0)
             goto free;
@@ -624,7 +621,7 @@ jpeg2000_decode_ht_cleanup_segment(const Jpeg2000DecoderContext *s, Jpeg2000Cblk
         context += sigma_n[4 * q1 + 3] << 2;
 
         if ((ret = jpeg2000_decode_sig_emb(s, mel_state, mel_stream, vlc_stream,
-                                           dec_CxtVLC_table0, Dcup, sig_pat, res_off,
+                                           dec_cxt_vlc_table0, Dcup, sig_pat, res_off,
                                            emb_pat_k, emb_pat_1, J2K_Q2, context, Lcup,
                                            Pcup)) < 0)
             goto free;
@@ -708,7 +705,7 @@ jpeg2000_decode_ht_cleanup_segment(const Jpeg2000DecoderContext *s, Jpeg2000Cblk
         q1 = q;
 
         if ((ret = jpeg2000_decode_sig_emb(s, mel_state, mel_stream, vlc_stream,
-                                           dec_CxtVLC_table0, Dcup, sig_pat, res_off,
+                                           dec_cxt_vlc_table0, Dcup, sig_pat, res_off,
                                            emb_pat_k, emb_pat_1, J2K_Q1, context, Lcup,
                                            Pcup)) < 0)
             goto free;
@@ -762,7 +759,7 @@ jpeg2000_decode_ht_cleanup_segment(const Jpeg2000DecoderContext *s, Jpeg2000Cblk
                 context1 |= sigma_n[4 * (q1 - quad_width) + 5] << 2;
 
             if ((ret = jpeg2000_decode_sig_emb(s, mel_state, mel_stream, vlc_stream,
-                                               dec_CxtVLC_table1, Dcup, sig_pat, res_off,
+                                               dec_cxt_vlc_table1, Dcup, sig_pat, res_off,
                                                emb_pat_k, emb_pat_1, J2K_Q1, context1, Lcup,
                                                Pcup))
                 < 0)
@@ -782,7 +779,7 @@ jpeg2000_decode_ht_cleanup_segment(const Jpeg2000DecoderContext *s, Jpeg2000Cblk
                 context2 |= sigma_n[4 * (q2 - quad_width) + 5] << 2;
 
             if ((ret = jpeg2000_decode_sig_emb(s, mel_state, mel_stream, vlc_stream,
-                                               dec_CxtVLC_table1, Dcup, sig_pat, res_off,
+                                               dec_cxt_vlc_table1, Dcup, sig_pat, res_off,
                                                emb_pat_k, emb_pat_1, J2K_Q2, context2, Lcup,
                                                Pcup))
                 < 0)
@@ -880,7 +877,7 @@ jpeg2000_decode_ht_cleanup_segment(const Jpeg2000DecoderContext *s, Jpeg2000Cblk
                 context1 |= sigma_n[4 * (q1 - quad_width) + 5] << 2;
 
             if ((ret = jpeg2000_decode_sig_emb(s, mel_state, mel_stream, vlc_stream,
-                                               dec_CxtVLC_table1, Dcup, sig_pat, res_off,
+                                               dec_cxt_vlc_table1, Dcup, sig_pat, res_off,
                                                emb_pat_k, emb_pat_1, J2K_Q1, context1, Lcup,
                                                Pcup))
                 < 0)
@@ -932,6 +929,9 @@ jpeg2000_decode_ht_cleanup_segment(const Jpeg2000DecoderContext *s, Jpeg2000Cblk
     // convert to raster-scan
     for (int y = 0; y < quad_height; y++) {
         for (int x = 0; x < quad_width; x++) {
+            int j1, j2;
+            int x1 = 0, x2 = 0, x3 = 0;
+
             j1 = 2 * y;
             j2 = 2 * x;
 
@@ -1011,20 +1011,15 @@ jpeg2000_process_stripes_block(StateVars *sig_prop, int i_s, int j_s, int width,
                                int32_t *sample_buf, uint8_t *block_states, uint8_t *magref_segment,
                                uint32_t magref_length)
 {
-    int32_t *sp;
-    uint8_t causal_cond = 0;
-    uint8_t bit;
-    uint8_t mbr;
-    uint32_t mbr_info;
-    int modify_state = 0;
-    int cond;
-
     for (int j = j_s; j < j_s + width; j++) {
-        mbr_info = 0;
+        uint32_t  mbr_info = 0;
         for (int i = i_s; i < i_s + height; i++) {
-            sp = &sample_buf[j + (i * (stride - 2))];
-            mbr = 0;
-            causal_cond = i != (i_s + height - 1);
+            int modify_state,cond;
+            uint8_t  bit;
+            uint8_t  causal_cond = i != (i_s + height - 1);
+            int32_t  *sp = &sample_buf[j + (i * (stride - 2))];
+            uint8_t mbr = 0;
+
             if (jpeg2000_get_state(i, j, stride - 2, HT_SHIFT_SIGMA, block_states) == 0)
                 jpeg2000_calc_mbr(&mbr, i, j, mbr_info & 0x1EF, causal_cond, block_states, stride - 2);
             mbr_info >>= 3;
@@ -1275,7 +1270,7 @@ free:
 /**
  * @brief  CtxVLC tables, borrowed from openhtj2k (https://github.com/osamu620/OpenHTJ2K) (credits to Osamu Watanabe)
  */
-static const uint16_t dec_CxtVLC_table1[1024] = {
+static const uint16_t dec_cxt_vlc_table1[1024] = {
         0x0016, 0x006A, 0x0046, 0x00DD, 0x0086, 0x888B, 0x0026, 0x444D, 0x0016, 0x00AA, 0x0046, 0x88AD, 0x0086,
         0x003A, 0x0026, 0x00DE, 0x0016, 0x00CA, 0x0046, 0x009D, 0x0086, 0x005A, 0x0026, 0x222D, 0x0016, 0x009A,
         0x0046, 0x007D, 0x0086, 0x01FD, 0x0026, 0x007E, 0x0016, 0x006A, 0x0046, 0x88CD, 0x0086, 0x888B, 0x0026,
@@ -1356,7 +1351,7 @@ static const uint16_t dec_CxtVLC_table1[1024] = {
         0x00AD, 0x2FFB, 0xFFFF, 0x00DA, 0x004C, 0x5FFD, 0x233F, 0x00F6, 0x00EC, 0x8FFB, 0x001C, 0x0008, 0x008C,
         0x005A, 0x006F, 0x00F6, 0x00CC, 0x00BA, 0x8BBF, 0x4FFB, 0x115D, 0x8AED, 0x222F};
 
-static const uint16_t dec_CxtVLC_table0[1024] = {
+static const uint16_t dec_cxt_vlc_table0[1024] = {
         0x0026, 0x00AA, 0x0046, 0x006C, 0x0086, 0x8AED, 0x0018, 0x8DDF, 0x0026, 0x01BD, 0x0046, 0x5FFF, 0x0086,
         0x027D, 0x005A, 0x155F, 0x0026, 0x003A, 0x0046, 0x444D, 0x0086, 0x4CCD, 0x0018, 0xCCCF, 0x0026, 0x2EFD,
         0x0046, 0x99FF, 0x0086, 0x009C, 0x00CA, 0x133F, 0x0026, 0x00AA, 0x0046, 0x445D, 0x0086, 0x8CCD, 0x0018,
