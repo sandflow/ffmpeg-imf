@@ -152,10 +152,7 @@ static int jpeg2000_bitbuf_refill_backwards(StateVars *buffer,
 
     position -= 4;
     mask = (UINT64_C(1) << (FFMIN(4, buffer->pos + 1)) * 8) - 1;
-    tmp  = array[position + 1] * (1ull << 24);
-    tmp |= array[position + 2] << 16;
-    tmp |= array[position + 3] << 8;
-    tmp |= array[position + 4];
+    tmp  = AV_RB32(&array[position+1]);
     tmp &= mask;
 
     // Branchlessly unstuff  bits
@@ -536,8 +533,8 @@ static av_always_inline void jpeg2000_modify_state(int x1, int x2, int width, in
     block_states[(x1 + 1) * (width + 2) + (x2 + 1)] |= value;
 }
 
-static int av_noinline
-jpeg2000_decode_ht_cleanup(const Jpeg2000DecoderContext *s, Jpeg2000Cblk *cblk, Jpeg2000T1Context *t1,
+static int av_always_inline
+jpeg2000_decode_ht_cleanup_segment(const Jpeg2000DecoderContext *s, Jpeg2000Cblk *cblk, Jpeg2000T1Context *t1,
                            MelDecoderState *mel_state,
                            StateVars *mel_stream, StateVars *vlc_stream, StateVars *mag_sgn_stream, const uint8_t *Dcup,
                            uint32_t Lcup,
@@ -1042,7 +1039,7 @@ jpeg2000_process_stripes_block(StateVars *sig_prop, int i_s, int j_s, int width,
 }
 
 static void av_noinline
-jpeg2000_decode_sigprop(Jpeg2000Cblk *cblk, uint16_t width, uint16_t height, uint8_t *magref_segment,
+jpeg2000_decode_sigprop_segment(Jpeg2000Cblk *cblk, uint16_t width, uint16_t height, uint8_t *magref_segment,
                         uint32_t magref_length, uint8_t pLSB, int32_t *sample_buf, uint8_t *block_states)
 {
     /* Described in clause 7.4
@@ -1090,8 +1087,8 @@ jpeg2000_decode_sigprop(Jpeg2000Cblk *cblk, uint16_t width, uint16_t height, uin
                                        magref_length);
 }
 
-static int av_noinline
-jpeg2000_decode_magref(Jpeg2000Cblk *cblk, uint16_t width, uint16_t block_height, uint8_t *magref_segment,
+static int
+jpeg2000_decode_magref_segment(Jpeg2000Cblk *cblk, uint16_t width, uint16_t block_height, uint8_t *magref_segment,
                        uint32_t magref_length, uint8_t pLSB, int32_t *sample_buf, uint8_t *block_states)
 {
     /*
@@ -1241,18 +1238,18 @@ ff_jpeg2000_decode_htj2k(const Jpeg2000DecoderContext *s, Jpeg2000CodingStyle *c
         ret = AVERROR(ENOMEM);
         goto free;
     }
-    if ((ret = jpeg2000_decode_ht_cleanup(s, cblk, t1, &mel_state, &mel, &vlc,
+    if ((ret = jpeg2000_decode_ht_cleanup_segment(s, cblk, t1, &mel_state, &mel, &vlc,
                                           &mag_sgn, Dcup, Lcup, Pcup, pLSB, width,
                                           height, sample_buf, block_states))
         < 0)
         goto free;
 
     if (cblk->npasses > 1)
-        jpeg2000_decode_sigprop(cblk, width, height, Dref, Lref,
+        jpeg2000_decode_sigprop_segment(cblk, width, height, Dref, Lref,
                                 pLSB - 1, sample_buf, block_states);
 
     if (cblk->npasses > 2)
-        if ((ret = jpeg2000_decode_magref(cblk, width, height, Dref, Lref,
+        if ((ret = jpeg2000_decode_magref_segment(cblk, width, height, Dref, Lref,
                                           pLSB - 1, sample_buf, block_states))
             < 0)
             goto free;

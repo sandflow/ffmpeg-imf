@@ -28,15 +28,8 @@
 #include "jpeg2000.h"
 #include "jpeg2000dsp.h"
 
-#define JP2_SIG_TYPE    0x6A502020
-#define JP2_SIG_VALUE   0x0D0A870A
-#define JP2_CODESTREAM  0x6A703263
-#define JP2_HEADER      0x6A703268
 
-#define HAD_COC 0x01
-#define HAD_QCC 0x02
-
-#define MAX_POCS 32
+#define JPEG2000_MAX_POCS 32
 
 typedef struct Jpeg2000POCEntry {
     uint16_t LYEpoc;
@@ -48,7 +41,7 @@ typedef struct Jpeg2000POCEntry {
 } Jpeg2000POCEntry;
 
 typedef struct Jpeg2000POC {
-    Jpeg2000POCEntry poc[MAX_POCS];
+    Jpeg2000POCEntry poc[JPEG2000_MAX_POCS];
     int nb_poc;
     int is_default;
 } Jpeg2000POC;

@@ -45,6 +45,16 @@
 #include "jpeg2000dec.h"
 #include "jpeg2000htdec.h"
 
+
+
+#define JP2_SIG_TYPE    0x6A502020
+#define JP2_SIG_VALUE   0x0D0A870A
+#define JP2_CODESTREAM  0x6A703263
+#define JP2_HEADER      0x6A703268
+
+#define HAD_COC 0x01
+#define HAD_QCC 0x02
+
 /* get_bits functions for JPEG2000 packet bitstream
  * It is a get_bit function with a bit-stuffing routine. If the value of the
  * byte is 0xFF, the next byte includes an extra zero bit stuffed into the MSB.
