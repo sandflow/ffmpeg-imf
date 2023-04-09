@@ -125,7 +125,7 @@ static int jpeg2000_bitbuf_refill_backwards(StateVars *buffer,
     int32_t position = buffer->pos;
     uint32_t new_bits = 32;
 
-    if (buffer->bits_left > 32)
+    if (buffer->bits_left >= 32)
         return 0; // enough data, no need to pull in more bits
 
     /*
@@ -140,7 +140,9 @@ static int jpeg2000_bitbuf_refill_backwards(StateVars *buffer,
 
     position -= 4;
 
-    tmp = AV_RB32(&array[position+1]);
+    tmp = AV_RL32(&array[position+1]);
+
+
 
     if (buffer->pos < 4){
         // mask un-needed bits if we are close to input end

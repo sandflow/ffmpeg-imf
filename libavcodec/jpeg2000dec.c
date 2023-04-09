@@ -1927,7 +1927,8 @@ static inline void tile_codeblocks(const Jpeg2000DecoderContext *s, Jpeg2000Tile
 
                         Jpeg2000Cblk *cblk = prec->cblk + cblkno;
 
-                        if (s->is_htj2k)
+                        if (codsty->cblk_style & JPEG2000_CTSY_HTJ2K_F)
+                            // HT codeblocks, covers both full and partial blocks
                             ret = ff_jpeg2000_decode_htj2k(s, codsty, &t1, cblk,
                                                            cblk->coord[0][1] - cblk->coord[0][0],
                                                            cblk->coord[1][1] - cblk->coord[1][0],
