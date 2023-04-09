@@ -286,6 +286,7 @@ typedef struct MOVContext {
     int use_absolute_path;
     int ignore_editlist;
     int advanced_editlist;
+    int advanced_editlist_autodisabled;
     int ignore_chapters;
     int seek_individually;
     int64_t next_root_atom; ///< offset of the next root atom
@@ -417,6 +418,8 @@ static inline enum AVCodecID ff_mov_get_lpcm_codec_id(int bps, int flags)
 
 #define MOV_ISMV_TTML_TAG MKTAG('d', 'f', 'x', 'p')
 #define MOV_MP4_TTML_TAG  MKTAG('s', 't', 'p', 'p')
+#define MOV_MP4_FPCM_TAG  MKTAG('f', 'p', 'c', 'm')
+#define MOV_MP4_IPCM_TAG  MKTAG('i', 'p', 'c', 'm')
 
 struct MP4TrackKindValueMapping {
     int         disposition;

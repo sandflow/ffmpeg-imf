@@ -116,6 +116,7 @@ static const struct {
     #endif
     #if CONFIG_HEVC_DECODER
         { "hevc_add_res", checkasm_check_hevc_add_res },
+        { "hevc_deblock", checkasm_check_hevc_deblock },
         { "hevc_idct", checkasm_check_hevc_idct },
         { "hevc_pel", checkasm_check_hevc_pel },
         { "hevc_sao", checkasm_check_hevc_sao },
@@ -178,6 +179,9 @@ static const struct {
     #endif
     #if CONFIG_BLEND_FILTER
         { "vf_blend", checkasm_check_blend },
+    #endif
+    #if CONFIG_BWDIF_FILTER
+        { "vf_bwdif", checkasm_check_vf_bwdif },
     #endif
     #if CONFIG_COLORSPACE_FILTER
         { "vf_colorspace", checkasm_check_colorspace },

@@ -1198,11 +1198,15 @@ static int mxf_read_essence_container_data(void *arg, AVIOContext *pb, int tag, 
 static int mxf_read_index_entry_array(AVIOContext *pb, MXFIndexTableSegment *segment)
 {
     int i, length;
+    uint32_t nb_index_entries;
 
     if (segment->temporal_offset_entries)
         return AVERROR_INVALIDDATA;
 
-    segment->nb_index_entries = avio_rb32(pb);
+    nb_index_entries = avio_rb32(pb);
+    if (nb_index_entries > INT_MAX)
+        return AVERROR_INVALIDDATA;
+    segment->nb_index_entries = nb_index_entries;
 
     length = avio_rb32(pb);
     if(segment->nb_index_entries && length < 11)
@@ -1933,6 +1937,14 @@ static int mxf_compute_ptses_fake_index(MXFContext *mxf, MXFIndexTable *index_ta
             return 0;
         }
 
+        if (s->nb_index_entries != s->index_duration &&
+            s->nb_index_entries != s->index_duration + 1 &&  /* Avid index */
+            s->nb_index_entries != s->index_duration * 2 + 1) {
+            index_table->nb_ptses = 0;
+            av_log(mxf->fc, AV_LOG_ERROR, "ignoring IndexSID %d, duration does not match nb_index_entries\n", s->index_sid);
+            return 0;
+        }
+
         index_table->nb_ptses += s->index_duration;
     }
 
@@ -1987,11 +1999,11 @@ static int mxf_compute_ptses_fake_index(MXFContext *mxf, MXFIndexTable *index_ta
         int index_delta = 1;
         int n = s->nb_index_entries;
 
-        if (s->nb_index_entries == 2 * s->index_duration + 1) {
+        if (s->nb_index_entries == 2 * s->index_duration + 1)
             index_delta = 2;    /* Avid index */
-            /* ignore the last entry - it's the size of the essence container */
+        if (s->nb_index_entries == index_delta * s->index_duration + 1)
+            /* ignore the last entry - it's the size of the essence container in Avid */
             n--;
-        }
 
         for (j = 0; j < n; j += index_delta, x++) {
             int offset = s->temporal_offset_entries[j] / index_delta;
@@ -3727,7 +3739,10 @@ static int mxf_read_header(AVFormatContext *s)
     while (!avio_feof(s->pb)) {
         const MXFMetadataReadTableEntry *metadata;
 
-        if (klv_read_packet(&klv, s->pb) < 0) {
+        ret = klv_read_packet(&klv, s->pb);
+        if (ret < 0 || IS_KLV_KEY(klv.key, ff_mxf_random_index_pack_key)) {
+            if (ret >= 0 && avio_size(s->pb) > klv.next_klv)
+                av_log(s, AV_LOG_WARNING, "data after the RandomIndexPack, assuming end of file\n");
             /* EOF - seek to previous partition or stop */
             if(mxf_parse_handle_partition_or_eof(mxf) <= 0)
                 break;
@@ -3857,8 +3872,8 @@ static int64_t mxf_compute_sample_count(MXFContext *mxf, AVStream *st,
     if ((sample_rate.num / sample_rate.den) == 48000) {
         return av_rescale_q(edit_unit, sample_rate, track->edit_rate);
     } else {
-        int remainder = (sample_rate.num * time_base.num) %
-                        (time_base.den * sample_rate.den);
+        int64_t remainder = (sample_rate.num * (int64_t)  time_base.num) %
+                            (  time_base.den * (int64_t)sample_rate.den);
         if (remainder)
             av_log(mxf->fc, AV_LOG_WARNING,
                    "seeking detected on stream #%d with time base (%d/%d) and "

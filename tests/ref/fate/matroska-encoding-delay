@@ -1,5 +1,5 @@
-b933b7b94de55ae029369312d48d8649 *tests/data/fate/matroska-encoding-delay.matroska
-961221 tests/data/fate/matroska-encoding-delay.matroska
+ce2ab14d45217a043f9f50fe6adfe5ce *tests/data/fate/matroska-encoding-delay.matroska
+961251 tests/data/fate/matroska-encoding-delay.matroska
 #extradata 0:       22, 0x32ea0490
 #tb 0: 1/1000
 #media_type 0: video
@@ -32,8 +32,8 @@ dts_time=-0.010000
 duration=24
 duration_time=0.024000
 size=1152
-pos=1238
-flags=K_
+pos=1268
+flags=K__
 [/PACKET]
 [PACKET]
 codec_type=video
@@ -45,8 +45,8 @@ dts_time=0.000000
 duration=40
 duration_time=0.040000
 size=237628
-pos=2398
-flags=K_
+pos=2428
+flags=K__
 [/PACKET]
 [PACKET]
 codec_type=audio
@@ -58,8 +58,8 @@ dts_time=0.014000
 duration=24
 duration_time=0.024000
 size=1152
-pos=240033
-flags=K_
+pos=240063
+flags=K__
 [/PACKET]
 [PACKET]
 codec_type=audio
@@ -71,8 +71,8 @@ dts_time=0.038000
 duration=24
 duration_time=0.024000
 size=1152
-pos=241208
-flags=K_
+pos=241238
+flags=K__
 [/PACKET]
 [PACKET]
 codec_type=video
@@ -84,8 +84,8 @@ dts_time=0.040000
 duration=40
 duration_time=0.040000
 size=238066
-pos=242368
-flags=K_
+pos=242398
+flags=K__
 [/PACKET]
 [STREAM]
 codec_name=mpeg2video
