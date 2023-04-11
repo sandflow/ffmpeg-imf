@@ -147,7 +147,7 @@ static int jpeg2000_bitbuf_refill_backwards(StateVars *buffer, const uint8_t *ar
     int32_t position = buffer->pos;
     uint32_t new_bits = 32;
 
-    if (buffer->bits_left > 32)
+    if (buffer->bits_left >= 32)
         return 0; // enough data, no need to pull in more bits
 
     /**
