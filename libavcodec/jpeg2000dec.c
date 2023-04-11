@@ -1068,7 +1068,7 @@ static int jpeg2000_decode_packet(Jpeg2000DecoderContext *s, Jpeg2000Tile *tile,
                 return incl;
 
             if (!cblk->npasses) {
-                int zbp = tag_tree_decode(s, prec->zerobits + cblkno, 100);
+                int zbp = tag_tree_decode(s,prec->zerobits + cblkno, 100);
                 int v = expn[bandno] + numgbits - 1 - zbp;
 
                 if (v < 0 || v > 30) {
@@ -1121,13 +1121,8 @@ static int jpeg2000_decode_packet(Jpeg2000DecoderContext *s, Jpeg2000Tile *tile,
                     // Retrieve pass lengths for each pass
                     int href_passes =  (cblk->npasses + newpasses - 1) % 3;
                     int segment_passes = newpasses - href_passes;
-                    int pass_bound = 2;
-                    int eb = 0;
+                    int eb = av_log2(segment_passes);
                     int extra_bit = newpasses > 2 ? 1 : 0;
-                    while (pass_bound <=segment_passes) {
-                        eb++;
-                        pass_bound +=pass_bound;
-                    }
                     if ((ret = get_bits(s, llen + eb + 3)) < 0)
                         return ret;
                     cblk->pass_lengths[0] = ret;
@@ -1888,9 +1883,9 @@ static inline void tile_codeblocks(const Jpeg2000DecoderContext *s, Jpeg2000Tile
 
     /* Loop on tile components */
     for (compno = 0; compno < s->ncomponents; compno++) {
-        Jpeg2000Component *comp      = tile->comp   + compno;
-        Jpeg2000CodingStyle *codsty  = tile->codsty + compno;
-        Jpeg2000QuantStyle *quantsty = tile->qntsty + compno;
+        Jpeg2000Component *comp     = tile->comp + compno;
+        Jpeg2000CodingStyle *codsty = tile->codsty + compno;
+        Jpeg2000QuantStyle *quantsty= tile->qntsty + compno;
 
         int coded = 0;
         int subbandno = 0;
@@ -1922,12 +1917,13 @@ static inline void tile_codeblocks(const Jpeg2000DecoderContext *s, Jpeg2000Tile
                          cblkno < prec->nb_codeblocks_width * prec->nb_codeblocks_height;
                          cblkno++) {
                         int x, y, ret;
-                        /* See Rec. ITU-T T.814, Equation E-2 */
+                        // Annex E (Equation E-2) ISO/IEC 15444-1:2019
                         int magp = quantsty->expn[subbandno] + quantsty->nguardbits - 1;
 
                         Jpeg2000Cblk *cblk = prec->cblk + cblkno;
 
-                        if (s->is_htj2k)
+                        if (codsty->cblk_style & JPEG2000_CTSY_HTJ2K_F)
+                            // HT codeblocks, covers both full and partial blocks
                             ret = ff_jpeg2000_decode_htj2k(s, codsty, &t1, cblk,
                                                            cblk->coord[0][1] - cblk->coord[0][0],
                                                            cblk->coord[1][1] - cblk->coord[1][0],
