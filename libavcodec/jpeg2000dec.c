@@ -1121,13 +1121,8 @@ static int jpeg2000_decode_packet(Jpeg2000DecoderContext *s, Jpeg2000Tile *tile,
                     // Retrieve pass lengths for each pass
                     int href_passes =  (cblk->npasses + newpasses - 1) % 3;
                     int segment_passes = newpasses - href_passes;
-                    int pass_bound = 2;
-                    int eb = 0;
+                    int eb = av_log2(segment_passes);
                     int extra_bit = newpasses > 2 ? 1 : 0;
-                    while (pass_bound <=segment_passes) {
-                        eb++;
-                        pass_bound +=pass_bound;
-                    }
                     if ((ret = get_bits(s, llen + eb + 3)) < 0)
                         return ret;
                     cblk->pass_lengths[0] = ret;
