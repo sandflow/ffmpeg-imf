@@ -1120,14 +1120,8 @@ static int jpeg2000_decode_packet(Jpeg2000DecoderContext *s, Jpeg2000Tile *tile,
                 if (newpasses > 1 && s->is_htj2k) {
                     // Retrieve pass lengths for each pass
                     int href_passes =  (cblk->npasses + newpasses - 1) % 3;
-                    int segment_passes = newpasses - href_passes;
-                    int pass_bound = 2;
-                    int eb = 0;
+                    int eb = av_log2(newpasses - href_passes);
                     int extra_bit = newpasses > 2 ? 1 : 0;
-                    while (pass_bound <=segment_passes) {
-                        eb++;
-                        pass_bound +=pass_bound;
-                    }
                     if ((ret = get_bits(s, llen + eb + 3)) < 0)
                         return ret;
                     cblk->pass_lengths[0] = ret;
@@ -1922,12 +1916,12 @@ static inline void tile_codeblocks(const Jpeg2000DecoderContext *s, Jpeg2000Tile
                          cblkno < prec->nb_codeblocks_width * prec->nb_codeblocks_height;
                          cblkno++) {
                         int x, y, ret;
-                        /* See Rec. ITU-T T.814, Equation E-2 */
+                        /* See Rec. ITU-T T.800, Equation E-2 */
                         int magp = quantsty->expn[subbandno] + quantsty->nguardbits - 1;
 
                         Jpeg2000Cblk *cblk = prec->cblk + cblkno;
 
-                        if (s->is_htj2k)
+                        if (codsty->cblk_style & JPEG2000_CTSY_HTJ2K_F)
                             ret = ff_jpeg2000_decode_htj2k(s, codsty, &t1, cblk,
                                                            cblk->coord[0][1] - cblk->coord[0][0],
                                                            cblk->coord[1][1] - cblk->coord[1][0],

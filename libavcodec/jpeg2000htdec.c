@@ -228,10 +228,7 @@ static void jpeg2000_bitbuf_refill_forward(StateVars *buffer, const uint8_t *arr
 av_always_inline
 static void jpeg2000_bitbuf_drop_bits_lsb(StateVars *buf, uint8_t nbits)
 {
-    if (buf->bits_left < nbits) {
-        av_log(NULL, AV_LOG_ERROR, "Invalid bit read of %d, bits in buffer are %d\n", nbits, buf->bits_left);
-        av_assert0(0);
-    }
+    av_assert2(buf->bits_left >= nbits); // cannot read more bits than available
     buf->bit_buf >>= nbits;
     buf->bits_left -= nbits;
 }
@@ -319,8 +316,7 @@ static int  jpeg2000_decode_ctx_vlc(const Jpeg2000DecoderContext *s,
     code_word = vlc_stream->bit_buf & 0x7f;
     index = code_word + (context << 7);
 
-    /* The CxtVLC table has 1024 entries. */
-    av_assert0(index < 1024);
+    av_assert0(index < 1024); // The CxtVLC table has 1024 entries.
 
     value = table[index];
 
@@ -1183,6 +1179,8 @@ ff_jpeg2000_decode_htj2k(const Jpeg2000DecoderContext *s, Jpeg2000CodingStyle *c
     int32_t n, val;             // Post-processing
 
     int32_t M_b = magp;
+
+    /* codeblock size as constrained by Rec. ITU-T T.800, Table A.18 */
     av_assert0(width <= 1024U && height <= 1024U);
     av_assert0(width * height <= 4096);
     av_assert0(width * height > 0);
