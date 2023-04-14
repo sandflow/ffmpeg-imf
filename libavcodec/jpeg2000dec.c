@@ -438,7 +438,6 @@ static int get_cox(Jpeg2000DecoderContext *s, Jpeg2000CodingStyle *c)
     if (c->cblk_style != 0) { // cblk style
         if (c->cblk_style & JPEG2000_CTSY_HTJ2K_M || c->cblk_style & JPEG2000_CTSY_HTJ2K_F) {
             av_log(s->avctx,AV_LOG_TRACE,"High Throughput jpeg 2000 codestream.\n");
-            s->is_htj2k = 1;
         } else {
             av_log(s->avctx, AV_LOG_WARNING, "extra cblk styles %X\n", c->cblk_style);
             if (c->cblk_style & JPEG2000_CBLK_BYPASS)
@@ -1117,7 +1116,7 @@ static int jpeg2000_decode_packet(Jpeg2000DecoderContext *s, Jpeg2000Tile *tile,
                     }
                 }
 
-                if (newpasses > 1 && s->is_htj2k) {
+                if (newpasses > 1 && (codsty->cblk_style & JPEG2000_CTSY_HTJ2K_F)) {
                     // Retrieve pass lengths for each pass
                     int href_passes =  (cblk->npasses + newpasses - 1) % 3;
                     int eb = av_log2(newpasses - href_passes);
