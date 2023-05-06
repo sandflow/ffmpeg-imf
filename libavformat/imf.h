@@ -140,6 +140,7 @@ typedef struct FFIMFCPL {
 
 /**
  * Parse an IMF CompositionPlaylist element into the FFIMFCPL data structure.
+ * @param[in] in The context from which the CPL is read, or NULL if no context is available.
  * @param[in] doc An XML document from which the CPL is read.
  * @param[out] cpl Pointer to a memory area (allocated by the client), where the
  *  function writes a pointer to the newly constructed FFIMFCPL structure (or
@@ -147,7 +148,7 @@ typedef struct FFIMFCPL {
  *  the FFIMFCPL structure using ff_imf_cpl_free().
  * @return A non-zero value in case of an error.
  */
-int ff_imf_parse_cpl_from_xml_dom(xmlDocPtr doc, FFIMFCPL **cpl);
+int ff_imf_parse_cpl_from_xml_dom(AVFormatContext *in, xmlDocPtr doc, FFIMFCPL **cpl);
 
 /**
  * Parse an IMF Composition Playlist document into the FFIMFCPL data structure.
@@ -158,7 +159,7 @@ int ff_imf_parse_cpl_from_xml_dom(xmlDocPtr doc, FFIMFCPL **cpl);
  * the FFIMFCPL structure using ff_imf_cpl_free().
  * @return A non-zero value in case of an error.
  */
-int ff_imf_parse_cpl(AVIOContext *in, FFIMFCPL **cpl);
+int ff_imf_parse_cpl(AVFormatContext *in, FFIMFCPL **cpl);
 
 /**
  * Allocates and initializes an FFIMFCPL data structure.

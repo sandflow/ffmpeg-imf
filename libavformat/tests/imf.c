@@ -302,7 +302,7 @@ static int test_cpl_parsing(void)
         return 1;
     }
 
-    ret = ff_imf_parse_cpl_from_xml_dom(doc, &cpl);
+    ret = ff_imf_parse_cpl_from_xml_dom(NULL, doc, &cpl);
     xmlFreeDoc(doc);
     if (ret) {
         printf("CPL parsing failed.\n");
@@ -356,7 +356,7 @@ static int test_bad_cpl_parsing(FFIMFCPL **cpl)
         return 1;
     }
 
-    ret = ff_imf_parse_cpl_from_xml_dom(doc, cpl);
+    ret = ff_imf_parse_cpl_from_xml_dom(NULL, doc, cpl);
     xmlFreeDoc(doc);
     if (ret) {
         printf("CPL parsing failed.\n");
